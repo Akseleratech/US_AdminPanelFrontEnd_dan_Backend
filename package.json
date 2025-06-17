@@ -1,0 +1,14 @@
+{
+  "name": "unionspace-crm",
+  "version": "1.0.0",
+  "description": "UnionSpace CRM Application",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm start",
+    "client": "cd frontend && npm start",
+    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+} 

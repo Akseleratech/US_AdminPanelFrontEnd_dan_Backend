@@ -1,674 +1,100 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Building2, 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
-  Eye,
-  MapPin,
-  Users,
-  Calendar,
-  DollarSign,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle
-} from 'lucide-react';
-import { dashboardAPI, ordersAPI, spacesAPI, citiesAPI, servicesAPI } from './services/api';
+import React, { useState } from 'react';
+
+// Components
+import Sidebar from './components/layout/Sidebar';
+import Header from './components/layout/Header';
+import LoadingSpinner from './components/common/LoadingSpinner';
+import Modal from './components/common/Modal';
+import Dashboard from './components/dashboard/Dashboard';
+import Orders from './components/orders/Orders';
+import Layanan from './components/layanan/Layanan';
+
+// Custom Hook
+import { useApi } from './hooks/useApi';
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [layananSubTab, setLayananSubTab] = useState('spaces');
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  // State for data
-  const [dashboardStats, setDashboardStats] = useState({});
-  const [recentOrders, setRecentOrders] = useState([]);
-  const [quickStats, setQuickStats] = useState({});
-  const [orders, setOrders] = useState([]);
-  const [spaces, setSpaces] = useState([]);
-  const [cities, setCities] = useState([]);
-  const [services, setServices] = useState([]);
+  // Using custom hook for API operations
+  const {
+    loading,
+    dashboardStats,
+    recentOrders,
+    quickStats,
+    orders,
+    spaces,
+    cities,
+    services,
+    handleDelete
+  } = useApi(activeTab, layananSubTab);
 
-  // Load data on component mount and tab change
-  useEffect(() => {
-    loadData();
-  }, [activeTab, layananSubTab]);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      if (activeTab === 'dashboard') {
-        const [statsRes, ordersRes, quickStatsRes] = await Promise.all([
-          dashboardAPI.getStats(),
-          dashboardAPI.getRecentOrders(5),
-          dashboardAPI.getQuickStats()
-        ]);
-        setDashboardStats(statsRes.data);
-        setRecentOrders(ordersRes.data);
-        setQuickStats(quickStatsRes.data);
-      } else if (activeTab === 'orders') {
-        const ordersRes = await ordersAPI.getAll();
-        setOrders(ordersRes.data);
-      } else if (activeTab === 'layanan') {
-        if (layananSubTab === 'spaces') {
-          const spacesRes = await spacesAPI.getAll();
-          setSpaces(spacesRes.data);
-        } else if (layananSubTab === 'cities') {
-          const citiesRes = await citiesAPI.getAll();
-          setCities(citiesRes.data);
-        } else if (layananSubTab === 'services') {
-          const servicesRes = await servicesAPI.getAll();
-          setServices(servicesRes.data);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleEdit = (item) => {
+    setModalType('edit');
+    setShowModal(true);
   };
 
-  const handleDelete = async (type, id) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
-    
-    try {
-      if (type === 'space') {
-        await spacesAPI.delete(id);
-        setSpaces(spaces.filter(s => s.id !== id));
-      } else if (type === 'city') {
-        await citiesAPI.delete(id);
-        setCities(cities.filter(c => c.id !== id));
-      } else if (type === 'service') {
-        await servicesAPI.delete(id);
-        setServices(services.filter(s => s.id !== id));
-      }
-    } catch (error) {
-      console.error('Error deleting item:', error);
-      alert('Failed to delete item');
-    }
+  const handleAddNew = () => {
+    setModalType('add');
+    setShowModal(true);
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'confirmed': case 'active': case 'available': return 'text-green-600 bg-green-100';
-      case 'pending': return 'text-yellow-600 bg-yellow-100';
-      case 'cancelled': case 'inactive': return 'text-red-600 bg-red-100';
-      case 'completed': return 'text-blue-600 bg-blue-100';
-      case 'occupied': return 'text-orange-600 bg-orange-100';
-      default: return 'text-gray-600 bg-gray-100';
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return (
+          <Dashboard 
+            dashboardStats={dashboardStats}
+            recentOrders={recentOrders}
+            quickStats={quickStats}
+          />
+        );
+      case 'orders':
+        return <Orders orders={orders} />;
+      case 'layanan':
+        return (
+          <Layanan
+            layananSubTab={layananSubTab}
+            setLayananSubTab={setLayananSubTab}
+            spaces={spaces}
+            cities={cities}
+            services={services}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAddNew={handleAddNew}
+          />
+        );
+      default:
+        return (
+          <Dashboard 
+            dashboardStats={dashboardStats}
+            recentOrders={recentOrders}
+            quickStats={quickStats}
+          />
+        );
     }
   };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'confirmed': case 'completed': case 'active': case 'available': return <CheckCircle className="w-4 h-4" />;
-      case 'pending': return <Clock className="w-4 h-4" />;
-      case 'cancelled': case 'inactive': return <XCircle className="w-4 h-4" />;
-      case 'occupied': return <AlertCircle className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
-    }
-  };
-
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-        </div>
-        <div className={`p-3 rounded-full ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-      </div>
-    </div>
-  );
-
-  const Modal = ({ type, onClose }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">
-            {type === 'add' ? 'Tambah' : 'Edit'} {layananSubTab === 'spaces' ? 'Space' : layananSubTab === 'cities' ? 'Kota' : 'Layanan'}
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XCircle className="w-5 h-5" />
-          </button>
-        </div>
-        
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onClose(); }}>
-          {layananSubTab === 'spaces' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Space</label>
-                <input type="text" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Layanan</label>
-                <select className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Private Office</option>
-                  <option>Meeting Room</option>
-                  <option>Event Space</option>
-                  <option>Coworking Space</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
-                <select className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Jakarta Selatan</option>
-                  <option>Jakarta Pusat</option>
-                  <option>Bandung</option>
-                  <option>Surabaya</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kapasitas</label>
-                <input type="number" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Harga</label>
-                <input type="number" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            </>
-          )}
-          
-          {layananSubTab === 'cities' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kota</label>
-                <input type="text" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Active</option>
-                  <option>Inactive</option>
-                </select>
-              </div>
-            </>
-          )}
-          
-          {layananSubTab === 'services' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Layanan</label>
-                <input type="text" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-                <textarea className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Harga Dasar</label>
-                <input type="number" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            </>
-          )}
-          
-          <div className="flex gap-3 pt-4">
-            <button type="submit" className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              {type === 'add' ? 'Tambah' : 'Simpan'}
-            </button>
-            <button type="button" onClick={onClose} className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
-              Batal
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">NextSpace Admin</h2>
-        </div>
-        
-        <nav className="mt-4">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
-              activeTab === 'dashboard' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
-            }`}
-          >
-            <LayoutDashboard className="w-5 h-5 mr-3" />
-            Dashboard
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('orders')}
-            className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
-              activeTab === 'orders' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
-            }`}
-          >
-            <ShoppingCart className="w-5 h-5 mr-3" />
-            Orders
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('layanan')}
-            className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
-              activeTab === 'layanan' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
-            }`}
-          >
-            <Building2 className="w-5 h-5 mr-3" />
-            Layanan
-          </button>
-        </nav>
-      </div>
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {/* Header */}
-          <div className="bg-white shadow-sm border-b border-gray-200 p-4">
-            <h1 className="text-2xl font-bold text-gray-800">
-              {activeTab === 'dashboard' ? 'Dashboard' : 
-               activeTab === 'orders' ? 'Manajemen Orders' : 
-               'Manajemen Layanan'}
-            </h1>
-          </div>
+          <Header activeTab={activeTab} />
 
+          {/* Content */}
           <div className="p-6">
-            {/* Dashboard Content */}
-            {activeTab === 'dashboard' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <StatCard
-                    title="Total Bookings"
-                    value={dashboardStats.totalBookings || 0}
-                    icon={Calendar}
-                    color="bg-blue-500"
-                  />
-                  <StatCard
-                    title="Total Revenue"
-                    value={`Rp ${(dashboardStats.totalRevenue || 0).toLocaleString()}`}
-                    icon={DollarSign}
-                    color="bg-green-500"
-                  />
-                  <StatCard
-                    title="Active Spaces"
-                    value={dashboardStats.activeSpaces || 0}
-                    icon={Building2}
-                    color="bg-purple-500"
-                  />
-                  <StatCard
-                    title="Total Users"
-                    value={dashboardStats.totalUsers || 0}
-                    icon={Users}
-                    color="bg-orange-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold mb-4">Recent Orders</h3>
-                    <div className="space-y-3">
-                      {recentOrders.map((order) => (
-                        <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900">{order.customer}</p>
-                            <p className="text-sm text-gray-600">{order.service} - {order.location}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-gray-900">Rp {order.amount.toLocaleString()}</p>
-                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                              {getStatusIcon(order.status)}
-                              <span className="ml-1 capitalize">{order.status}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold mb-4">Quick Stats</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Occupancy Rate</span>
-                        <span className="font-medium text-gray-900">{quickStats.occupancyRate || 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Average Booking Value</span>
-                        <span className="font-medium text-gray-900">{quickStats.averageBookingValue || 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Customer Satisfaction</span>
-                        <span className="font-medium text-gray-900">{quickStats.customerSatisfaction || 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Active Locations</span>
-                        <span className="font-medium text-gray-900">{quickStats.activeLocations || 'N/A'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Orders Content */}
-            {activeTab === 'orders' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <div className="relative">
-                      <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search orders..."
-                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                      <Filter className="w-4 h-4 mr-2" />
-                      Filter
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {orders.map((order) => (
-                        <tr key={order.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{order.id}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.customer}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.service}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.location}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp {order.amount.toLocaleString()}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                              {getStatusIcon(order.status)}
-                              <span className="ml-1 capitalize">{order.status}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.date}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              <button className="text-blue-600 hover:text-blue-900">
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button className="text-green-600 hover:text-green-900">
-                                <Edit className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Layanan Content */}
-            {activeTab === 'layanan' && (
-              <div className="space-y-6">
-                <div className="flex border-b border-gray-200">
-                  <button
-                    onClick={() => setLayananSubTab('spaces')}
-                    className={`px-4 py-2 font-medium text-sm ${
-                      layananSubTab === 'spaces'
-                        ? 'text-blue-600 border-b-2 border-blue-600'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Spaces
-                  </button>
-                  <button
-                    onClick={() => setLayananSubTab('cities')}
-                    className={`px-4 py-2 font-medium text-sm ${
-                      layananSubTab === 'cities'
-                        ? 'text-blue-600 border-b-2 border-blue-600'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Kota
-                  </button>
-                  <button
-                    onClick={() => setLayananSubTab('services')}
-                    className={`px-4 py-2 font-medium text-sm ${
-                      layananSubTab === 'services'
-                        ? 'text-blue-600 border-b-2 border-blue-600'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Layanan
-                  </button>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <div className="relative">
-                      <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder={`Search ${layananSubTab}...`}
-                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                      <Filter className="w-4 h-4 mr-2" />
-                      Filter
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setModalType('add');
-                      setShowModal(true);
-                    }}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Tambah {layananSubTab === 'spaces' ? 'Space' : layananSubTab === 'cities' ? 'Kota' : 'Layanan'}
-                  </button>
-                </div>
-
-                {/* Spaces Table */}
-                {layananSubTab === 'spaces' && (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {spaces.map((space) => (
-                          <tr key={space.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{space.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{space.type}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              <div className="flex items-center">
-                                <MapPin className="w-4 h-4 mr-1 text-gray-400" />
-                                {space.location}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{space.capacity} orang</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp {space.price.toLocaleString()}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(space.status)}`}>
-                                {getStatusIcon(space.status)}
-                                <span className="ml-1 capitalize">{space.status}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button className="text-blue-600 hover:text-blue-900">
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setModalType('edit');
-                                    setShowModal(true);
-                                  }}
-                                  className="text-green-600 hover:text-green-900"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDelete('space', space.id)}
-                                  className="text-red-600 hover:text-red-900"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* Cities Table */}
-                {layananSubTab === 'cities' && (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Kota</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Lokasi</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Spaces</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {cities.map((city) => (
-                          <tr key={city.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{city.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{city.locations}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{city.totalSpaces}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(city.status)}`}>
-                                {getStatusIcon(city.status)}
-                                <span className="ml-1 capitalize">{city.status}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button className="text-blue-600 hover:text-blue-900">
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setModalType('edit');
-                                    setShowModal(true);
-                                  }}
-                                  className="text-green-600 hover:text-green-900"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDelete('city', city.id)}
-                                  className="text-red-600 hover:text-red-900"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* Services Table */}
-                {layananSubTab === 'services' && (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Layanan</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Dasar</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {services.map((service) => (
-                          <tr key={service.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{service.name}</td>
-                            <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">{service.description}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp {service.price.toLocaleString()}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(service.status)}`}>
-                                {getStatusIcon(service.status)}
-                                <span className="ml-1 capitalize">{service.status}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button className="text-blue-600 hover:text-blue-900">
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setModalType('edit');
-                                    setShowModal(true);
-                                  }}
-                                  className="text-green-600 hover:text-green-900"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDelete('service', service.id)}
-                                  className="text-red-600 hover:text-red-900"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
+            {renderContent()}
           </div>
         </div>
       </div>
@@ -677,6 +103,7 @@ const AdminPanel = () => {
       {showModal && (
         <Modal 
           type={modalType} 
+          layananSubTab={layananSubTab}
           onClose={() => setShowModal(false)} 
         />
       )}
