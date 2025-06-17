@@ -1,0 +1,635 @@
+import React, { useState } from 'react';
+import { 
+  LayoutDashboard, 
+  ShoppingCart, 
+  Building2, 
+  Plus, 
+  Search, 
+  Filter, 
+  Edit, 
+  Trash2, 
+  Eye,
+  MapPin,
+  Users,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle
+} from 'lucide-react';
+
+const AdminPanel = () => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [layananSubTab, setLayananSubTab] = useState('spaces');
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState('');
+
+  // Sample data
+  const dashboardStats = {
+    totalBookings: 245,
+    totalRevenue: 125000000,
+    activeSpaces: 89,
+    totalUsers: 1230
+  };
+
+  const recentOrders = [
+    { id: 'ORD001', customer: 'John Doe', service: 'Private Office', location: 'Jakarta Selatan', amount: 2500000, status: 'confirmed', date: '2024-06-15' },
+    { id: 'ORD002', customer: 'Jane Smith', service: 'Meeting Room', location: 'Bandung', amount: 150000, status: 'pending', date: '2024-06-15' },
+    { id: 'ORD003', customer: 'PT. ABC Corp', service: 'Event Space', location: 'Surabaya', amount: 5000000, status: 'completed', date: '2024-06-14' },
+    { id: 'ORD004', customer: 'Michael Johnson', service: 'Coworking Space', location: 'Jakarta Pusat', amount: 500000, status: 'cancelled', date: '2024-06-14' },
+  ];
+
+  const spaces = [
+    { id: 1, name: 'Office Suite A1', type: 'Private Office', location: 'Jakarta Selatan', capacity: 4, price: 2500000, status: 'available' },
+    { id: 2, name: 'Meeting Room Beta', type: 'Meeting Room', location: 'Bandung', capacity: 8, price: 150000, status: 'occupied' },
+    { id: 3, name: 'Event Hall Premium', type: 'Event Space', location: 'Surabaya', capacity: 100, price: 5000000, status: 'available' },
+    { id: 4, name: 'Hot Desk Area', type: 'Coworking Space', location: 'Jakarta Pusat', capacity: 20, price: 500000, status: 'available' },
+  ];
+
+  const cities = [
+    { id: 1, name: 'Jakarta', locations: 5, totalSpaces: 45, status: 'active' },
+    { id: 2, name: 'Bandung', locations: 3, totalSpaces: 25, status: 'active' },
+    { id: 3, name: 'Surabaya', locations: 2, totalSpaces: 19, status: 'active' },
+    { id: 4, name: 'Yogyakarta', locations: 1, totalSpaces: 8, status: 'inactive' },
+  ];
+
+  const services = [
+    { id: 1, name: 'Private Office', description: 'Ruang kantor privat dengan fasilitas lengkap', price: 2500000, status: 'active' },
+    { id: 2, name: 'Virtual Office', description: 'Alamat bisnis dengan layanan sekretaris', price: 300000, status: 'active' },
+    { id: 3, name: 'Event Space', description: 'Ruang acara dengan kapasitas besar', price: 5000000, status: 'active' },
+    { id: 4, name: 'Meeting Room', description: 'Ruang meeting dengan fasilitas presentasi', price: 150000, status: 'active' },
+    { id: 5, name: 'Coworking Space', description: 'Area kerja bersama dengan suasana kolaboratif', price: 500000, status: 'active' },
+    { id: 6, name: 'Legalitas Bisnis', description: 'Layanan bantuan legalitas dan perizinan bisnis', price: 1000000, status: 'active' },
+  ];
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'confirmed': case 'active': case 'available': return 'text-green-600 bg-green-100';
+      case 'pending': return 'text-yellow-600 bg-yellow-100';
+      case 'cancelled': case 'inactive': return 'text-red-600 bg-red-100';
+      case 'completed': return 'text-blue-600 bg-blue-100';
+      case 'occupied': return 'text-orange-600 bg-orange-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'confirmed': case 'completed': case 'active': case 'available': return <CheckCircle className="w-4 h-4" />;
+      case 'pending': return <Clock className="w-4 h-4" />;
+      case 'cancelled': case 'inactive': return <XCircle className="w-4 h-4" />;
+      case 'occupied': return <AlertCircle className="w-4 h-4" />;
+      default: return <AlertCircle className="w-4 h-4" />;
+    }
+  };
+
+  const StatCard = ({ title, value, icon: Icon, color }) => (
+    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+        </div>
+        <div className={`p-3 rounded-full ${color}`}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+      </div>
+    </div>
+  );
+
+  const Modal = ({ type, onClose }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">
+            {type === 'add' ? 'Tambah' : 'Edit'} {layananSubTab === 'spaces' ? 'Space' : layananSubTab === 'cities' ? 'Kota' : 'Layanan'}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <XCircle className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <form className="space-y-4">
+          {layananSubTab === 'spaces' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Space</label>
+                <input type="text" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Layanan</label>
+                <select className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option>Private Office</option>
+                  <option>Meeting Room</option>
+                  <option>Event Space</option>
+                  <option>Coworking Space</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
+                <select className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option>Jakarta Selatan</option>
+                  <option>Jakarta Pusat</option>
+                  <option>Bandung</option>
+                  <option>Surabaya</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kapasitas</label>
+                <input type="number" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga</label>
+                <input type="number" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </>
+          )}
+          
+          {layananSubTab === 'cities' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kota</label>
+                <input type="text" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+              </div>
+            </>
+          )}
+          
+          {layananSubTab === 'services' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Layanan</label>
+                <input type="text" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                <textarea className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga Dasar</label>
+                <input type="number" className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </>
+          )}
+          
+          <div className="flex gap-3 pt-4">
+            <button type="submit" className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {type === 'add' ? 'Tambah' : 'Simpan'}
+            </button>
+            <button type="button" onClick={onClose} className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+              Batal
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <div className="w-64 bg-white shadow-lg">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-800">NextSpace Admin</h2>
+        </div>
+        
+        <nav className="mt-4">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
+              activeTab === 'dashboard' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5 mr-3" />
+            Dashboard
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
+              activeTab === 'orders' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
+            }`}
+          >
+            <ShoppingCart className="w-5 h-5 mr-3" />
+            Orders
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('layanan')}
+            className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
+              activeTab === 'layanan' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
+            }`}
+          >
+            <Building2 className="w-5 h-5 mr-3" />
+            Layanan
+          </button>
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto">
+          {/* Header */}
+          <div className="bg-white shadow-sm border-b border-gray-200 p-4">
+            <h1 className="text-2xl font-bold text-gray-800">
+              {activeTab === 'dashboard' ? 'Dashboard' : 
+               activeTab === 'orders' ? 'Manajemen Orders' : 
+               'Manajemen Layanan'}
+            </h1>
+          </div>
+
+          <div className="p-6">
+            {/* Dashboard Content */}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <StatCard
+                    title="Total Bookings"
+                    value={dashboardStats.totalBookings}
+                    icon={Calendar}
+                    color="bg-blue-500"
+                  />
+                  <StatCard
+                    title="Total Revenue"
+                    value={`Rp ${dashboardStats.totalRevenue.toLocaleString()}`}
+                    icon={DollarSign}
+                    color="bg-green-500"
+                  />
+                  <StatCard
+                    title="Active Spaces"
+                    value={dashboardStats.activeSpaces}
+                    icon={Building2}
+                    color="bg-purple-500"
+                  />
+                  <StatCard
+                    title="Total Users"
+                    value={dashboardStats.totalUsers}
+                    icon={Users}
+                    color="bg-orange-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold mb-4">Recent Orders</h3>
+                    <div className="space-y-3">
+                      {recentOrders.slice(0, 5).map((order) => (
+                        <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="font-medium text-gray-900">{order.customer}</p>
+                            <p className="text-sm text-gray-600">{order.service} - {order.location}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-gray-900">Rp {order.amount.toLocaleString()}</p>
+                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                              {getStatusIcon(order.status)}
+                              <span className="ml-1 capitalize">{order.status}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold mb-4">Quick Stats</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Occupancy Rate</span>
+                        <span className="font-medium text-gray-900">78%</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Average Booking Value</span>
+                        <span className="font-medium text-gray-900">Rp 1,250,000</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Customer Satisfaction</span>
+                        <span className="font-medium text-gray-900">4.8/5</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Active Locations</span>
+                        <span className="font-medium text-gray-900">11</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Orders Content */}
+            {activeTab === 'orders' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search orders..."
+                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                      <Filter className="w-4 h-4 mr-2" />
+                      Filter
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {recentOrders.map((order) => (
+                        <tr key={order.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{order.id}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.customer}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.service}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.location}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp {order.amount.toLocaleString()}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                              {getStatusIcon(order.status)}
+                              <span className="ml-1 capitalize">{order.status}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.date}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button className="text-blue-600 hover:text-blue-900">
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button className="text-green-600 hover:text-green-900">
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Layanan Content */}
+            {activeTab === 'layanan' && (
+              <div className="space-y-6">
+                <div className="flex border-b border-gray-200">
+                  <button
+                    onClick={() => setLayananSubTab('spaces')}
+                    className={`px-4 py-2 font-medium text-sm ${
+                      layananSubTab === 'spaces'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Spaces
+                  </button>
+                  <button
+                    onClick={() => setLayananSubTab('cities')}
+                    className={`px-4 py-2 font-medium text-sm ${
+                      layananSubTab === 'cities'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Kota
+                  </button>
+                  <button
+                    onClick={() => setLayananSubTab('services')}
+                    className={`px-4 py-2 font-medium text-sm ${
+                      layananSubTab === 'services'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Layanan
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder={`Search ${layananSubTab}...`}
+                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                      <Filter className="w-4 h-4 mr-2" />
+                      Filter
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setModalType('add');
+                      setShowModal(true);
+                    }}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tambah {layananSubTab === 'spaces' ? 'Space' : layananSubTab === 'cities' ? 'Kota' : 'Layanan'}
+                  </button>
+                </div>
+
+                {/* Spaces Table */}
+                {layananSubTab === 'spaces' && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {spaces.map((space) => (
+                          <tr key={space.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{space.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{space.type}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <div className="flex items-center">
+                                <MapPin className="w-4 h-4 mr-1 text-gray-400" />
+                                {space.location}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{space.capacity} orang</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp {space.price.toLocaleString()}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(space.status)}`}>
+                                {getStatusIcon(space.status)}
+                                <span className="ml-1 capitalize">{space.status}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button className="text-blue-600 hover:text-blue-900">
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setModalType('edit');
+                                    setShowModal(true);
+                                  }}
+                                  className="text-green-600 hover:text-green-900"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button className="text-red-600 hover:text-red-900">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Cities Table */}
+                {layananSubTab === 'cities' && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Kota</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Lokasi</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Spaces</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {cities.map((city) => (
+                          <tr key={city.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{city.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{city.locations}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{city.totalSpaces}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(city.status)}`}>
+                                {getStatusIcon(city.status)}
+                                <span className="ml-1 capitalize">{city.status}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button className="text-blue-600 hover:text-blue-900">
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setModalType('edit');
+                                    setShowModal(true);
+                                  }}
+                                  className="text-green-600 hover:text-green-900"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button className="text-red-600 hover:text-red-900">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Services Table */}
+                {layananSubTab === 'services' && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Layanan</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Dasar</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {services.map((service) => (
+                          <tr key={service.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{service.name}</td>
+                            <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">{service.description}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp {service.price.toLocaleString()}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(service.status)}`}>
+                                {getStatusIcon(service.status)}
+                                <span className="ml-1 capitalize">{service.status}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button className="text-blue-600 hover:text-blue-900">
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setModalType('edit');
+                                    setShowModal(true);
+                                  }}
+                                  className="text-green-600 hover:text-green-900"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button className="text-red-600 hover:text-red-900">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <Modal 
+          type={modalType} 
+          onClose={() => setShowModal(false)} 
+        />
+      )}
+    </div>
+  );
+};
+
+export default AdminPanel;

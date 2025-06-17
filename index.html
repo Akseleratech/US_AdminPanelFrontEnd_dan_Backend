@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coworking Space Management</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-firestore-compat.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #f1f2f6;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px 30px;
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #7f8c8d;
+            position: relative;
+        }
+        
+        .tab.active {
+            color: #3498db;
+        }
+        
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border-radius: 2px;
+        }
+        
+        .tab:hover {
+            color: #3498db;
+            background: rgba(52, 152, 219, 0.05);
+        }
+        
+        .form-container {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 40px;
+            border: 2px solid #e9ecef;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
+        }
+        
+        .btn-edit {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(243, 156, 18, 0.3);
+        }
+        
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+        }
+        
+        .item-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 2px solid #f1f2f6;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .item-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+        
+        .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .item-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+        }
+        
+        .item-card p {
+            color: #7f8c8d;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        
+        .item-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+        
+        .item-actions .btn {
+            padding: 8px 20px;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .error {
+            background: #ffe6e6;
+            color: #c0392b;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #f8d7da;
+        }
+        
+        .success {
+            background: #e8f5e8;
+            color: #27ae60;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #d4edda;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #7f8c8d;
+        }
+        
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .firebase-config {
+            background: #fff3cd;
+            border: 2px solid #ffeaa7;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .firebase-config h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .firebase-config p {
+            color: #856404;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 20px;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .items-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .tab {
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Firebase Configuration (Replace with your config)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVRNIlEa2gfPKPJHQXowNW57hlLv2FVBk",
+            authDomain: "unionspace-w9v242.firebaseapp.com",
+            projectId: "unionspace-w9v242",
+            storageBucket: "unionspace-w9v242.firebasestorage.app",
+            messagingSenderId: "714981197139",
+            appId: "1:714981197139:web:9ab2a2196bd3c6ef18cda6"
+            };
+
+        // Initialize Firebase
+        let db = null;
+        let isFirebaseConnected = false;
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            isFirebaseConnected = true;
+            console.log("✅ Firebase berhasil terhubung!");
+        } catch (error) {
+            console.error("❌ Error connecting to Firebase:", error);
+            isFirebaseConnected = false;
+        }
+
+        // Mock data for demonstration
+        const mockCities = [
+            { id: '1', name: 'Jakarta', country: 'Indonesia', description: 'Capital city of Indonesia with modern coworking spaces' },
+            { id: '2', name: 'Bandung', country: 'Indonesia', description: 'Creative city with thriving startup ecosystem' }
+        ];
+
+        const mockSpaces = [
+            { id: '1', name: 'NextSpace Central', cityId: '1', type: 'Private Office', capacity: 10, price: 150000, description: 'Modern private office space in the heart of Jakarta' },
+            { id: '2', name: 'Meeting Room Alpha', cityId: '1', type: 'Meeting Room', capacity: 8, price: 75000, description: 'Fully equipped meeting room with video conferencing' },
+            { id: '3', name: 'Creative Hub', cityId: '2', type: 'Open Space', capacity: 20, price: 50000, description: 'Open collaborative workspace for creative professionals' }
+        ];
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('cities');
+            const [cities, setCities] = useState([]);
+            const [spaces, setSpaces] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+            const [success, setSuccess] = useState('');
+            const [connectionStatus, setConnectionStatus] = useState('checking');
+
+            // City form state
+            const [cityForm, setCityForm] = useState({
+                id: '',
+                name: '',
+                country: '',
+                description: ''
+            });
+
+            // Space form state
+            const [spaceForm, setSpaceForm] = useState({
+                id: '',
+                name: '',
+                cityId: '',
+                type: '',
+                capacity: '',
+                price: '',
+                description: ''
+            });
+
+            const spaceTypes = ['Private Office', 'Meeting Room', 'Open Space', 'Hot Desk', 'Conference Room'];
+
+            // Test Firebase connection when component mounts
+            useEffect(() => {
+                testFirebaseConnection();
+                if (isFirebaseConnected) {
+                    loadCities();
+                    loadSpaces();
+                } else {
+                    // Use mock data if Firebase not connected
+                    setCities(mockCities);
+                    setSpaces(mockSpaces);
+                    setConnectionStatus('disconnected');
+                }
+            }, []);
+
+            const testFirebaseConnection = async () => {
+                if (!isFirebaseConnected) {
+                    setConnectionStatus('disconnected');
+                    showMessage('Firebase tidak terhubung. Menggunakan data demo.', 'error');
+                    return;
+                }
+
+                try {
+                    // Test connection by trying to read from Firestore
+                    await db.collection('connection_test').limit(1).get();
+                    setConnectionStatus('connected');
+                    showMessage('✅ Firebase berhasil terhubung!', 'success');
+                    console.log("✅ Firestore connection test successful!");
+                } catch (error) {
+                    setConnectionStatus('error');
+                    showMessage('❌ Error koneksi Firebase: ' + error.message, 'error');
+                    console.error("❌ Firestore connection test failed:", error);
+                    // Fallback to mock data
+                    setCities(mockCities);
+                    setSpaces(mockSpaces);
+                }
+            };
+
+            const loadCities = async () => {
+                if (!isFirebaseConnected) return;
+                
+                try {
+                    setLoading(true);
+                    const snapshot = await db.collection('cities').get();
+                    const citiesData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setCities(citiesData);
+                    console.log("✅ Cities loaded from Firebase:", citiesData);
+                } catch (error) {
+                    console.error("❌ Error loading cities:", error);
+                    showMessage('Error loading cities: ' + error.message, 'error');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const loadSpaces = async () => {
+                if (!isFirebaseConnected) return;
+                
+                try {
+                    setLoading(true);
+                    const snapshot = await db.collection('spaces').get();
+                    const spacesData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setSpaces(spacesData);
+                    console.log("✅ Spaces loaded from Firebase:", spacesData);
+                } catch (error) {
+                    console.error("❌ Error loading spaces:", error);
+                    showMessage('Error loading spaces: ' + error.message, 'error');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // Show messages
+            const showMessage = (message, type = 'success') => {
+                if (type === 'success') {
+                    setSuccess(message);
+                    setError('');
+                } else {
+                    setError(message);
+                    setSuccess('');
+                }
+                setTimeout(() => {
+                    setSuccess('');
+                    setError('');
+                }, 3000);
+            };
+
+            // City CRUD operations
+            const handleCitySubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                try {
+                    if (isFirebaseConnected) {
+                        if (cityForm.id) {
+                            // Update existing city in Firebase
+                            await db.collection('cities').doc(cityForm.id).update({
+                                name: cityForm.name,
+                                country: cityForm.country,
+                                description: cityForm.description
+                            });
+                            setCities(cities.map(city => 
+                                city.id === cityForm.id ? { ...cityForm } : city
+                            ));
+                            showMessage('City berhasil diupdate di Firebase!');
+                        } else {
+                            // Add new city to Firebase
+                            const docRef = await db.collection('cities').add({
+                                name: cityForm.name,
+                                country: cityForm.country,
+                                description: cityForm.description
+                            });
+                            const newCity = {
+                                id: docRef.id,
+                                ...cityForm
+                            };
+                            setCities([...cities, newCity]);
+                            showMessage('City berhasil ditambahkan ke Firebase!');
+                        }
+                    } else {
+                        // Use local state if Firebase not connected
+                        if (cityForm.id) {
+                            setCities(cities.map(city => 
+                                city.id === cityForm.id ? { ...cityForm } : city
+                            ));
+                            showMessage('City updated locally (Firebase not connected)');
+                        } else {
+                            const newCity = {
+                                ...cityForm,
+                                id: Date.now().toString()
+                            };
+                            setCities([...cities, newCity]);
+                            showMessage('City added locally (Firebase not connected)');
+                        }
+                    }
+
+                    setCityForm({ id: '', name: '', country: '', description: '' });
+                } catch (err) {
+                    console.error("❌ Error saving city:", err);
+                    showMessage('Error saving city: ' + err.message, 'error');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleCityEdit = (city) => {
+                setCityForm(city);
+            };
+
+            const handleCityDelete = async (cityId) => {
+                if (window.confirm('Are you sure you want to delete this city?')) {
+                    try {
+                        if (isFirebaseConnected) {
+                            // Delete from Firebase
+                            await db.collection('cities').doc(cityId).delete();
+                            // Also delete related spaces
+                            const spacesSnapshot = await db.collection('spaces').where('cityId', '==', cityId).get();
+                            const batch = db.batch();
+                            spacesSnapshot.docs.forEach(doc => {
+                                batch.delete(doc.ref);
+                            });
+                            await batch.commit();
+                            showMessage('City dan spaces terkait berhasil dihapus dari Firebase!');
+                        } else {
+                            showMessage('City deleted locally (Firebase not connected)');
+                        }
+                        
+                        setCities(cities.filter(city => city.id !== cityId));
+                        setSpaces(spaces.filter(space => space.cityId !== cityId));
+                    } catch (err) {
+                        console.error("❌ Error deleting city:", err);
+                        showMessage('Error deleting city: ' + err.message, 'error');
+                    }
+                }
+            };
+
+            // Space CRUD operations
+            const handleSpaceSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                try {
+                    const spaceData = {
+                        ...spaceForm,
+                        capacity: parseInt(spaceForm.capacity),
+                        price: parseInt(spaceForm.price)
+                    };
+
+                    if (spaceForm.id) {
+                        // Update existing space
+                        setSpaces(spaces.map(space => 
+                            space.id === spaceForm.id ? spaceData : space
+                        ));
+                        showMessage('Space updated successfully!');
+                    } else {
+                        // Add new space
+                        const newSpace = {
+                            ...spaceData,
+                            id: Date.now().toString()
+                        };
+                        setSpaces([...spaces, newSpace]);
+                        showMessage('Space added successfully!');
+                    }
+
+                    setSpaceForm({ id: '', name: '', cityId: '', type: '', capacity: '', price: '', description: '' });
+                } catch (err) {
+                    showMessage('Error saving space: ' + err.message, 'error');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleSpaceEdit = (space) => {
+                setSpaceForm({
+                    ...space,
+                    capacity: space.capacity.toString(),
+                    price: space.price.toString()
+                });
+            };
+
+            const handleSpaceDelete = async (spaceId) => {
+                if (window.confirm('Are you sure you want to delete this space?')) {
+                    try {
+                        setSpaces(spaces.filter(space => space.id !== spaceId));
+                        showMessage('Space deleted successfully!');
+                    } catch (err) {
+                        showMessage('Error deleting space: ' + err.message, 'error');
+                    }
+                }
+            };
+
+            const getCityName = (cityId) => {
+                const city = cities.find(c => c.id === cityId);
+                return city ? city.name : 'Unknown City';
+            };
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>Coworking Space Management</h1>
+                        <p>Manage your cities and spaces efficiently</p>
+                    </div>
+
+                    <div className="main-content">
+                        <div className="firebase-config">
+                            <h3>🔗 Status Koneksi Firebase</h3>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px'}}>
+                                <div style={{
+                                    width: '12px', 
+                                    height: '12px', 
+                                    borderRadius: '50%',
+                                    backgroundColor: connectionStatus === 'connected' ? '#27ae60' : 
+                                                   connectionStatus === 'disconnected' ? '#e74c3c' : '#f39c12'
+                                }}></div>
+                                <span style={{fontWeight: '600'}}>
+                                    {connectionStatus === 'connected' && '✅ Terhubung ke Firebase'}
+                                    {connectionStatus === 'disconnected' && '❌ Firebase tidak terhubung - menggunakan data demo'}
+                                    {connectionStatus === 'error' && '⚠️ Error koneksi Firebase'}
+                                    {connectionStatus === 'checking' && '🔄 Mengecek koneksi...'}
+                                </span>
+                            </div>
+                            <button 
+                                onClick={testFirebaseConnection}
+                                style={{
+                                    marginTop: '10px',
+                                    padding: '8px 16px',
+                                    background: '#3498db',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '5px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                🔄 Test Koneksi Ulang
+                            </button>
+                        </div>
+
+                        {success && <div className="success">{success}</div>}
+                        {error && <div className="error">{error}</div>}
+
+                        <div className="tabs">
+                            <button 
+                                className={`tab ${activeTab === 'cities' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('cities')}
+                            >
+                                Cities
+                            </button>
+                            <button 
+                                className={`tab ${activeTab === 'spaces' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('spaces')}
+                            >
+                                Spaces
+                            </button>
+                        </div>
+
+                        {activeTab === 'cities' && (
+                            <div>
+                                <div className="form-container">
+                                    <h2>{cityForm.id ? 'Edit City' : 'Add New City'}</h2>
+                                    <form onSubmit={handleCitySubmit}>
+                                        <div className="form-grid">
+                                            <div className="form-group">
+                                                <label>City Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={cityForm.name}
+                                                    onChange={(e) => setCityForm({...cityForm, name: e.target.value})}
+                                                    required
+                                                    placeholder="Enter city name"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Country</label>
+                                                <input
+                                                    type="text"
+                                                    value={cityForm.country}
+                                                    onChange={(e) => setCityForm({...cityForm, country: e.target.value})}
+                                                    required
+                                                    placeholder="Enter country"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Description</label>
+                                            <textarea
+                                                value={cityForm.description}
+                                                onChange={(e) => setCityForm({...cityForm, description: e.target.value})}
+                                                placeholder="Enter city description"
+                                            />
+                                        </div>
+                                        <button type="submit" className="btn btn-primary" disabled={loading}>
+                                            {loading ? 'Saving...' : (cityForm.id ? 'Update City' : 'Add City')}
+                                        </button>
+                                        {cityForm.id && (
+                                            <button 
+                                                type="button" 
+                                                className="btn" 
+                                                style={{marginLeft: '10px'}}
+                                                onClick={() => setCityForm({id: '', name: '', country: '', description: ''})}
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
+                                    </form>
+                                </div>
+
+                                <h2>Cities List</h2>
+                                {cities.length === 0 ? (
+                                    <div className="empty-state">
+                                        <h3>No cities found</h3>
+                                        <p>Add your first city to get started</p>
+                                    </div>
+                                ) : (
+                                    <div className="items-grid">
+                                        {cities.map(city => (
+                                            <div key={city.id} className="item-card">
+                                                <h3>{city.name}</h3>
+                                                <p><strong>Country:</strong> {city.country}</p>
+                                                <p><strong>Description:</strong> {city.description}</p>
+                                                <div className="item-actions">
+                                                    <button 
+                                                        className="btn btn-edit"
+                                                        onClick={() => handleCityEdit(city)}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-danger"
+                                                        onClick={() => handleCityDelete(city.id)}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'spaces' && (
+                            <div>
+                                <div className="form-container">
+                                    <h2>{spaceForm.id ? 'Edit Space' : 'Add New Space'}</h2>
+                                    <form onSubmit={handleSpaceSubmit}>
+                                        <div className="form-grid">
+                                            <div className="form-group">
+                                                <label>Space Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={spaceForm.name}
+                                                    onChange={(e) => setSpaceForm({...spaceForm, name: e.target.value})}
+                                                    required
+                                                    placeholder="Enter space name"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>City</label>
+                                                <select
+                                                    value={spaceForm.cityId}
+                                                    onChange={(e) => setSpaceForm({...spaceForm, cityId: e.target.value})}
+                                                    required
+                                                >
+                                                    <option value="">Select a city</option>
+                                                    {cities.map(city => (
+                                                        <option key={city.id} value={city.id}>{city.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Space Type</label>
+                                                <select
+                                                    value={spaceForm.type}
+                                                    onChange={(e) => setSpaceForm({...spaceForm, type: e.target.value})}
+                                                    required
+                                                >
+                                                    <option value="">Select space type</option>
+                                                    {spaceTypes.map(type => (
+                                                        <option key={type} value={type}>{type}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Capacity</label>
+                                                <input
+                                                    type="number"
+                                                    value={spaceForm.capacity}
+                                                    onChange={(e) => setSpaceForm({...spaceForm, capacity: e.target.value})}
+                                                    required
+                                                    min="1"
+                                                    placeholder="Enter capacity"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Price (IDR)</label>
+                                                <input
+                                                    type="number"
+                                                    value={spaceForm.price}
+                                                    onChange={(e) => setSpaceForm({...spaceForm, price: e.target.value})}
+                                                    required
+                                                    min="0"
+                                                    placeholder="Enter price"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Description</label>
+                                            <textarea
+                                                value={spaceForm.description}
+                                                onChange={(e) => setSpaceForm({...spaceForm, description: e.target.value})}
+                                                placeholder="Enter space description"
+                                            />
+                                        </div>
+                                        <button type="submit" className="btn btn-primary" disabled={loading}>
+                                            {loading ? 'Saving...' : (spaceForm.id ? 'Update Space' : 'Add Space')}
+                                        </button>
+                                        {spaceForm.id && (
+                                            <button 
+                                                type="button" 
+                                                className="btn" 
+                                                style={{marginLeft: '10px'}}
+                                                onClick={() => setSpaceForm({id: '', name: '', cityId: '', type: '', capacity: '', price: '', description: ''})}
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
+                                    </form>
+                                </div>
+
+                                <h2>Spaces List</h2>
+                                {spaces.length === 0 ? (
+                                    <div className="empty-state">
+                                        <h3>No spaces found</h3>
+                                        <p>Add your first space to get started</p>
+                                    </div>
+                                ) : (
+                                    <div className="items-grid">
+                                        {spaces.map(space => (
+                                            <div key={space.id} className="item-card">
+                                                <h3>{space.name}</h3>
+                                                <p><strong>City:</strong> {getCityName(space.cityId)}</p>
+                                                <p><strong>Type:</strong> {space.type}</p>
+                                                <p><strong>Capacity:</strong> {space.capacity} people</p>
+                                                <p><strong>Price:</strong> IDR {space.price.toLocaleString()}</p>
+                                                <p><strong>Description:</strong> {space.description}</p>
+                                                <div className="item-actions">
+                                                    <button 
+                                                        className="btn btn-edit"
+                                                        onClick={() => handleSpaceEdit(space)}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-danger"
+                                                        onClick={() => handleSpaceDelete(space.id)}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
