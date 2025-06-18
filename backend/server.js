@@ -23,7 +23,7 @@ app.use('/api/services', require('./routes/services'));
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ message: 'UnionSpace CRM Backend API' });
+  res.json({ message: 'UnionSpace admin-panel Backend API' });
 });
 
 // Error handling middleware

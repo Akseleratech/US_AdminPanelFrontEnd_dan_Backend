@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { dashboardAPI, ordersAPI, spacesAPI, citiesAPI, servicesAPI } from '../services/api.jsx';
 
-export const useApi = (activeTab, layananSubTab) => {
+export const useApi = (activeTab) => {
   const [loading, setLoading] = useState(false);
   
   // State for data
@@ -28,24 +28,22 @@ export const useApi = (activeTab, layananSubTab) => {
       } else if (activeTab === 'orders') {
         const ordersRes = await ordersAPI.getAll();
         setOrders(ordersRes.data);
-      } else if (activeTab === 'layanan') {
-        if (layananSubTab === 'spaces') {
-          const spacesRes = await spacesAPI.getAll();
-          setSpaces(spacesRes.data);
-        } else if (layananSubTab === 'cities') {
-          const citiesRes = await citiesAPI.getAll();
-          setCities(citiesRes.data);
-        } else if (layananSubTab === 'services') {
-          const servicesRes = await servicesAPI.getAll();
-          setServices(servicesRes.data);
-        }
+      } else if (activeTab === 'spaces') {
+        const spacesRes = await spacesAPI.getAll();
+        setSpaces(spacesRes.data);
+      } else if (activeTab === 'cities') {
+        const citiesRes = await citiesAPI.getAll();
+        setCities(citiesRes.data);
+      } else if (activeTab === 'services') {
+        const servicesRes = await servicesAPI.getAll();
+        setServices(servicesRes.data);
       }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
-  }, [activeTab, layananSubTab]);
+  }, [activeTab]);
 
   // Load data on component mount and tab change
   useEffect(() => {

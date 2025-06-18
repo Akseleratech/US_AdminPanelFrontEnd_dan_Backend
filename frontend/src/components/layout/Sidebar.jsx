@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, ShoppingCart, Building2 } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Building2, MapPin, Settings } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
   return (
@@ -30,12 +30,32 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         </button>
         
         <button
-          onClick={() => setActiveTab('layanan')}
+          onClick={() => setActiveTab('spaces')}
           className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
-            activeTab === 'layanan' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
+            activeTab === 'spaces' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
           }`}
         >
           <Building2 className="w-5 h-5 mr-3" />
+          Spaces
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('cities')}
+          className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
+            activeTab === 'cities' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
+          }`}
+        >
+          <MapPin className="w-5 h-5 mr-3" />
+          Kota
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('services')}
+          className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
+            activeTab === 'services' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
+          }`}
+        >
+          <Settings className="w-5 h-5 mr-3" />
           Layanan
         </button>
       </nav>

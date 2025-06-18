@@ -1,12 +1,12 @@
 import React from 'react';
 import { XCircle } from 'lucide-react';
 
-const Modal = ({ type, layananSubTab, onClose }) => (
+const Modal = ({ type, activeTab, onClose }) => (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">
-          {type === 'add' ? 'Tambah' : 'Edit'} {layananSubTab === 'spaces' ? 'Space' : layananSubTab === 'cities' ? 'Kota' : 'Layanan'}
+          {type === 'add' ? 'Tambah' : 'Edit'} {activeTab === 'spaces' ? 'Space' : activeTab === 'cities' ? 'Kota' : activeTab === 'services' ? 'Layanan' : 'Item'}
         </h3>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
           <XCircle className="w-5 h-5" />
@@ -14,7 +14,7 @@ const Modal = ({ type, layananSubTab, onClose }) => (
       </div>
       
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onClose(); }}>
-        {layananSubTab === 'spaces' && (
+        {activeTab === 'spaces' && (
           <>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nama Space</label>
@@ -49,7 +49,7 @@ const Modal = ({ type, layananSubTab, onClose }) => (
           </>
         )}
         
-        {layananSubTab === 'cities' && (
+        {activeTab === 'cities' && (
           <>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kota</label>
@@ -65,7 +65,7 @@ const Modal = ({ type, layananSubTab, onClose }) => (
           </>
         )}
         
-        {layananSubTab === 'services' && (
+        {activeTab === 'services' && (
           <>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nama Layanan</label>

@@ -7,7 +7,9 @@ import LoadingSpinner from './components/common/LoadingSpinner.jsx';
 import Modal from './components/common/Modal.jsx';
 import Dashboard from './components/dashboard/Dashboard.jsx';
 import Orders from './components/orders/Orders.jsx';
-import Layanan from './components/layanan/Layanan.jsx';
+import Spaces from './components/spaces/Spaces.jsx';
+import Cities from './components/cities/Cities.jsx';
+import Services from './components/services/Services.jsx';
 
 // Custom Hook
 import { useApi } from './hooks/useApi.jsx';
@@ -110,7 +112,6 @@ const FirebaseConfigNotice = ({ missingVars, missingOptionalVars, hasAnalytics }
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [layananSubTab, setLayananSubTab] = useState('spaces');
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
 
@@ -120,7 +121,7 @@ const AdminPanel = () => {
   // Using custom hook for API operations (with error handling)
   let apiData;
   try {
-    apiData = useApi(activeTab, layananSubTab);
+    apiData = useApi(activeTab);
   } catch (error) {
     console.warn('API Hook failed (likely due to Firebase config):', error);
     // Fallback data when Firebase is not configured
@@ -190,13 +191,27 @@ const AdminPanel = () => {
         );
       case 'orders':
         return <Orders orders={orders} />;
-      case 'layanan':
+      case 'spaces':
         return (
-          <Layanan
-            layananSubTab={layananSubTab}
-            setLayananSubTab={setLayananSubTab}
+          <Spaces
             spaces={spaces}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAddNew={handleAddNew}
+          />
+        );
+      case 'cities':
+        return (
+          <Cities
             cities={cities}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAddNew={handleAddNew}
+          />
+        );
+      case 'services':
+        return (
+          <Services
             services={services}
             onEdit={handleEdit}
             onDelete={handleDelete}
@@ -247,7 +262,7 @@ const AdminPanel = () => {
       {showModal && (
         <Modal 
           type={modalType} 
-          layananSubTab={layananSubTab}
+          activeTab={activeTab}
           onClose={() => setShowModal(false)} 
         />
       )}
