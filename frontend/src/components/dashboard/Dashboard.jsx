@@ -1,8 +1,8 @@
 import React from 'react';
 import { Calendar, DollarSign, Building2, Users } from 'lucide-react';
-import StatCard from '../common/StatCard';
-import RecentOrders from './RecentOrders';
-import QuickStats from './QuickStats';
+import StatCard from '../common/StatCard.jsx';
+import RecentOrders from './RecentOrders.jsx';
+import QuickStats from './QuickStats.jsx';
 
 const Dashboard = ({ dashboardStats, recentOrders, quickStats }) => {
   return (

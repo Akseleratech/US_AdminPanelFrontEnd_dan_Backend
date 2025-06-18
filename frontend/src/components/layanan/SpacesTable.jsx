@@ -1,6 +1,6 @@
 import React from 'react';
 import { Eye, Edit, Trash2, MapPin } from 'lucide-react';
-import { getStatusColor, getStatusIcon } from '../../utils/helpers';
+import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
 const SpacesTable = ({ spaces, onEdit, onDelete }) => {
   return (

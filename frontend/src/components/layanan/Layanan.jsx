@@ -1,8 +1,8 @@
 import React from 'react';
 import { Search, Filter, Plus } from 'lucide-react';
-import SpacesTable from './SpacesTable';
-import CitiesTable from './CitiesTable';
-import ServicesTable from './ServicesTable';
+import SpacesTable from './SpacesTable.jsx';
+import CitiesTable from './CitiesTable.jsx';
+import ServicesTable from './ServicesTable.jsx';
 
 const Layanan = ({ 
   layananSubTab, 

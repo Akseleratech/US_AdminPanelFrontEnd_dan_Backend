@@ -1,5 +1,5 @@
 import React from 'react';
-import { getStatusColor, getStatusIcon } from '../../utils/helpers';
+import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
 const RecentOrders = ({ recentOrders }) => {
   return (

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Eye, Edit } from 'lucide-react';
-import { getStatusColor, getStatusIcon } from '../../utils/helpers';
+import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
 const OrdersTable = ({ orders }) => {
   return (

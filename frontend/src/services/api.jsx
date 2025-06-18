@@ -1,17 +1,47 @@
+import { auth } from '../config/firebase.jsx';
+
 // API Base URL
 const API_BASE_URL = 'http://localhost:5000/api';
 
-// Helper function to make API calls
-const apiCall = async (endpoint) => {
+// Helper function to get auth token
+const getAuthToken = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`);
+    if (auth.currentUser) {
+      return await auth.currentUser.getIdToken();
+    }
+    return null;
+  } catch (error) {
+    console.error('Failed to get auth token:', error);
+    return null;
+  }
+};
+
+// Helper function to make API calls
+const apiCall = async (endpoint, options = {}) => {
+  try {
+    const token = await getAuthToken();
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
+
     return await response.json();
   } catch (error) {
     console.error('API call failed:', error);
-    return { error: error.message };
+    throw error;
   }
 };
 
@@ -24,19 +54,20 @@ export const dashboardAPI = {
 
 // Orders API
 export const ordersAPI = {
-  getAll: () => apiCall('/orders'),
+  getAll: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return apiCall(`/orders${queryParams ? `?${queryParams}` : ''}`);
+  },
   getById: (id) => apiCall(`/orders/${id}`),
-  create: (data) => fetch(`${API_BASE_URL}/orders`, {
+  create: (data) => apiCall('/orders', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   }),
-  update: (id, data) => fetch(`${API_BASE_URL}/orders/${id}`, {
+  update: (id, data) => apiCall(`/orders/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   }),
-  delete: (id) => fetch(`${API_BASE_URL}/orders/${id}`, { method: 'DELETE' })
+  delete: (id) => apiCall(`/orders/${id}`, { method: 'DELETE' })
 };
 
 // Spaces API

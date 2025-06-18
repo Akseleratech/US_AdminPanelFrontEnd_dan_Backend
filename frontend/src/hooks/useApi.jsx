@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { dashboardAPI, ordersAPI, spacesAPI, citiesAPI, servicesAPI } from '../services/api';
+import { dashboardAPI, ordersAPI, spacesAPI, citiesAPI, servicesAPI } from '../services/api.jsx';
 
 export const useApi = (activeTab, layananSubTab) => {
   const [loading, setLoading] = useState(false);

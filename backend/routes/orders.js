@@ -1,41 +1,45 @@
 const express = require('express');
 const router = express.Router();
-let { recentOrders } = require('../data/mockData');
+const firebaseService = require('../services/firebaseService');
+const { optionalAuth } = require('../middleware/auth');
 
 // GET /api/orders
-router.get('/', (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   try {
     const { search, status, limit } = req.query;
-    let filteredOrders = [...recentOrders];
+    
+    // Get all orders from Firebase
+    let orders = await firebaseService.getCollection('orders');
 
     // Filter by search term
     if (search) {
-      filteredOrders = filteredOrders.filter(order =>
-        order.customer.toLowerCase().includes(search.toLowerCase()) ||
-        order.service.toLowerCase().includes(search.toLowerCase()) ||
-        order.location.toLowerCase().includes(search.toLowerCase()) ||
-        order.id.toLowerCase().includes(search.toLowerCase())
+      orders = orders.filter(order =>
+        order.customer?.toLowerCase().includes(search.toLowerCase()) ||
+        order.service?.toLowerCase().includes(search.toLowerCase()) ||
+        order.location?.toLowerCase().includes(search.toLowerCase()) ||
+        order.id?.toLowerCase().includes(search.toLowerCase())
       );
     }
 
     // Filter by status
     if (status) {
-      filteredOrders = filteredOrders.filter(order =>
-        order.status.toLowerCase() === status.toLowerCase()
+      orders = orders.filter(order =>
+        order.status?.toLowerCase() === status.toLowerCase()
       );
     }
 
     // Apply limit
     if (limit) {
-      filteredOrders = filteredOrders.slice(0, parseInt(limit));
+      orders = orders.slice(0, parseInt(limit));
     }
 
     res.json({
       success: true,
-      data: filteredOrders,
-      total: filteredOrders.length
+      data: orders,
+      total: orders.length
     });
   } catch (error) {
+    console.error('Error fetching orders:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch orders',
@@ -45,22 +49,22 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/orders/:id
-router.get('/:id', (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
-    const order = recentOrders.find(o => o.id === req.params.id);
-    
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
+    const order = await firebaseService.getDocument('orders', req.params.id);
 
     res.json({
       success: true,
       data: order
     });
   } catch (error) {
+    console.error('Error fetching order:', error);
+    if (error.message === 'Document not found') {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'Failed to fetch order',
@@ -70,28 +74,24 @@ router.get('/:id', (req, res) => {
 });
 
 // PUT /api/orders/:id
-router.put('/:id', (req, res) => {
+router.put('/:id', optionalAuth, async (req, res) => {
   try {
-    const orderIndex = recentOrders.findIndex(o => o.id === req.params.id);
-    
-    if (orderIndex === -1) {
+    await firebaseService.updateDocument('orders', req.params.id, req.body);
+    const updatedOrder = await firebaseService.getDocument('orders', req.params.id);
+
+    res.json({
+      success: true,
+      data: updatedOrder,
+      message: 'Order updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating order:', error);
+    if (error.message === 'Document not found') {
       return res.status(404).json({
         success: false,
         message: 'Order not found'
       });
     }
-
-    recentOrders[orderIndex] = {
-      ...recentOrders[orderIndex],
-      ...req.body
-    };
-
-    res.json({
-      success: true,
-      data: recentOrders[orderIndex],
-      message: 'Order updated successfully'
-    });
-  } catch (error) {
     res.status(500).json({
       success: false,
       message: 'Failed to update order',
@@ -100,25 +100,44 @@ router.put('/:id', (req, res) => {
   }
 });
 
-// DELETE /api/orders/:id
-router.delete('/:id', (req, res) => {
+// POST /api/orders
+router.post('/', optionalAuth, async (req, res) => {
   try {
-    const orderIndex = recentOrders.findIndex(o => o.id === req.params.id);
-    
-    if (orderIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
+    const orderId = await firebaseService.addDocument('orders', req.body);
+    const newOrder = await firebaseService.getDocument('orders', orderId);
 
-    recentOrders.splice(orderIndex, 1);
+    res.status(201).json({
+      success: true,
+      data: newOrder,
+      message: 'Order created successfully'
+    });
+  } catch (error) {
+    console.error('Error creating order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create order',
+      error: error.message
+    });
+  }
+});
+
+// DELETE /api/orders/:id
+router.delete('/:id', optionalAuth, async (req, res) => {
+  try {
+    await firebaseService.deleteDocument('orders', req.params.id);
 
     res.json({
       success: true,
       message: 'Order deleted successfully'
     });
   } catch (error) {
+    console.error('Error deleting order:', error);
+    if (error.message === 'Document not found') {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'Failed to delete order',

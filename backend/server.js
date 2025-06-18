@@ -3,6 +3,9 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 require('dotenv').config();
 
+// Initialize Firebase
+require('./config/firebase');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
