@@ -21,7 +21,7 @@ const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Layanan</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscribers</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Spaces</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
           </tr>
@@ -31,10 +31,7 @@ const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
             services.map((service) => (
               <tr key={service.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{service.name}</div>
-                    <div className="text-sm text-gray-500">{service.slug}</div>
-                  </div>
+                  <div className="text-sm font-medium text-gray-900">{service.name}</div>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
                   <div className="truncate" title={service.description}>
@@ -43,8 +40,8 @@ const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div>
-                    <div className="text-sm font-medium">{service.metrics?.activeSubscribers || 0}</div>
-                    <div className="text-xs text-gray-500">dari {service.metrics?.totalSubscribers || 0}</div>
+                    <div className="text-sm font-medium">{service.spaceCount?.active || 0}</div>
+                    <div className="text-xs text-gray-500">dari {service.spaceCount?.total || 0} total</div>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">

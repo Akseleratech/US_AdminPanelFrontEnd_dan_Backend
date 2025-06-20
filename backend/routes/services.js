@@ -32,14 +32,36 @@ router.get('/', async (req, res) => {
     const snapshot = await servicesRef.get();
     let services = [];
 
+    // Get all spaces to count usage
+    const spacesSnapshot = await db.collection('spaces').get();
+    const spacesData = [];
+    spacesSnapshot.forEach(doc => {
+      spacesData.push(doc.data());
+    });
+
     snapshot.forEach(doc => {
       const data = doc.data();
+      
+      // Count spaces using this service
+      const serviceSpaces = spacesData.filter(space => 
+        space.category === data.serviceId || 
+        space.category === data.name ||
+        space.serviceId === data.serviceId
+      );
+      
+      const activeSpaces = serviceSpaces.filter(space => space.isActive === true);
+      
       services.push({
         id: doc.id,
         ...data,
         // Add frontend-compatible fields
         description: data.description?.short || data.description?.long || 'No description available',
-        price: data.metrics?.averageLifetimeValue || 0 // Use averageLifetimeValue as price or 0
+        price: data.metrics?.averageLifetimeValue || 0,
+        // Add space count
+        spaceCount: {
+          total: serviceSpaces.length,
+          active: activeSpaces.length
+        }
       });
     });
 
@@ -86,6 +108,24 @@ router.get('/:id', async (req, res) => {
     }
 
     const data = doc.data();
+    
+    // Get spaces using this service
+    const spacesSnapshot = await db.collection('spaces').get();
+    const serviceSpaces = [];
+    const activeSpaces = [];
+    
+    spacesSnapshot.forEach(spaceDoc => {
+      const spaceData = spaceDoc.data();
+      if (spaceData.category === data.serviceId || 
+          spaceData.category === data.name ||
+          spaceData.serviceId === data.serviceId) {
+        serviceSpaces.push(spaceData);
+        if (spaceData.isActive === true) {
+          activeSpaces.push(spaceData);
+        }
+      }
+    });
+    
     res.json({
       success: true,
       data: {
@@ -93,7 +133,12 @@ router.get('/:id', async (req, res) => {
         ...data,
         // Add frontend-compatible fields
         description: data.description?.short || data.description?.long || 'No description available',
-        price: data.metrics?.averageLifetimeValue || 0
+        price: data.metrics?.averageLifetimeValue || 0,
+        // Add space count
+        spaceCount: {
+          total: serviceSpaces.length,
+          active: activeSpaces.length
+        }
       }
     });
   } catch (error) {
