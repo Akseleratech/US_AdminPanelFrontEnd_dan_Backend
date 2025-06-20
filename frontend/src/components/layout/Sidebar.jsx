@@ -5,7 +5,18 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
   return (
     <div className="w-64 bg-white shadow-lg">
       <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800">NextSpace Admin</h2>
+        <div className="flex items-center justify-center">
+          <img 
+            src="/images/logo.png" 
+            alt="NextSpace Admin" 
+            className="h-8 w-auto max-w-full object-contain"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'block';
+            }}
+          />
+          <h2 className="text-xl font-bold text-gray-800 hidden">NextSpace Admin</h2>
+        </div>
       </div>
       
       <nav className="mt-4">
