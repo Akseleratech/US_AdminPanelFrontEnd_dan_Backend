@@ -1,54 +1,82 @@
+// Load environment variables
+require('dotenv').config();
+
 const express = require('express');
 const router = express.Router();
-let { spaces } = require('../data/mockData');
+const { db } = require('../config/firebase');
 
 // GET /api/spaces
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const { search, type, location, status, limit } = req.query;
-    let filteredSpaces = [...spaces];
+    const { search, type, location, status, limit, brand, category, city } = req.query;
+    let spacesRef = db.collection('spaces');
 
-    // Filter by search term
-    if (search) {
-      filteredSpaces = filteredSpaces.filter(space =>
-        space.name.toLowerCase().includes(search.toLowerCase()) ||
-        space.type.toLowerCase().includes(search.toLowerCase()) ||
-        space.location.toLowerCase().includes(search.toLowerCase())
-      );
+    // Build query
+    if (status === 'active') {
+      spacesRef = spacesRef.where('isActive', '==', true);
+    } else if (status === 'inactive') {
+      spacesRef = spacesRef.where('isActive', '==', false);
     }
 
-    // Filter by type
+    if (brand) {
+      spacesRef = spacesRef.where('brand', '==', brand);
+    }
+
+    if (category) {
+      spacesRef = spacesRef.where('category', '==', category);
+    }
+
     if (type) {
-      filteredSpaces = filteredSpaces.filter(space =>
-        space.type.toLowerCase() === type.toLowerCase()
+      spacesRef = spacesRef.where('spaceType', '==', type);
+    }
+
+    if (city) {
+      spacesRef = spacesRef.where('location.city', '==', city);
+    }
+
+    // Execute query
+    const snapshot = await spacesRef.get();
+    let spaces = [];
+
+    snapshot.forEach(doc => {
+      spaces.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    // Apply client-side filtering for search and location
+    if (search) {
+      const searchLower = search.toLowerCase();
+      spaces = spaces.filter(space =>
+        space.name.toLowerCase().includes(searchLower) ||
+        space.description.toLowerCase().includes(searchLower) ||
+        space.location?.address?.toLowerCase().includes(searchLower) ||
+        space.amenities?.some(amenity => amenity.toLowerCase().includes(searchLower))
       );
     }
 
-    // Filter by location
-    if (location) {
-      filteredSpaces = filteredSpaces.filter(space =>
-        space.location.toLowerCase().includes(location.toLowerCase())
-      );
-    }
-
-    // Filter by status
-    if (status) {
-      filteredSpaces = filteredSpaces.filter(space =>
-        space.status.toLowerCase() === status.toLowerCase()
+    if (location && !city) {
+      const locationLower = location.toLowerCase();
+      spaces = spaces.filter(space =>
+        space.location?.city?.toLowerCase().includes(locationLower) ||
+        space.location?.address?.toLowerCase().includes(locationLower) ||
+        space.location?.province?.toLowerCase().includes(locationLower)
       );
     }
 
     // Apply limit
     if (limit) {
-      filteredSpaces = filteredSpaces.slice(0, parseInt(limit));
+      spaces = spaces.slice(0, parseInt(limit));
     }
 
     res.json({
       success: true,
-      data: filteredSpaces,
-      total: filteredSpaces.length
+      data: spaces,
+      total: spaces.length
     });
   } catch (error) {
+    console.error('Error fetching spaces:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch spaces',
@@ -58,11 +86,11 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/spaces/:id
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const space = spaces.find(s => s.id === parseInt(req.params.id));
+    const doc = await db.collection('spaces').doc(req.params.id).get();
     
-    if (!space) {
+    if (!doc.exists) {
       return res.status(404).json({
         success: false,
         message: 'Space not found'
@@ -71,9 +99,13 @@ router.get('/:id', (req, res) => {
 
     res.json({
       success: true,
-      data: space
+      data: {
+        id: doc.id,
+        ...doc.data()
+      }
     });
   } catch (error) {
+    console.error('Error fetching space:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch space',
@@ -83,36 +115,87 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/spaces
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { name, type, location, capacity, price, status = 'available' } = req.body;
+    const {
+      spaceId,
+      name,
+      description,
+      brand,
+      category,
+      location,
+      capacity,
+      amenities,
+      spaceType,
+      pricing,
+      isActive = true,
+      operatingHours,
+      images,
+      thumbnail
+    } = req.body;
 
     // Validation
-    if (!name || !type || !location || !capacity || !price) {
+    if (!name || !brand || !category || !location || !capacity || !pricing) {
       return res.status(400).json({
         success: false,
-        message: 'All fields are required'
+        message: 'Name, brand, category, location, capacity, and pricing are required'
       });
     }
 
-    const newSpace = {
-      id: Math.max(...spaces.map(s => s.id)) + 1,
+    const newSpaceData = {
+      spaceId: spaceId || `space_${Date.now()}`,
       name,
-      type,
-      location,
+      description: description || `Professional ${category} space`,
+      brand,
+      category,
+      location: {
+        address: location.address,
+        city: location.city,
+        province: location.province,
+        postalCode: location.postalCode,
+        country: location.country || 'Indonesia',
+        coordinates: location.coordinates,
+        latitude: location.latitude,
+        longitude: location.longitude
+      },
       capacity: parseInt(capacity),
-      price: parseInt(price),
-      status
+      amenities: amenities || [],
+      spaceType: spaceType || category,
+      pricing: {
+        hourly: pricing.hourly || 0,
+        daily: pricing.daily || 0,
+        monthly: pricing.monthly || 0,
+        currency: pricing.currency || 'IDR'
+      },
+      isActive,
+      operatingHours: operatingHours || {
+        monday: { open: "08:00", close: "22:00" },
+        tuesday: { open: "08:00", close: "22:00" },
+        wednesday: { open: "08:00", close: "22:00" },
+        thursday: { open: "08:00", close: "22:00" },
+        friday: { open: "08:00", close: "22:00" },
+        saturday: { open: "09:00", close: "18:00" },
+        sunday: { open: "09:00", close: "18:00" }
+      },
+      images: images || [],
+      thumbnail: thumbnail || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'api'
     };
 
-    spaces.push(newSpace);
+    const docRef = await db.collection('spaces').doc(newSpaceData.spaceId).set(newSpaceData);
 
     res.status(201).json({
       success: true,
-      data: newSpace,
+      data: {
+        id: newSpaceData.spaceId,
+        ...newSpaceData
+      },
       message: 'Space created successfully'
     });
   } catch (error) {
+    console.error('Error creating space:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create space',
@@ -122,29 +205,46 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/spaces/:id
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    const spaceIndex = spaces.findIndex(s => s.id === parseInt(req.params.id));
+    const spaceRef = db.collection('spaces').doc(req.params.id);
+    const doc = await spaceRef.get();
     
-    if (spaceIndex === -1) {
+    if (!doc.exists) {
       return res.status(404).json({
         success: false,
         message: 'Space not found'
       });
     }
 
-    spaces[spaceIndex] = {
-      ...spaces[spaceIndex],
+    const updateData = {
       ...req.body,
-      id: parseInt(req.params.id) // Ensure ID doesn't change
+      updatedAt: new Date(),
+      updatedBy: 'api'
     };
+
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
+    await spaceRef.update(updateData);
+
+    // Get updated document
+    const updatedDoc = await spaceRef.get();
 
     res.json({
       success: true,
-      data: spaces[spaceIndex],
+      data: {
+        id: updatedDoc.id,
+        ...updatedDoc.data()
+      },
       message: 'Space updated successfully'
     });
   } catch (error) {
+    console.error('Error updating space:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update space',
@@ -154,24 +254,26 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/spaces/:id
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const spaceIndex = spaces.findIndex(s => s.id === parseInt(req.params.id));
+    const spaceRef = db.collection('spaces').doc(req.params.id);
+    const doc = await spaceRef.get();
     
-    if (spaceIndex === -1) {
+    if (!doc.exists) {
       return res.status(404).json({
         success: false,
         message: 'Space not found'
       });
     }
 
-    spaces.splice(spaceIndex, 1);
+    await spaceRef.delete();
 
     res.json({
       success: true,
       message: 'Space deleted successfully'
     });
   } catch (error) {
+    console.error('Error deleting space:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete space',

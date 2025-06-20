@@ -12,7 +12,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         <button
           onClick={() => setActiveTab('dashboard')}
           className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
-            activeTab === 'dashboard' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
+            activeTab === 'dashboard' ? 'bg-yellow-50 text-yellow-600 border-r-2 border-yellow-600' : 'text-gray-700'
           }`}
         >
           <LayoutDashboard className="w-5 h-5 mr-3" />
@@ -22,7 +22,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         <button
           onClick={() => setActiveTab('orders')}
           className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 ${
-            activeTab === 'orders' ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' : 'text-gray-700'
+            activeTab === 'orders' ? 'bg-yellow-50 text-yellow-600 border-r-2 border-yellow-600' : 'text-gray-700'
           }`}
         >
           <ShoppingCart className="w-5 h-5 mr-3" />

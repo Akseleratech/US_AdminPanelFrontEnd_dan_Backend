@@ -1,38 +1,86 @@
+// Load environment variables
+require('dotenv').config();
+
 const express = require('express');
 const router = express.Router();
-let { cities } = require('../data/mockData');
+const { db } = require('../config/firebase');
 
 // GET /api/cities
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const { search, status, limit } = req.query;
-    let filteredCities = [...cities];
+    const { search, status, limit, featured } = req.query;
+    let citiesRef = db.collection('cities');
 
-    // Filter by search term
-    if (search) {
-      filteredCities = filteredCities.filter(city =>
-        city.name.toLowerCase().includes(search.toLowerCase())
-      );
+    // Build query
+    if (status === 'active') {
+      citiesRef = citiesRef.where('isActive', '==', true);
+    } else if (status === 'inactive') {
+      citiesRef = citiesRef.where('isActive', '==', false);
     }
 
-    // Filter by status
-    if (status) {
-      filteredCities = filteredCities.filter(city =>
-        city.status.toLowerCase() === status.toLowerCase()
+    if (featured === 'true') {
+      citiesRef = citiesRef.where('display.featured', '==', true);
+    }
+
+    // Order by display order
+    citiesRef = citiesRef.orderBy('display.order', 'asc');
+
+    // Execute query
+    const snapshot = await citiesRef.get();
+    let cities = [];
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const cityData = {
+        id: doc.id,
+        name: data.name,
+        cityId: data.cityId,
+        country: data.country,
+        location: data.location,
+        postalCodes: data.postalCodes,
+        timezone: data.timezone,
+        utcOffset: data.utcOffset,
+        statistics: data.statistics,
+        businessInfo: data.businessInfo,
+        display: data.display,
+        search: data.search,
+        isActive: data.isActive,
+        isPopular: data.isPopular,
+        hasAirport: data.hasAirport,
+        hasPublicTransport: data.hasPublicTransport,
+        createdBy: data.createdBy,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        // Add frontend-compatible fields
+        locations: data.statistics?.totalSpaces || 0, // Frontend expects 'locations' field
+        totalSpaces: data.statistics?.totalSpaces || 0,
+        status: data.isActive ? 'active' : 'inactive' // Convert boolean to string
+      };
+      cities.push(cityData);
+    });
+
+    // Apply client-side filtering for search (since Firestore has limited text search)
+    if (search) {
+      const searchLower = search.toLowerCase();
+      cities = cities.filter(city =>
+        city.name.toLowerCase().includes(searchLower) ||
+        city.search?.keywords?.some(keyword => keyword.toLowerCase().includes(searchLower)) ||
+        city.search?.aliases?.some(alias => alias.toLowerCase().includes(searchLower))
       );
     }
 
     // Apply limit
     if (limit) {
-      filteredCities = filteredCities.slice(0, parseInt(limit));
+      cities = cities.slice(0, parseInt(limit));
     }
 
     res.json({
       success: true,
-      data: filteredCities,
-      total: filteredCities.length
+      data: cities,
+      total: cities.length
     });
   } catch (error) {
+    console.error('Error fetching cities:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch cities',
@@ -42,22 +90,31 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/cities/:id
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const city = cities.find(c => c.id === parseInt(req.params.id));
+    const doc = await db.collection('cities').doc(req.params.id).get();
     
-    if (!city) {
+    if (!doc.exists) {
       return res.status(404).json({
         success: false,
         message: 'City not found'
       });
     }
 
+    const data = doc.data();
     res.json({
       success: true,
-      data: city
+      data: {
+        id: doc.id,
+        ...data,
+        // Add frontend-compatible fields
+        locations: data.statistics?.totalSpaces || 0,
+        totalSpaces: data.statistics?.totalSpaces || 0,
+        status: data.isActive ? 'active' : 'inactive'
+      }
     });
   } catch (error) {
+    console.error('Error fetching city:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch city',
@@ -67,34 +124,91 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/cities
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { name, status = 'active' } = req.body;
+    const {
+      cityId,
+      name,
+      country,
+      location,
+      postalCodes,
+      timezone,
+      utcOffset,
+      businessInfo,
+      display,
+      search,
+      isActive = true,
+      isPopular = false,
+      hasAirport = false,
+      hasPublicTransport = false
+    } = req.body;
 
     // Validation
-    if (!name) {
+    if (!name || !country) {
       return res.status(400).json({
         success: false,
-        message: 'City name is required'
+        message: 'City name and country are required'
       });
     }
 
-    const newCity = {
-      id: Math.max(...cities.map(c => c.id)) + 1,
+    const newCityData = {
+      cityId: cityId || `CTY${Date.now()}`,
       name,
-      locations: 0,
-      totalSpaces: 0,
-      status
+      country,
+      location,
+      postalCodes: postalCodes || [],
+      timezone: timezone || 'Asia/Jakarta',
+      utcOffset: utcOffset || '+07:00',
+      statistics: {
+        totalSpaces: 0,
+        activeSpaces: 0
+      },
+      businessInfo: businessInfo || {
+        isServiceAvailable: true,
+        launchDate: new Date().toISOString().split('T')[0],
+        supportedBrands: ['NextSpace', 'UnionSpace'],
+        currency: 'IDR',
+        taxRate: 0.11
+      },
+      display: display || {
+        featured: false,
+        order: 999,
+        description: `Discover workspaces in ${name}`,
+        descriptionEn: `Discover workspaces in ${name}`,
+        tags: []
+      },
+      search: search || {
+        keywords: [name.toLowerCase()],
+        aliases: [],
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+        metaTitle: `Co-working Spaces in ${name}`,
+        metaDescription: `Find and book workspaces in ${name}`
+      },
+      isActive,
+      isPopular,
+      hasAirport,
+      hasPublicTransport,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'api'
     };
 
-    cities.push(newCity);
+    const docRef = await db.collection('cities').doc(newCityData.cityId).set(newCityData);
 
     res.status(201).json({
       success: true,
-      data: newCity,
+      data: {
+        id: newCityData.cityId,
+        ...newCityData,
+        // Add frontend-compatible fields
+        locations: newCityData.statistics.totalSpaces,
+        totalSpaces: newCityData.statistics.totalSpaces,
+        status: newCityData.isActive ? 'active' : 'inactive'
+      },
       message: 'City created successfully'
     });
   } catch (error) {
+    console.error('Error creating city:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create city',
@@ -104,29 +218,51 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/cities/:id
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    const cityIndex = cities.findIndex(c => c.id === parseInt(req.params.id));
+    const cityRef = db.collection('cities').doc(req.params.id);
+    const doc = await cityRef.get();
     
-    if (cityIndex === -1) {
+    if (!doc.exists) {
       return res.status(404).json({
         success: false,
         message: 'City not found'
       });
     }
 
-    cities[cityIndex] = {
-      ...cities[cityIndex],
+    const updateData = {
       ...req.body,
-      id: parseInt(req.params.id) // Ensure ID doesn't change
+      updatedAt: new Date(),
+      updatedBy: 'api'
     };
+
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
+    await cityRef.update(updateData);
+
+    // Get updated document
+    const updatedDoc = await cityRef.get();
+    const data = updatedDoc.data();
 
     res.json({
       success: true,
-      data: cities[cityIndex],
+      data: {
+        id: updatedDoc.id,
+        ...data,
+        // Add frontend-compatible fields
+        locations: data.statistics?.totalSpaces || 0,
+        totalSpaces: data.statistics?.totalSpaces || 0,
+        status: data.isActive ? 'active' : 'inactive'
+      },
       message: 'City updated successfully'
     });
   } catch (error) {
+    console.error('Error updating city:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update city',
@@ -136,24 +272,26 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/cities/:id
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const cityIndex = cities.findIndex(c => c.id === parseInt(req.params.id));
+    const cityRef = db.collection('cities').doc(req.params.id);
+    const doc = await cityRef.get();
     
-    if (cityIndex === -1) {
+    if (!doc.exists) {
       return res.status(404).json({
         success: false,
         message: 'City not found'
       });
     }
 
-    cities.splice(cityIndex, 1);
+    await cityRef.delete();
 
     res.json({
       success: true,
       message: 'City deleted successfully'
     });
   } catch (error) {
+    console.error('Error deleting city:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete city',

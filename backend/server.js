@@ -20,6 +20,7 @@ app.use('/api/orders', require('./routes/orders'));
 app.use('/api/spaces', require('./routes/spaces'));
 app.use('/api/cities', require('./routes/cities'));
 app.use('/api/services', require('./routes/services'));
+app.use('/api/database', require('./routes/database'));
 
 // Basic route
 app.get('/', (req, res) => {
