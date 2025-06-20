@@ -210,14 +210,7 @@ const AdminPanel = () => {
           />
         );
       case 'services':
-        return (
-          <Services
-            services={services}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onAddNew={handleAddNew}
-          />
-        );
+        return <Services />;
       default:
         return (
           <Dashboard 
@@ -263,7 +256,9 @@ const AdminPanel = () => {
         <Modal 
           type={modalType} 
           activeTab={activeTab}
-          onClose={() => setShowModal(false)} 
+          onClose={() => setShowModal(false)}
+          services={services}
+          cities={cities}
         />
       )}
     </div>

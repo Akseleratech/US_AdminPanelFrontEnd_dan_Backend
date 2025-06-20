@@ -193,7 +193,7 @@ router.post('/', async (req, res) => {
       createdBy: 'api'
     };
 
-    const docRef = await db.collection('cities').doc(newCityData.cityId).set(newCityData);
+    await db.collection('cities').doc(newCityData.cityId).set(newCityData);
 
     res.status(201).json({
       success: true,

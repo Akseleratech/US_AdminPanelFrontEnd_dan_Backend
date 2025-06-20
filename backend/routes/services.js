@@ -109,6 +109,8 @@ router.get('/:id', async (req, res) => {
 // POST /api/services
 router.post('/', async (req, res) => {
   try {
+    console.log('Backend: Received create request body:', req.body);
+    
     const {
       serviceId,
       name,
@@ -117,14 +119,17 @@ router.post('/', async (req, res) => {
       type,
       description,
       metrics,
-      status = 'draft'
+      status = 'draft',
+      createdBy,
+      lastModifiedBy
     } = req.body;
 
     // Validation
-    if (!name || !category || !type) {
+    if (!name) {
+      console.log('Backend: Validation failed - missing required fields');
       return res.status(400).json({
         success: false,
-        message: 'Name, category, and type are required'
+        message: 'Name is required'
       });
     }
 
@@ -132,8 +137,6 @@ router.post('/', async (req, res) => {
       serviceId: serviceId || `SVC${Date.now()}`,
       name,
       slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
-      category,
-      type,
       description: description || {
         short: `${name} service`,
         long: `Professional ${name} service for your business needs`,
@@ -152,12 +155,17 @@ router.post('/', async (req, res) => {
       status,
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: 'api',
+      createdBy: createdBy || 'api',
+      lastModifiedBy: lastModifiedBy || 'api',
       publishedAt: status === 'published' ? new Date() : null,
       archivedAt: null
     };
 
-    const docRef = await db.collection('layanan').doc(newServiceData.serviceId).set(newServiceData);
+    console.log('Backend: Prepared service data:', newServiceData);
+    
+    await db.collection('layanan').doc(newServiceData.serviceId).set(newServiceData);
+    
+    console.log('Backend: Service created successfully');
 
     res.status(201).json({
       success: true,
