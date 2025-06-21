@@ -65,6 +65,7 @@ class CityAPI {
     return {
       cityId: data.cityId || undefined,
       name: data.name,
+      province: data.province,
       country: {
         id: data.country.id || 'ID',
         name: data.country.name || 'Indonesia',
@@ -89,40 +90,19 @@ class CityAPI {
       timezone: data.timezone || 'Asia/Jakarta',
       utcOffset: data.utcOffset || '+07:00',
       statistics: {
-        totalSpaces: parseInt(data.statistics.totalSpaces) || 0,
-        activeSpaces: parseInt(data.statistics.activeSpaces) || 0
-      },
-      businessInfo: {
-        isServiceAvailable: data.businessInfo.isServiceAvailable ?? true,
-        launchDate: data.businessInfo.launchDate || new Date().toISOString().split('T')[0],
-        supportedBrands: Array.isArray(data.businessInfo.supportedBrands) 
-          ? data.businessInfo.supportedBrands 
-          : ['NextSpace', 'UnionSpace'],
-        currency: data.businessInfo.currency || 'IDR',
-        taxRate: parseFloat(data.businessInfo.taxRate) || 0.11
-      },
-      display: {
-        featured: data.display.featured ?? false,
-        order: parseInt(data.display.order) || 999,
-        heroImage: data.display.heroImage || '',
-        thumbnailImage: data.display.thumbnailImage || '',
-        description: data.display.description || `Discover workspaces in ${data.name}`,
-        descriptionEn: data.display.descriptionEn || data.display.description || `Discover workspaces in ${data.name}`,
-        tags: Array.isArray(data.display.tags) ? data.display.tags : []
+        totalSpaces: parseInt(data.statistics?.totalSpaces) || 0,
+        activeSpaces: parseInt(data.statistics?.activeSpaces) || 0
       },
       search: {
-        keywords: Array.isArray(data.search.keywords) 
+        keywords: Array.isArray(data.search?.keywords) 
           ? data.search.keywords 
           : [data.name.toLowerCase()],
-        aliases: Array.isArray(data.search.aliases) ? data.search.aliases : [],
-        slug: data.search.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
-        metaTitle: data.search.metaTitle || `Co-working Spaces in ${data.name}`,
-        metaDescription: data.search.metaDescription || `Find and book workspaces in ${data.name}`
+        aliases: Array.isArray(data.search?.aliases) ? data.search.aliases : [],
+        slug: data.search?.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
+        metaTitle: data.search?.metaTitle || `Co-working Spaces in ${data.name}`,
+        metaDescription: data.search?.metaDescription || `Find and book workspaces in ${data.name}`
       },
-      isActive: data.isActive ?? true,
-      isPopular: data.isPopular ?? false,
-      hasAirport: data.hasAirport ?? false,
-      hasPublicTransport: data.hasPublicTransport ?? false
+      isActive: data.isActive ?? true
     };
   }
 

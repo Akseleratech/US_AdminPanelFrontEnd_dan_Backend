@@ -34,6 +34,7 @@ router.get('/', async (req, res) => {
       const cityData = {
         id: doc.id,
         name: data.name,
+        province: data.province,
         cityId: data.cityId,
         country: data.country,
         location: data.location,
@@ -41,13 +42,8 @@ router.get('/', async (req, res) => {
         timezone: data.timezone,
         utcOffset: data.utcOffset,
         statistics: data.statistics,
-        businessInfo: data.businessInfo,
-        display: data.display,
         search: data.search,
         isActive: data.isActive,
-        isPopular: data.isPopular,
-        hasAirport: data.hasAirport,
-        hasPublicTransport: data.hasPublicTransport,
         createdBy: data.createdBy,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
@@ -64,6 +60,7 @@ router.get('/', async (req, res) => {
       const searchLower = search.toLowerCase();
       cities = cities.filter(city =>
         city.name.toLowerCase().includes(searchLower) ||
+        city.province?.toLowerCase().includes(searchLower) ||
         city.search?.keywords?.some(keyword => keyword.toLowerCase().includes(searchLower)) ||
         city.search?.aliases?.some(alias => alias.toLowerCase().includes(searchLower))
       );
@@ -106,7 +103,20 @@ router.get('/:id', async (req, res) => {
       success: true,
       data: {
         id: doc.id,
-        ...data,
+        name: data.name,
+        province: data.province,
+        cityId: data.cityId,
+        country: data.country,
+        location: data.location,
+        postalCodes: data.postalCodes,
+        timezone: data.timezone,
+        utcOffset: data.utcOffset,
+        statistics: data.statistics,
+        search: data.search,
+        isActive: data.isActive,
+        createdBy: data.createdBy,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
         // Add frontend-compatible fields
         locations: data.statistics?.totalSpaces || 0,
         totalSpaces: data.statistics?.totalSpaces || 0,
@@ -129,31 +139,28 @@ router.post('/', async (req, res) => {
     const {
       cityId,
       name,
+      province,
       country,
       location,
       postalCodes,
       timezone,
       utcOffset,
-      businessInfo,
-      display,
       search,
-      isActive = true,
-      isPopular = false,
-      hasAirport = false,
-      hasPublicTransport = false
+      isActive = true
     } = req.body;
 
     // Validation
-    if (!name || !country) {
+    if (!name || !province || !country) {
       return res.status(400).json({
         success: false,
-        message: 'City name and country are required'
+        message: 'City name, province, and country are required'
       });
     }
 
     const newCityData = {
       cityId: cityId || `CTY${Date.now()}`,
       name,
+      province,
       country,
       location,
       postalCodes: postalCodes || [],
@@ -163,20 +170,6 @@ router.post('/', async (req, res) => {
         totalSpaces: 0,
         activeSpaces: 0
       },
-      businessInfo: businessInfo || {
-        isServiceAvailable: true,
-        launchDate: new Date().toISOString().split('T')[0],
-        supportedBrands: ['NextSpace', 'UnionSpace'],
-        currency: 'IDR',
-        taxRate: 0.11
-      },
-      display: display || {
-        featured: false,
-        order: 999,
-        description: `Discover workspaces in ${name}`,
-        descriptionEn: `Discover workspaces in ${name}`,
-        tags: []
-      },
       search: search || {
         keywords: [name.toLowerCase()],
         aliases: [],
@@ -185,9 +178,6 @@ router.post('/', async (req, res) => {
         metaDescription: `Find and book workspaces in ${name}`
       },
       isActive,
-      isPopular,
-      hasAirport,
-      hasPublicTransport,
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: 'api'
@@ -253,7 +243,20 @@ router.put('/:id', async (req, res) => {
       success: true,
       data: {
         id: updatedDoc.id,
-        ...data,
+        name: data.name,
+        province: data.province,
+        cityId: data.cityId,
+        country: data.country,
+        location: data.location,
+        postalCodes: data.postalCodes,
+        timezone: data.timezone,
+        utcOffset: data.utcOffset,
+        statistics: data.statistics,
+        search: data.search,
+        isActive: data.isActive,
+        createdBy: data.createdBy,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
         // Add frontend-compatible fields
         locations: data.statistics?.totalSpaces || 0,
         totalSpaces: data.statistics?.totalSpaces || 0,

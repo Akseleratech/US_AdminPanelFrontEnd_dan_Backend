@@ -201,14 +201,7 @@ const AdminPanel = () => {
           />
         );
       case 'cities':
-        return (
-          <Cities
-            cities={cities}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onAddNew={handleAddNew}
-          />
-        );
+        return <Cities />;
       case 'services':
         return <Services />;
       default:

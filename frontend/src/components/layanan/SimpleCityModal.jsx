@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import indonesiaData from '../../data/indonesia.json';
+
+// Data referensi dari JSON
+const COUNTRIES = indonesiaData.countries;
+const PROVINCES = indonesiaData.provinces;
+
+const CITIES = indonesiaData.cities;
 
 const SimpleCityModal = ({ isOpen, onClose, onSubmit, city = null, loading = false }) => {
   const [formData, setFormData] = useState({
-    name: '',
     country: {
       id: 'ID',
       name: 'Indonesia',
       code: 'IDN',
       phoneCode: '+62'
     },
+    province: '',
+    name: '',
     location: {
       coordinates: {
         latitude: -6.2088,
@@ -18,37 +26,22 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, city = null, loading = fal
       elevation: 0
     },
     timezone: 'Asia/Jakarta',
-    utcOffset: '+07:00',
-    businessInfo: {
-      isServiceAvailable: true,
-      launchDate: new Date().toISOString().split('T')[0],
-      currency: 'IDR',
-      taxRate: 0.11
-    },
-    display: {
-      featured: false,
-      order: 999,
-      description: '',
-      descriptionEn: ''
-    },
-    isActive: true,
-    isPopular: false,
-    hasAirport: false,
-    hasPublicTransport: false
+    utcOffset: '+07:00'
   });
 
   const [errors, setErrors] = useState({});
+  const [availableProvinces, setAvailableProvinces] = useState([]);
+  const [availableCities, setAvailableCities] = useState([]);
+
+
 
   useEffect(() => {
     if (city) {
+      const selectedCountry = COUNTRIES.find(c => c.name === city.country?.name) || COUNTRIES[0];
       setFormData({
+        country: selectedCountry,
+        province: city.province || '',
         name: city.name || '',
-        country: {
-          id: city.country?.id || 'ID',
-          name: city.country?.name || 'Indonesia',
-          code: city.country?.code || 'IDN',
-          phoneCode: city.country?.phoneCode || '+62'
-        },
         location: {
           coordinates: {
             latitude: city.location?.coordinates?.latitude || city.location?.latitude || -6.2088,
@@ -58,34 +51,23 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, city = null, loading = fal
           elevation: city.location?.elevation || 0
         },
         timezone: city.timezone || 'Asia/Jakarta',
-        utcOffset: city.utcOffset || '+07:00',
-        businessInfo: {
-          isServiceAvailable: city.businessInfo?.isServiceAvailable ?? true,
-          launchDate: city.businessInfo?.launchDate || new Date().toISOString().split('T')[0],
-          currency: city.businessInfo?.currency || 'IDR',
-          taxRate: city.businessInfo?.taxRate || 0.11
-        },
-        display: {
-          featured: city.display?.featured ?? false,
-          order: city.display?.order || 999,
-          description: city.display?.description || '',
-          descriptionEn: city.display?.descriptionEn || ''
-        },
-        isActive: city.isActive ?? true,
-        isPopular: city.isPopular ?? false,
-        hasAirport: city.hasAirport ?? false,
-        hasPublicTransport: city.hasPublicTransport ?? false
+        utcOffset: city.utcOffset || '+07:00'
       });
+
+      // Set available provinces for the selected country
+      setAvailableProvinces(PROVINCES[selectedCountry.id] || []);
+      
+      // Set available cities for the selected province
+      if (city.province) {
+        setAvailableCities(CITIES[city.province] || []);
+      }
     } else {
       // Reset form for new city
+      const defaultCountry = COUNTRIES[0];
       const newFormData = {
+        country: defaultCountry,
+        province: '',
         name: '',
-        country: {
-          id: 'ID',
-          name: 'Indonesia',
-          code: 'IDN',
-          phoneCode: '+62'
-        },
         location: {
           coordinates: {
             latitude: -6.2088,
@@ -95,105 +77,103 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, city = null, loading = fal
           elevation: 0
         },
         timezone: 'Asia/Jakarta',
-        utcOffset: '+07:00',
-        businessInfo: {
-          isServiceAvailable: true,
-          launchDate: new Date().toISOString().split('T')[0],
-          currency: 'IDR',
-          taxRate: 0.11
-        },
-        display: {
-          featured: false,
-          order: 999,
-          description: '',
-          descriptionEn: ''
-        },
-        isActive: true,
-        isPopular: false,
-        hasAirport: false,
-        hasPublicTransport: false
+        utcOffset: '+07:00'
       };
       setFormData(newFormData);
+      setAvailableProvinces(PROVINCES[defaultCountry.id] || []);
+      setAvailableCities([]);
     }
     setErrors({});
   }, [city]);
 
-  // Auto-generate descriptions when name changes
-  useEffect(() => {
-    if (formData.name && !city) {
-      setFormData(prev => ({
-        ...prev,
-        display: {
-          ...prev.display,
-          description: `Discover workspaces in ${formData.name}`,
-          descriptionEn: `Discover workspaces in ${formData.name}`
-        }
-      }));
-    }
-  }, [formData.name, city]);
-
   const validateForm = () => {
     const newErrors = {};
 
+    if (!formData.country.name) {
+      newErrors.country = 'Country is required';
+    }
+
+    if (!formData.province.trim()) {
+      newErrors.province = 'Province is required';
+    }
+
     if (!formData.name.trim()) {
-      newErrors.name = 'City name is required';
-    }
-
-    if (!formData.country.name.trim()) {
-      newErrors['country.name'] = 'Country name is required';
-    }
-
-    if (formData.location.coordinates.latitude < -90 || formData.location.coordinates.latitude > 90) {
-      newErrors['location.latitude'] = 'Latitude must be between -90 and 90';
-    }
-
-    if (formData.location.coordinates.longitude < -180 || formData.location.coordinates.longitude > 180) {
-      newErrors['location.longitude'] = 'Longitude must be between -180 and 180';
+      newErrors.name = 'City/Regency name is required';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    const keys = name.split('.');
+  const handleCountryChange = (e) => {
+    const selectedCountryName = e.target.value;
+    const selectedCountry = COUNTRIES.find(c => c.name === selectedCountryName) || COUNTRIES[0];
     
-    setFormData(prev => {
-      const newData = { ...prev };
-      let current = newData;
-      
-      for (let i = 0; i < keys.length - 1; i++) {
-        current = current[keys[i]];
-      }
-      
-      current[keys[keys.length - 1]] = type === 'checkbox' ? checked : 
-                                      type === 'number' ? parseFloat(value) || 0 : value;
-      return newData;
-    });
+    setFormData(prev => ({
+      ...prev,
+      country: selectedCountry,
+      province: '', // Reset province when country changes
+      name: '' // Reset city when country changes
+    }));
+
+    // Update available provinces
+    setAvailableProvinces(PROVINCES[selectedCountry.id] || []);
+    setAvailableCities([]); // Clear cities when country changes
+  };
+
+  const handleProvinceChange = (e) => {
+    const selectedProvince = e.target.value;
+    
+    setFormData(prev => ({
+      ...prev,
+      province: selectedProvince,
+      name: '' // Reset city when province changes
+    }));
+
+    // Update available cities
+    setAvailableCities(CITIES[selectedProvince] || []);
+  };
+
+  const handleCityChange = (e) => {
+    const selectedCityName = e.target.value;
+    
+    // Find the selected city data
+    const selectedCityData = availableCities.find(city => city.name === selectedCityName);
+    
+    if (selectedCityData) {
+      setFormData(prev => ({
+        ...prev,
+        name: selectedCityName,
+        location: {
+          coordinates: {
+            latitude: selectedCityData.coordinates.latitude,
+            longitude: selectedCityData.coordinates.longitude
+          },
+          area: selectedCityData.area,
+          elevation: selectedCityData.elevation
+        },
+        timezone: selectedCityData.timezone,
+        utcOffset: selectedCityData.utcOffset
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        name: selectedCityName
+      }));
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      // Create the complete data structure expected by backend
+      // Create the simplified data structure
       const completeData = {
         ...formData,
-        // Add required fields that might be missing
+        // Add minimal required fields
         postalCodes: [],
         statistics: {
           totalSpaces: 0,
           activeSpaces: 0
-        },
-        businessInfo: {
-          ...formData.businessInfo,
-          supportedBrands: ['NextSpace', 'UnionSpace']
-        },
-        display: {
-          ...formData.display,
-          heroImage: '',
-          thumbnailImage: '',
-          tags: []
         },
         search: {
           keywords: [formData.name.toLowerCase()],
@@ -201,7 +181,8 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, city = null, loading = fal
           slug: formData.name.toLowerCase().replace(/\s+/g, '-'),
           metaTitle: `Co-working Spaces in ${formData.name}`,
           metaDescription: `Find and book workspaces in ${formData.name}`
-        }
+        },
+        isActive: true
       };
       
       onSubmit(completeData);
@@ -212,10 +193,10 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, city = null, loading = fal
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden">
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold">
-            {city ? 'Edit City' : 'Add New City'}
+            {city ? 'Edit City/Regency' : 'Add New City/Regency'}
           </h2>
           <button
             onClick={onClose}
@@ -229,217 +210,118 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, city = null, loading = fal
 
         <div className="p-6 overflow-y-auto max-h-[75vh]">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
+            {/* Location Selection */}
             <div>
-              <h3 className="text-lg font-medium mb-4">Basic Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <h3 className="text-lg font-medium mb-4">Location Selection</h3>
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    City Name *
+                    Country *
                   </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
+                  <select
+                    value={formData.country.name}
+                    onChange={handleCountryChange}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.country ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select Country</option>
+                    {COUNTRIES.map(country => (
+                      <option key={country.id} value={country.name}>
+                        {country.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Province *
+                  </label>
+                  <select
+                    value={formData.province}
+                    onChange={handleProvinceChange}
+                    disabled={!formData.country.name}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${
+                      errors.province ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select Province</option>
+                    {availableProvinces.map(province => (
+                      <option key={province} value={province}>
+                        {province}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.province && <p className="text-red-500 text-sm mt-1">{errors.province}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    City/Regency *
+                  </label>
+                  <select
+                    value={formData.name}
+                    onChange={handleCityChange}
+                    disabled={!formData.province}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${
                       errors.name ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    placeholder="Enter city name"
-                  />
+                  >
+                    <option value="">Select City/Regency</option>
+                    {availableCities.map(cityData => (
+                      <option key={cityData.name} value={cityData.name}>
+                        {cityData.name}
+                      </option>
+                    ))}
+                  </select>
                   {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Country
-                  </label>
-                  <input
-                    type="text"
-                    name="country.name"
-                    value={formData.country.name}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Indonesia"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Latitude
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    name="location.coordinates.latitude"
-                    value={formData.location.coordinates.latitude}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="-6.2088"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Longitude
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    name="location.coordinates.longitude"
-                    value={formData.location.coordinates.longitude}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="106.8456"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Launch Date
-                  </label>
-                  <input
-                    type="date"
-                    name="businessInfo.launchDate"
-                    value={formData.businessInfo.launchDate}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Currency
-                  </label>
-                  <input
-                    type="text"
-                    name="businessInfo.currency"
-                    value={formData.businessInfo.currency}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="IDR"
-                  />
-                </div>
               </div>
             </div>
 
-            {/* Description */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Descriptions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description (Indonesian)
-                  </label>
-                  <textarea
-                    name="display.description"
-                    value={formData.display.description}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Discover workspaces in this city"
-                  />
+            {/* Auto-filled Information (Read-only display) */}
+            {formData.name && (
+              <div>
+                <h3 className="text-lg font-medium mb-4">Location Details</h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Latitude</label>
+                      <div className="text-sm text-gray-900">{formData.location.coordinates.latitude}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Longitude</label>
+                      <div className="text-sm text-gray-900">{formData.location.coordinates.longitude}</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Area</label>
+                      <div className="text-sm text-gray-900">{formData.location.area} km²</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Elevation</label>
+                      <div className="text-sm text-gray-900">{formData.location.elevation} m</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Timezone</label>
+                      <div className="text-sm text-gray-900">{formData.timezone}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">UTC Offset</label>
+                      <div className="text-sm text-gray-900">{formData.utcOffset}</div>
+                    </div>
+                  </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description (English)
-                  </label>
-                  <textarea
-                    name="display.descriptionEn"
-                    value={formData.display.descriptionEn}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Discover workspaces in this city"
-                  />
-                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  ℹ️ Location details are automatically filled based on your city selection.
+                </p>
               </div>
-            </div>
-
-            {/* Settings */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Settings</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="isActive"
-                    checked={formData.isActive}
-                    onChange={handleInputChange}
-                    className="mr-2"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Active
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="isPopular"
-                    checked={formData.isPopular}
-                    onChange={handleInputChange}
-                    className="mr-2"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Popular
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="hasAirport"
-                    checked={formData.hasAirport}
-                    onChange={handleInputChange}
-                    className="mr-2"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Has Airport
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="hasPublicTransport"
-                    checked={formData.hasPublicTransport}
-                    onChange={handleInputChange}
-                    className="mr-2"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Public Transport
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="display.featured"
-                    checked={formData.display.featured}
-                    onChange={handleInputChange}
-                    className="mr-2"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Featured
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="businessInfo.isServiceAvailable"
-                    checked={formData.businessInfo.isServiceAvailable}
-                    onChange={handleInputChange}
-                    className="mr-2"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Service Available
-                  </label>
-                </div>
-              </div>
-            </div>
+            )}
           </form>
         </div>
 
