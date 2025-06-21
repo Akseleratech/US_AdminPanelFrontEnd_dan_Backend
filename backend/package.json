@@ -6,13 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "db:seed": "node scripts/seedDatabase.js",
-    "db:seed:clear": "node scripts/seedDatabase.js --clear",
-    "db:create": "node scripts/createDatabaseStructure.js",
-    "db:validate": "node scripts/createDatabaseStructure.js --validate",
-    "db:seed:ref": "node scripts/seedRefDatabase.js",
-    "db:seed:ref:clear": "node scripts/seedRefDatabase.js --clear",
-    "db:validate:ref": "node scripts/seedRefDatabase.js --validate"
+    "test:connection": "node scripts/testFirebaseConnection.js",
+    "test:spaces": "node scripts/testSpacesEndpoint.js"
   },
   "dependencies": {
     "body-parser": "^1.20.2",

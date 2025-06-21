@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Sidebar from './components/layout/Sidebar.jsx';
 import Header from './components/layout/Header.jsx';
 import LoadingSpinner from './components/common/LoadingSpinner.jsx';
-import Modal from './components/common/Modal.jsx';
+
 import Dashboard from './components/dashboard/Dashboard.jsx';
 import Orders from './components/orders/Orders.jsx';
 import Spaces from './components/spaces/Spaces.jsx';
@@ -95,7 +95,7 @@ const FirebaseConfigNotice = ({ missingVars, missingOptionalVars, hasAnalytics }
       
       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
         <p className="text-blue-800">
-          <strong>💡 Tips:</strong> Sementara Firebase belum dikonfigurasi, CRM akan menggunakan mock data untuk demo.
+                      <strong>💡 Tips:</strong> CRM terhubung dengan Firebase Firestore untuk data real-time.
         </p>
       </div>
       
@@ -112,8 +112,6 @@ const FirebaseConfigNotice = ({ missingVars, missingOptionalVars, hasAnalytics }
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
 
   // Check Firebase configuration
   const firebaseConfig = checkFirebaseConfig();
@@ -160,15 +158,7 @@ const AdminPanel = () => {
     handleDelete
   } = apiData;
 
-  const handleEdit = (item) => {
-    setModalType('edit');
-    setShowModal(true);
-  };
 
-  const handleAddNew = () => {
-    setModalType('add');
-    setShowModal(true);
-  };
 
   const renderContent = () => {
     // Show Firebase config notice if not configured
@@ -192,14 +182,7 @@ const AdminPanel = () => {
       case 'orders':
         return <Orders orders={orders} />;
       case 'spaces':
-        return (
-          <Spaces
-            spaces={spaces}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onAddNew={handleAddNew}
-          />
-        );
+        return <Spaces spaces={spaces} />;
       case 'cities':
         return <Cities />;
       case 'services':
@@ -244,16 +227,7 @@ const AdminPanel = () => {
         </div>
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <Modal 
-          type={modalType} 
-          activeTab={activeTab}
-          onClose={() => setShowModal(false)}
-          services={services}
-          cities={cities}
-        />
-      )}
+
     </div>
   );
 };
