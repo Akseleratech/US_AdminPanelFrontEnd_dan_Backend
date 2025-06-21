@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Filter, Plus } from 'lucide-react';
-import ServicesTable from '../layanan/ServicesTable.jsx';
-import ServiceModal from '../layanan/ServiceModal.jsx';
+import ServicesTable from './ServicesTable.jsx';
+import ServiceModal from './ServiceModal.jsx';
 import useServices from '../../hooks/useServices.js';
 
 const Services = () => {

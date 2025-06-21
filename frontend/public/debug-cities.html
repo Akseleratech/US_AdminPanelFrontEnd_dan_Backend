@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cities API Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 10px 0; border-left: 4px solid #007bff; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <h1>🏙️ Cities API Debug Tool</h1>
+    <p>This page helps debug the cities API connection.</p>
+
+    <div>
+        <button onclick="testCitiesAPI()">Test GET /api/cities</button>
+        <button onclick="testSingleCity()">Test GET /api/cities/{id}</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        function addResult(title, content, type = 'result') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${content}</pre>
+            `;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testCitiesAPI() {
+            try {
+                addResult('🔄 Testing Cities API...', 'Making request to /api/cities');
+                
+                const response = await fetch('/api/cities');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult(
+                        '✅ Success - GET /api/cities', 
+                        `Status: ${response.status}\nTotal Cities: ${data.total}\nData:\n${JSON.stringify(data, null, 2)}`,
+                        'success'
+                    );
+                } else {
+                    addResult(
+                        '❌ Error - GET /api/cities', 
+                        `Status: ${response.status}\nError:\n${JSON.stringify(data, null, 2)}`,
+                        'error'
+                    );
+                }
+            } catch (error) {
+                addResult(
+                    '💥 Network Error - GET /api/cities', 
+                    `Error: ${error.message}\nStack: ${error.stack}`,
+                    'error'
+                );
+            }
+        }
+
+        async function testSingleCity() {
+            try {
+                // First get list to find a city ID
+                const listResponse = await fetch('/api/cities');
+                const listData = await listResponse.json();
+                
+                if (!listData.success || !listData.data.length) {
+                    addResult('⚠️ No cities found', 'Cannot test single city API - no cities in database', 'error');
+                    return;
+                }
+
+                const cityId = listData.data[0].id;
+                addResult('🔄 Testing Single City API...', `Making request to /api/cities/${cityId}`);
+                
+                const response = await fetch(`/api/cities/${cityId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult(
+                        '✅ Success - GET /api/cities/{id}', 
+                        `Status: ${response.status}\nCity: ${data.data.name}\nData:\n${JSON.stringify(data, null, 2)}`,
+                        'success'
+                    );
+                } else {
+                    addResult(
+                        '❌ Error - GET /api/cities/{id}', 
+                        `Status: ${response.status}\nError:\n${JSON.stringify(data, null, 2)}`,
+                        'error'
+                    );
+                }
+            } catch (error) {
+                addResult(
+                    '💥 Network Error - GET /api/cities/{id}', 
+                    `Error: ${error.message}\nStack: ${error.stack}`,
+                    'error'
+                );
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            addResult('🚀 Debug Tool Loaded', 'Click buttons above to test API endpoints');
+            testCitiesAPI();
+        };
+    </script>
+</body>
+</html> 

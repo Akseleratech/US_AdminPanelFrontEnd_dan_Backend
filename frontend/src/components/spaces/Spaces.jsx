@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search, Filter, Plus } from 'lucide-react';
-import SpacesTable from '../layanan/SpacesTable.jsx';
+import SpacesTable from './SpacesTable.jsx';
 
 const Spaces = ({ spaces, onEdit, onDelete, onAddNew }) => {
   return (

@@ -18,12 +18,13 @@ router.get('/', async (req, res) => {
       citiesRef = citiesRef.where('isActive', '==', false);
     }
 
-    if (featured === 'true') {
-      citiesRef = citiesRef.where('display.featured', '==', true);
-    }
+    // Remove featured filter since we don't have this field anymore
+    // if (featured === 'true') {
+    //   citiesRef = citiesRef.where('display.featured', '==', true);
+    // }
 
-    // Order by display order
-    citiesRef = citiesRef.orderBy('display.order', 'asc');
+    // Order by creation date (fallback order)
+    citiesRef = citiesRef.orderBy('createdAt', 'desc');
 
     // Execute query
     const snapshot = await citiesRef.get();

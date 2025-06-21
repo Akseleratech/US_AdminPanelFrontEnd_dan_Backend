@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Filter, Plus, RefreshCw, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
-import CitiesTable from '../layanan/CitiesTable.jsx';
-import SimpleCityModal from '../layanan/SimpleCityModal.jsx';
+import CitiesTable from './CitiesTable.jsx';
+import SimpleCityModal from './SimpleCityModal.jsx';
 import useCities from '../../hooks/useCities.js';
 
 const Cities = () => {
