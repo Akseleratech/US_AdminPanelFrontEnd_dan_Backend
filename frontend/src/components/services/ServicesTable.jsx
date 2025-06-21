@@ -5,9 +5,9 @@ import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white border border-primary-200 table-green-theme">
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
           <span className="ml-3 text-gray-500">Memuat layanan...</span>
         </div>
       </div>
@@ -15,21 +15,21 @@ const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+    <div className="bg-white border border-primary-200 table-green-theme">
+      <table className="min-w-full divide-y divide-primary-200">
+        <thead className="bg-primary-50 border-b border-primary-200">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Layanan</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
-            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Spaces</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Nama Layanan</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Deskripsi</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider">Total Spaces</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Status</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white divide-y divide-primary-100">
           {services && services.length > 0 ? (
             services.map((service) => (
-              <tr key={service.id} className="hover:bg-gray-50">
+              <tr key={service.id} className="hover:bg-primary-50 transition-colors duration-150">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">{service.name}</div>
                 </td>
@@ -52,7 +52,7 @@ const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
                     <button 
-                      className="text-blue-600 hover:text-blue-900"
+                      className="text-primary-600 hover:text-primary-800"
                       title="Lihat Detail"
                     >
                       <Eye className="w-4 h-4" />

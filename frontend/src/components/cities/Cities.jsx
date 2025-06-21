@@ -166,7 +166,7 @@ const Cities = () => {
               placeholder="Search cities, regencies, or provinces..."
               value={searchFilter}
               onChange={handleSearchChange}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
             />
           </div>
           <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
@@ -176,7 +176,7 @@ const Cities = () => {
         </div>
         <button
           onClick={handleAddNew}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
         >
           <Plus className="w-4 h-4 mr-2" />
           Tambah Kota/Kabupaten
@@ -197,7 +197,7 @@ const Cities = () => {
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <div className="text-sm font-medium text-gray-500">Provinces</div>
-          <div className="text-2xl font-bold text-blue-600">
+                        <div className="text-2xl font-bold text-primary-600">
             {new Set(cities.map(city => city.province).filter(Boolean)).size}
           </div>
         </div>
@@ -212,7 +212,7 @@ const Cities = () => {
       {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center py-8">
-          <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+          <RefreshCw className="w-8 h-8 animate-spin text-primary-600" />
           <span className="ml-2 text-gray-600">Loading cities...</span>
         </div>
       )}
@@ -234,7 +234,7 @@ const Cities = () => {
           </div>
           <button
             onClick={handleAddNew}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="inline-flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add First City

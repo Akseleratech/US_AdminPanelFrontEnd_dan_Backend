@@ -1,5 +1,170 @@
 @import "tailwindcss";
 
+:root {
+  --primary-50: #f0f4f1;
+  --primary-100: #dce8de;
+  --primary-200: #b8d1bc;
+  --primary-300: #8fb596;
+  --primary-400: #6f9473;
+  --primary-500: #5a7a5e;
+  --primary-600: #445d48;
+  --primary-700: #3a4d3c;
+  --primary-800: #2f3e31;
+  --primary-900: #253026;
+}
+
+/* Custom Gradient Utilities */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #5a7a5e 0%, #445d48 100%);
+}
+
+.bg-gradient-primary-hover {
+  background: linear-gradient(135deg, #6f9473 0%, #3a4d3c 100%);
+}
+
+.shadow-primary {
+  box-shadow: 0 10px 25px -3px rgba(68, 93, 72, 0.2), 0 4px 6px -2px rgba(68, 93, 72, 0.05);
+}
+
+.ring-primary {
+  --tw-ring-color: rgb(90 122 94 / 0.5);
+}
+
+/* Text Colors */
+.text-primary-100 {
+  color: var(--primary-100);
+}
+
+.text-primary-200 {
+  color: var(--primary-200);
+}
+
+.text-primary-300 {
+  color: var(--primary-300);
+}
+
+.text-primary-400 {
+  color: var(--primary-400);
+}
+
+.text-primary-600 {
+  color: var(--primary-600);
+}
+
+.text-primary-700 {
+  color: var(--primary-700);
+}
+
+.text-primary-800 {
+  color: var(--primary-800);
+}
+
+.hover\:text-primary-800:hover {
+  color: var(--primary-800);
+}
+
+/* Group hover effects for sidebar */
+.group:hover .group-hover\:text-white {
+  color: white;
+}
+
+/* Background Colors */
+.bg-primary-50 {
+  background-color: var(--primary-50);
+}
+
+.bg-primary-100 {
+  background-color: var(--primary-100);
+}
+
+.bg-primary-600 {
+  background-color: var(--primary-600);
+}
+
+.bg-primary-700 {
+  background-color: var(--primary-700);
+}
+
+.bg-primary-800 {
+  background-color: var(--primary-800);
+}
+
+.bg-primary-900 {
+  background-color: var(--primary-900);
+}
+
+/* Gradient Backgrounds for Sidebar */
+.from-primary-700 {
+  --tw-gradient-from: var(--primary-700);
+  --tw-gradient-to: rgb(58 77 60 / 0);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.to-primary-800 {
+  --tw-gradient-to: var(--primary-800);
+}
+
+.from-primary-900\/50 {
+  --tw-gradient-from: rgb(37 48 38 / 0.5);
+  --tw-gradient-to: rgb(37 48 38 / 0);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+/* Border Colors */
+.border-primary-200 {
+  border-color: var(--primary-200);
+}
+
+.border-primary-600 {
+  border-color: var(--primary-600);
+}
+
+/* Border with opacity */
+.border-primary-600\/30 {
+  border-color: rgb(68 93 72 / 0.3);
+}
+
+/* Hover background with opacity */
+.hover\:bg-primary-600\/30:hover {
+  background-color: rgb(68 93 72 / 0.3);
+}
+
+/* Table specific classes */
+.divide-primary-100 > * + * {
+  border-top-color: var(--primary-100);
+}
+
+.divide-primary-200 > * + * {
+  border-top-color: var(--primary-200);
+}
+
+/* Enhanced table styling */
+.table-green-theme {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 
+    0 1px 3px rgba(68, 93, 72, 0.1),
+    0 1px 2px rgba(68, 93, 72, 0.06);
+}
+
+.table-green-theme:hover {
+  box-shadow: 
+    0 4px 6px rgba(68, 93, 72, 0.1),
+    0 2px 4px rgba(68, 93, 72, 0.06);
+}
+
+/* Sidebar special effects */
+.sidebar-active-glow {
+  box-shadow: 
+    0 0 20px rgba(90, 122, 94, 0.3),
+    0 0 40px rgba(90, 122, 94, 0.1);
+}
+
+.sidebar-hover-glow:hover {
+  box-shadow: 
+    0 0 15px rgba(90, 122, 94, 0.2);
+}
+
 /* Modal animations */
 @keyframes fade-in {
   from {

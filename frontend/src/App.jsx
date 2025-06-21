@@ -93,8 +93,8 @@ const FirebaseConfigNotice = ({ missingVars, missingOptionalVars, hasAnalytics }
         <p><strong>⚡ Vite info:</strong> Baca file <code className="bg-yellow-100 px-1 rounded">VITE_MIGRATION.md</code></p>
       </div>
       
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
-        <p className="text-blue-800">
+      <div className="mt-4 p-3 bg-primary-50 border border-primary-200 rounded">
+        <p className="text-primary-800">
                       <strong>💡 Tips:</strong> CRM terhubung dengan Firebase Firestore untuk data real-time.
         </p>
       </div>

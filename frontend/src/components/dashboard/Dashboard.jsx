@@ -12,7 +12,7 @@ const Dashboard = ({ dashboardStats, recentOrders, quickStats }) => {
           title="Total Bookings"
           value={dashboardStats.totalBookings || 0}
           icon={Calendar}
-          color="bg-blue-500"
+          color="bg-gradient-primary"
         />
         <StatCard
           title="Total Revenue"

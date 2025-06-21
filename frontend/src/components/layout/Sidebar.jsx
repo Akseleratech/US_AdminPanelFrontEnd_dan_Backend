@@ -3,73 +3,100 @@ import { LayoutDashboard, ShoppingCart, Building2, MapPin, Settings } from 'luci
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
   return (
-    <div className="w-80 bg-white shadow-lg">
-      <div className="p-4 border-b border-gray-200">
+    <div className="w-80 bg-gradient-to-b from-primary-700 to-primary-800 shadow-2xl relative min-h-screen">
+      <div className="p-6 border-b border-primary-600/30">
         <div className="flex items-center justify-center">
           <img 
             src="/images/logo.png" 
             alt="NextSpace Admin" 
-            className="h-8 w-auto max-w-full object-contain"
+            className="h-10 w-auto max-w-full object-contain brightness-0 invert"
             onError={(e) => {
               e.target.style.display = 'none';
               e.target.nextSibling.style.display = 'block';
             }}
           />
-          <h2 className="text-xl font-bold text-gray-800 hidden">NextSpace Admin</h2>
+          <h2 className="text-xl font-bold text-white hidden">NextSpace Admin</h2>
+        </div>
+        <div className="mt-3 text-center">
+          <p className="text-primary-200 text-sm font-medium tracking-wide">Admin Panel</p>
+          <div className="mt-2 w-16 h-0.5 bg-gradient-primary mx-auto rounded-full opacity-60"></div>
         </div>
       </div>
       
-      <nav className="mt-4">
+      <nav className="p-4 space-y-2">
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`rounded-xl w-full flex items-center px-4 py-3 text-left hover:bg-[#87AB5A] ${
-            activeTab === 'dashboard' ? 'rounded-xl bg-[#B5CB9980] text-[#445D48] border-r-2' : 'text-gray-700'
+          className={`group w-full flex items-center px-4 py-3.5 text-left rounded-xl transition-all duration-200 ${
+            activeTab === 'dashboard' 
+              ? 'bg-gradient-primary text-white shadow-lg transform scale-105 sidebar-active-glow' 
+              : 'text-primary-100 hover:text-white hover:bg-primary-600/30 hover:backdrop-blur-sm sidebar-hover-glow'
           }`}
         >
-          <LayoutDashboard className="w-5 h-5 mr-3" />
-          Dashboard
+          <LayoutDashboard className={`w-5 h-5 mr-4 ${activeTab === 'dashboard' ? 'text-white' : 'text-primary-300 group-hover:text-white'}`} />
+          <span className="font-medium">Dashboard</span>
         </button>
         
         <button
           onClick={() => setActiveTab('orders')}
-          className={`rounded-xl w-full flex items-center px-4 py-3 text-left hover:bg-[#87AB5A] ${
-            activeTab === 'orders' ? 'rounded-xl bg-[#B5CB9980] text-[#445D48] border-r-2' : 'text-gray-700'
+          className={`group w-full flex items-center px-4 py-3.5 text-left rounded-xl transition-all duration-200 ${
+            activeTab === 'orders' 
+              ? 'bg-gradient-primary text-white shadow-lg transform scale-105 sidebar-active-glow' 
+              : 'text-primary-100 hover:text-white hover:bg-primary-600/30 hover:backdrop-blur-sm sidebar-hover-glow'
           }`}
         >
-          <ShoppingCart className="w-5 h-5 mr-3" />
-          Orders
+          <ShoppingCart className={`w-5 h-5 mr-4 ${activeTab === 'orders' ? 'text-white' : 'text-primary-300 group-hover:text-white'}`} />
+          <span className="font-medium">Orders</span>
         </button>
         
         <button
           onClick={() => setActiveTab('spaces')}
-          className={`rounded-xl w-full flex items-center px-4 py-3 text-left hover:bg-[#87AB5A] ${
-            activeTab === 'spaces' ? 'rounded-xl bg-[#B5CB9980] text-[#445D48] border-r-2' : 'text-gray-700'
+          className={`group w-full flex items-center px-4 py-3.5 text-left rounded-xl transition-all duration-200 ${
+            activeTab === 'spaces' 
+              ? 'bg-gradient-primary text-white shadow-lg transform scale-105 sidebar-active-glow' 
+              : 'text-primary-100 hover:text-white hover:bg-primary-600/30 hover:backdrop-blur-sm sidebar-hover-glow'
           }`}
         >
-          <Building2 className="w-5 h-5 mr-3" />
-          Spaces
+          <Building2 className={`w-5 h-5 mr-4 ${activeTab === 'spaces' ? 'text-white' : 'text-primary-300 group-hover:text-white'}`} />
+          <span className="font-medium">Spaces</span>
         </button>
         
         <button
           onClick={() => setActiveTab('cities')}
-          className={`rounded-xl w-full flex items-center px-4 py-3 text-left hover:bg-[#87AB5A] ${
-            activeTab === 'cities' ? 'rounded-xl bg-[#B5CB9980] text-[#445D48] border-r-2' : 'text-gray-700'
+          className={`group w-full flex items-center px-4 py-3.5 text-left rounded-xl transition-all duration-200 ${
+            activeTab === 'cities' 
+              ? 'bg-gradient-primary text-white shadow-lg transform scale-105 sidebar-active-glow' 
+              : 'text-primary-100 hover:text-white hover:bg-primary-600/30 hover:backdrop-blur-sm sidebar-hover-glow'
           }`}
         >
-          <MapPin className="w-5 h-5 mr-3" />
-          Kota
+          <MapPin className={`w-5 h-5 mr-4 ${activeTab === 'cities' ? 'text-white' : 'text-primary-300 group-hover:text-white'}`} />
+          <span className="font-medium">Kota</span>
         </button>
         
         <button
           onClick={() => setActiveTab('services')}
-          className={`rounded-xl w-full flex items-center px-4 py-3 text-left hover:bg-[#87AB5A] ${
-            activeTab === 'services' ? 'rounded-xl bg-[#B5CB9980] text-[#445D48] border-r-2' : 'text-gray-700'
+          className={`group w-full flex items-center px-4 py-3.5 text-left rounded-xl transition-all duration-200 ${
+            activeTab === 'services' 
+              ? 'bg-gradient-primary text-white shadow-lg transform scale-105 sidebar-active-glow' 
+              : 'text-primary-100 hover:text-white hover:bg-primary-600/30 hover:backdrop-blur-sm sidebar-hover-glow'
           }`}
         >
-          <Settings className="w-5 h-5 mr-3" />
-          Layanan
+          <Settings className={`w-5 h-5 mr-4 ${activeTab === 'services' ? 'text-white' : 'text-primary-300 group-hover:text-white'}`} />
+          <span className="font-medium">Layanan</span>
         </button>
       </nav>
+      
+      {/* Footer */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-primary-600/30 bg-gradient-to-t from-primary-900/50 to-transparent">
+        <div className="text-center">
+          <div className="w-12 h-0.5 bg-gradient-primary mx-auto rounded-full opacity-40 mb-3"></div>
+          <p className="text-primary-300 text-xs font-medium tracking-wide">
+            UnionSpace Admin-Dashboard v0.1
+          </p>
+          <p className="text-primary-400 text-xs mt-1 opacity-75">
+            © 2024 All rights reserved
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

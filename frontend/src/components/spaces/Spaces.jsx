@@ -21,7 +21,7 @@ const Spaces = ({ spaces, onEdit, onDelete, onAddNew }) => {
             <input
               type="text"
               placeholder="Search spaces..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
             />
           </div>
           <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
@@ -31,7 +31,7 @@ const Spaces = ({ spaces, onEdit, onDelete, onAddNew }) => {
         </div>
         <button
           onClick={() => onAddNew()}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
         >
           <Plus className="w-4 h-4 mr-2" />
           Tambah Space

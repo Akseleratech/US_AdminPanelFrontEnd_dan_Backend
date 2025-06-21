@@ -4,29 +4,29 @@ import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
 const SpacesTable = ({ spaces, onEdit, onDelete }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-[#B5CB9980]">
+    <div className="bg-white border border-primary-200 table-green-theme">
+      <table className="min-w-full divide-y divide-primary-200">
+        <thead className="bg-primary-50 border-b border-primary-200">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Name</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Brand</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Category</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Location</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Capacity</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Daily Price</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Status</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-black-500 uppercase tracking-wider">Actions</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Name</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Brand</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Category</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Location</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Capacity</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Daily Price</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Status</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white divide-y divide-primary-100">
           {spaces && spaces.length > 0 ? (
             spaces.map((space) => (
-              <tr key={space.id} className="hover:bg-gray-50">
+              <tr key={space.id} className="hover:bg-primary-50 transition-colors duration-150">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {space.name}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
                     {space.brand}
                   </span>
                 </td>
@@ -56,7 +56,7 @@ const SpacesTable = ({ spaces, onEdit, onDelete }) => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
-                    <button className="text-blue-600 hover:text-blue-900">
+                    <button className="text-primary-600 hover:text-primary-800">
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
