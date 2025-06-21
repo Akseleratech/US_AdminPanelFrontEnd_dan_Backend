@@ -192,17 +192,17 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, city = null, loading = fal
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-semibold">
+    <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 bg-gray-50/50">
+          <h2 className="text-xl font-semibold text-gray-900">
             {city ? 'Edit City/Regency' : 'Add New City/Regency'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -325,11 +325,11 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, city = null, loading = fal
           </form>
         </div>
 
-        <div className="flex justify-end space-x-4 p-6 border-t bg-gray-50">
+        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
             disabled={loading}
           >
             Cancel
@@ -338,7 +338,7 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, city = null, loading = fal
             type="submit"
             onClick={handleSubmit}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/25 transition-all duration-200"
           >
             {loading ? 'Saving...' : (city ? 'Update City' : 'Create City')}
           </button>
