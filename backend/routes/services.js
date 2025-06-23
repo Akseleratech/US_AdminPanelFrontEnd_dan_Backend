@@ -42,12 +42,20 @@ router.get('/', async (req, res) => {
     snapshot.forEach(doc => {
       const data = doc.data();
       
-      // Count spaces using this service
-      const serviceSpaces = spacesData.filter(space => 
-        space.category === data.serviceId || 
-        space.category === data.name ||
-        space.serviceId === data.serviceId
-      );
+      // Count spaces using this service (enhanced matching)
+      const serviceSpaces = spacesData.filter(space => {
+        // Direct category match with service name (most common)
+        if (space.category === data.name) return true;
+        
+        // Alternative matches for backwards compatibility
+        if (space.category === data.serviceId || space.serviceId === data.serviceId) return true;
+        
+        // Case-insensitive match
+        if (space.category && data.name && 
+            space.category.toLowerCase() === data.name.toLowerCase()) return true;
+            
+        return false;
+      });
       
       const activeSpaces = serviceSpaces.filter(space => space.isActive === true);
       
@@ -116,9 +124,21 @@ router.get('/:id', async (req, res) => {
     
     spacesSnapshot.forEach(spaceDoc => {
       const spaceData = spaceDoc.data();
-      if (spaceData.category === data.serviceId || 
-          spaceData.category === data.name ||
-          spaceData.serviceId === data.serviceId) {
+      
+      // Enhanced matching logic (same as in getAll)
+      let isMatch = false;
+      
+      // Direct category match with service name (most common)
+      if (spaceData.category === data.name) isMatch = true;
+      
+      // Alternative matches for backwards compatibility
+      if (spaceData.category === data.serviceId || spaceData.serviceId === data.serviceId) isMatch = true;
+      
+      // Case-insensitive match
+      if (spaceData.category && data.name && 
+          spaceData.category.toLowerCase() === data.name.toLowerCase()) isMatch = true;
+      
+      if (isMatch) {
         serviceSpaces.push(spaceData);
         if (spaceData.isActive === true) {
           activeSpaces.push(spaceData);

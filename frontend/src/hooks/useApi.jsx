@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { dashboardAPI, ordersAPI, spacesAPI, citiesAPI, servicesAPI } from '../services/api.jsx';
+import { dashboardAPI, ordersAPI, citiesAPI, servicesAPI } from '../services/api.jsx';
 
 export const useApi = (activeTab) => {
   const [loading, setLoading] = useState(false);
@@ -9,7 +9,6 @@ export const useApi = (activeTab) => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [quickStats, setQuickStats] = useState({});
   const [orders, setOrders] = useState([]);
-  const [spaces, setSpaces] = useState([]);
   const [cities, setCities] = useState([]);
   const [services, setServices] = useState([]);
 
@@ -28,9 +27,6 @@ export const useApi = (activeTab) => {
       } else if (activeTab === 'orders') {
         const ordersRes = await ordersAPI.getAll();
         setOrders(ordersRes.data);
-      } else if (activeTab === 'spaces') {
-        const spacesRes = await spacesAPI.getAll();
-        setSpaces(spacesRes.data);
       } else if (activeTab === 'cities') {
         const citiesRes = await citiesAPI.getAll();
         setCities(citiesRes.data);
@@ -54,10 +50,7 @@ export const useApi = (activeTab) => {
     if (!window.confirm('Are you sure you want to delete this item?')) return;
     
     try {
-      if (type === 'space') {
-        await spacesAPI.delete(id);
-        setSpaces(spaces.filter(s => s.id !== id));
-      } else if (type === 'city') {
+      if (type === 'city') {
         await citiesAPI.delete(id);
         setCities(cities.filter(c => c.id !== id));
       } else if (type === 'service') {
@@ -76,7 +69,6 @@ export const useApi = (activeTab) => {
     recentOrders,
     quickStats,
     orders,
-    spaces,
     cities,
     services,
     handleDelete,

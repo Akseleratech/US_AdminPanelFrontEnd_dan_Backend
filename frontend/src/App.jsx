@@ -131,16 +131,15 @@ const AdminPanel = () => {
         totalSpaces: 0,
         totalUsers: 0
       },
-      recentOrders: [],
-      quickStats: {
-        pendingOrders: 0,
-        completedToday: 0,
-        activeSpaces: 0,
-        revenue: 0
-      },
-      orders: [],
-      spaces: [],
-      cities: [],
+          recentOrders: [],
+    quickStats: {
+      pendingOrders: 0,
+      completedToday: 0,
+      activeSpaces: 0,
+      revenue: 0
+    },
+    orders: [],
+    cities: [],
       services: [],
       handleDelete: () => alert('Feature not available without Firebase')
     };
@@ -152,7 +151,6 @@ const AdminPanel = () => {
     recentOrders,
     quickStats,
     orders,
-    spaces,
     cities,
     services,
     handleDelete
@@ -182,7 +180,7 @@ const AdminPanel = () => {
       case 'orders':
         return <Orders orders={orders} />;
       case 'spaces':
-        return <Spaces spaces={spaces} />;
+        return <Spaces />;
       case 'cities':
         return <Cities />;
       case 'services':
