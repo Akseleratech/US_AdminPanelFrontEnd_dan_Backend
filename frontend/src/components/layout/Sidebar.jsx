@@ -93,7 +93,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             UnionSpace Admin-Dashboard v0.1
           </p>
           <p className="text-primary-400 text-xs mt-1 opacity-75">
-            © 2024 All rights reserved
+            © 2025 All rights reserved
           </p>
         </div>
       </div>

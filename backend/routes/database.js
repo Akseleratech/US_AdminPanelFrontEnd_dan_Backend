@@ -1,70 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const DatabaseStructureCreator = require('../scripts/createDatabaseStructure');
-const RefBasedDatabaseSeeder = require('../scripts/seedRefDatabase');
-
-// POST /api/database/create-structure
-router.post('/create-structure', async (req, res) => {
-  try {
-    const creator = new DatabaseStructureCreator();
-    const results = await creator.createAllStructures();
-    
-    res.json({
-      success: true,
-      message: 'Database structure created successfully',
-      data: results,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create database structure',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/database/validate
-router.get('/validate', async (req, res) => {
-  try {
-    const creator = new DatabaseStructureCreator();
-    await creator.validateStructure();
-    
-    res.json({
-      success: true,
-      message: 'Database structure is valid',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Database structure validation failed',
-      error: error.message
-    });
-  }
-});
-
-// DELETE /api/database/clear/:collection
-router.delete('/clear/:collection', async (req, res) => {
-  try {
-    const { collection } = req.params;
-    const refSeeder = new RefBasedDatabaseSeeder();
-    
-    await refSeeder.clearCollection(collection);
-    
-    res.json({
-      success: true,
-      message: `Collection ${collection} cleared successfully`,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: `Failed to clear collection ${collection}`,
-      error: error.message
-    });
-  }
-});
 
 // GET /api/database/status
 router.get('/status', async (req, res) => {
@@ -106,45 +41,33 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// POST /api/database/seed-ref (Main seeder - uses reference files)
-router.post('/seed-ref', async (req, res) => {
+// DELETE /api/database/clear/:collection
+router.delete('/clear/:collection', async (req, res) => {
   try {
-    const { clearFirst = false } = req.body;
-    const refSeeder = new RefBasedDatabaseSeeder();
+    const { collection } = req.params;
+    const { db } = require('../config/firebase');
     
-    await refSeeder.seedAll({ clearFirst });
+    // Get all documents in the collection
+    const snapshot = await db.collection(collection).get();
+    
+    // Delete all documents
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
     
     res.json({
       success: true,
-      message: 'Reference-based database seeded successfully',
-      timestamp: new Date().toISOString(),
-      collections: ['cities', 'layanan', 'spaces']
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to seed reference-based database',
-      error: error.message
-    });
-  }
-});
-
-// POST /api/database/validate-ref
-router.post('/validate-ref', async (req, res) => {
-  try {
-    const refSeeder = new RefBasedDatabaseSeeder();
-    const validation = await refSeeder.validateStructure();
-    
-    res.json({
-      success: true,
-      message: 'Reference database structure validated',
-      validation: validation,
+      message: `Collection ${collection} cleared successfully`,
+      deletedCount: snapshot.size,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to validate reference database structure',
+      message: `Failed to clear collection ${collection}`,
       error: error.message
     });
   }

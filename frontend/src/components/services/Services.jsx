@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Plus } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import ServicesTable from './ServicesTable.jsx';
 import ServiceModal from './ServiceModal.jsx';
 import useServices from '../../hooks/useServices.js';
@@ -121,13 +121,6 @@ const Services = () => {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
             />
           </div>
-          <button 
-            onClick={refreshServices}
-            className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Refresh
-          </button>
         </div>
         <button
           onClick={handleAddNew}
