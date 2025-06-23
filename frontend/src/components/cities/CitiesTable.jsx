@@ -9,6 +9,7 @@ const CitiesTable = ({ cities, onEdit, onDelete }) => {
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Kota/Kabupaten</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Provinsi</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Negara</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Jumlah Lokasi</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Total Spaces</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
@@ -19,6 +20,9 @@ const CitiesTable = ({ cities, onEdit, onDelete }) => {
             <tr key={city.id} className="hover:bg-primary-50 transition-colors duration-150">
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{city.name}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{city.province || '-'}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {typeof city.country === 'object' ? city.country.name : city.country || '-'}
+              </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{city.locations}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{city.totalSpaces}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
