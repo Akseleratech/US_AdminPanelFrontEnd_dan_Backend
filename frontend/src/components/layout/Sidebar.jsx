@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, ShoppingCart, Building2, MapPin, Settings } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Building2, MapPin, Settings, LayoutGrid } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
   return (
@@ -56,8 +56,20 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
               : 'text-primary-100 hover:text-white hover:bg-primary-600/30 hover:backdrop-blur-sm sidebar-hover-glow'
           }`}
         >
-          <Building2 className={`w-5 h-5 mr-4 ${activeTab === 'spaces' ? 'text-white' : 'text-primary-300 group-hover:text-white'}`} />
+          <LayoutGrid className={`w-5 h-5 mr-4 ${activeTab === 'spaces' ? 'text-white' : 'text-primary-300 group-hover:text-white'}`} />
           <span className="font-medium">Spaces</span>
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('buildings')}
+          className={`group w-full flex items-center px-4 py-3.5 text-left rounded-xl transition-all duration-200 ${
+            activeTab === 'buildings' 
+              ? 'bg-gradient-primary text-white shadow-lg transform scale-105 sidebar-active-glow' 
+              : 'text-primary-100 hover:text-white hover:bg-primary-600/30 hover:backdrop-blur-sm sidebar-hover-glow'
+          }`}
+        >
+          <Building2 className={`w-5 h-5 mr-4 ${activeTab === 'buildings' ? 'text-white' : 'text-primary-300 group-hover:text-white'}`} />
+          <span className="font-medium">Lokasi/Gedung</span>
         </button>
         
         <button

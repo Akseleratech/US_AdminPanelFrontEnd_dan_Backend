@@ -8,6 +8,7 @@ import LoadingSpinner from './components/common/LoadingSpinner.jsx';
 import Dashboard from './components/dashboard/Dashboard.jsx';
 import Orders from './components/orders/Orders.jsx';
 import Spaces from './components/spaces/Spaces.jsx';
+import Buildings from './components/spaces/Buildings.jsx';
 import Cities from './components/cities/Cities.jsx';
 import Services from './components/services/Services.jsx';
 
@@ -184,6 +185,8 @@ const AdminPanel = () => {
         return <Orders orders={orders} />;
       case 'spaces':
         return <Spaces />;
+      case 'buildings':
+        return <Buildings />;
       case 'cities':
         return <Cities />;
       case 'services':
