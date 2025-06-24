@@ -6,7 +6,7 @@ router.get('/status', async (req, res) => {
   try {
     const { db } = require('../config/firebase');
     
-    const collections = ['cities', 'layanan', 'spaces', 'orders', 'users'];
+    const collections = ['cities', 'layanan', 'spaces', 'orders', 'users', 'amenities'];
     const status = {};
     
     for (const collection of collections) {

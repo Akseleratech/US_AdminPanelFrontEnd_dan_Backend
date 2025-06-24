@@ -314,95 +314,109 @@ const Cities = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Cities Filter */}
-            <div className="space-y-2">
-              <h4 className="font-medium text-gray-700 flex items-center">
-                Kota/Kabupaten
-                {selectedCities.size > 0 && (
-                  <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                    {selectedCities.size}
-                  </span>
-                )}
-              </h4>
-              <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2 space-y-1">
-                {filterOptions.cities
-                  .filter(city => city.toLowerCase().includes(filterSearch.toLowerCase()))
-                  .map(city => (
-                    <label key={city} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedCities.has(city)}
-                        onChange={() => handleFilterToggle('city', city)}
-                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                      />
-                      <span className="text-sm text-gray-700">{city}</span>
-                    </label>
-                  ))}
-                {filterOptions.cities.filter(city => city.toLowerCase().includes(filterSearch.toLowerCase())).length === 0 && (
-                  <div className="text-sm text-gray-500 p-2">No cities found</div>
-                )}
+            {filterOptions.cities.filter(city => city.toLowerCase().includes(filterSearch.toLowerCase())).length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-700 flex items-center">
+                  Kota/Kabupaten
+                  {selectedCities.size > 0 && (
+                    <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                      {selectedCities.size}
+                    </span>
+                  )}
+                </h4>
+                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2 space-y-1">
+                  {filterOptions.cities
+                    .filter(city => city.toLowerCase().includes(filterSearch.toLowerCase()))
+                    .map(city => (
+                      <label key={city} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedCities.has(city)}
+                          onChange={() => handleFilterToggle('city', city)}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700">{city}</span>
+                      </label>
+                    ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Provinces Filter */}
-            <div className="space-y-2">
-              <h4 className="font-medium text-gray-700 flex items-center">
-                Provinsi
-                {selectedProvinces.size > 0 && (
-                  <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                    {selectedProvinces.size}
-                  </span>
-                )}
-              </h4>
-              <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2 space-y-1">
-                {filterOptions.provinces
-                  .filter(province => province.toLowerCase().includes(filterSearch.toLowerCase()))
-                  .map(province => (
-                    <label key={province} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedProvinces.has(province)}
-                        onChange={() => handleFilterToggle('province', province)}
-                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                      />
-                      <span className="text-sm text-gray-700">{province}</span>
-                    </label>
-                  ))}
-                {filterOptions.provinces.filter(province => province.toLowerCase().includes(filterSearch.toLowerCase())).length === 0 && (
-                  <div className="text-sm text-gray-500 p-2">No provinces found</div>
-                )}
+            {filterOptions.provinces.filter(province => province.toLowerCase().includes(filterSearch.toLowerCase())).length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-700 flex items-center">
+                  Provinsi
+                  {selectedProvinces.size > 0 && (
+                    <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                      {selectedProvinces.size}
+                    </span>
+                  )}
+                </h4>
+                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2 space-y-1">
+                  {filterOptions.provinces
+                    .filter(province => province.toLowerCase().includes(filterSearch.toLowerCase()))
+                    .map(province => (
+                      <label key={province} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedProvinces.has(province)}
+                          onChange={() => handleFilterToggle('province', province)}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700">{province}</span>
+                      </label>
+                    ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Countries Filter */}
-            <div className="space-y-2">
-              <h4 className="font-medium text-gray-700 flex items-center">
-                Negara
-                {selectedCountries.size > 0 && (
-                  <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                    {selectedCountries.size}
-                  </span>
-                )}
-              </h4>
-              <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2 space-y-1">
-                {filterOptions.countries
-                  .filter(country => country.toLowerCase().includes(filterSearch.toLowerCase()))
-                  .map(country => (
-                    <label key={country} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedCountries.has(country)}
-                        onChange={() => handleFilterToggle('country', country)}
-                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                      />
-                      <span className="text-sm text-gray-700">{country}</span>
-                    </label>
-                  ))}
-                {filterOptions.countries.filter(country => country.toLowerCase().includes(filterSearch.toLowerCase())).length === 0 && (
-                  <div className="text-sm text-gray-500 p-2">No countries found</div>
-                )}
+            {filterOptions.countries.filter(country => country.toLowerCase().includes(filterSearch.toLowerCase())).length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-700 flex items-center">
+                  Negara
+                  {selectedCountries.size > 0 && (
+                    <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                      {selectedCountries.size}
+                    </span>
+                  )}
+                </h4>
+                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2 space-y-1">
+                  {filterOptions.countries
+                    .filter(country => country.toLowerCase().includes(filterSearch.toLowerCase()))
+                    .map(country => (
+                      <label key={country} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedCountries.has(country)}
+                          onChange={() => handleFilterToggle('country', country)}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700">{country}</span>
+                      </label>
+                    ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
+
+          {/* No Results Message */}
+          {filterSearch && 
+           filterOptions.cities.filter(city => city.toLowerCase().includes(filterSearch.toLowerCase())).length === 0 &&
+           filterOptions.provinces.filter(province => province.toLowerCase().includes(filterSearch.toLowerCase())).length === 0 &&
+           filterOptions.countries.filter(country => country.toLowerCase().includes(filterSearch.toLowerCase())).length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <Search className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm">No filter options found for "{filterSearch}"</p>
+              <button
+                onClick={() => setFilterSearch('')}
+                className="mt-2 text-sm text-primary-600 hover:text-primary-800"
+              >
+                Clear search
+              </button>
+            </div>
+          )}
 
           {/* Filter Summary */}
           {getActiveFilterCount() > 0 && (
