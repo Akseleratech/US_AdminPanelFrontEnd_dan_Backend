@@ -715,9 +715,9 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category *
+                  Layanan *
                   <span className="text-xs text-gray-500">
-                    {availableServices.length > 0 ? '(berdasarkan layanan yang tersedia)' : '(default categories)'}
+                    {availableServices.length > 0 ? '(berdasarkan layanan yang tersedia)' : '(loading services...)'}
                   </span>
                 </label>
                 <select
@@ -727,18 +727,32 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 >
-                  <option value="">Select Category</option>
+                  <option value="">Pilih Layanan</option>
                   
-                  {/* Always use fallback categories to match backend validation */}
-                  {fallbackCategories.map(category => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
+                  {/* Use services from database if available */}
+                  {availableServices.length > 0 ? (
+                    availableServices
+                      .filter(service => service.status === 'published') // Only show published services
+                      .map(service => (
+                        <option key={service.id || service.serviceId} value={service.name}>
+                          {service.name}
+                        </option>
+                      ))
+                  ) : (
+                    // Fallback categories if services are not loaded yet
+                    fallbackCategories.map(category => (
+                      <option key={category.value} value={category.value}>
+                        {category.label}
+                      </option>
+                    ))
+                  )}
                 </select>
                 
                 <p className="mt-1 text-xs text-gray-500">
-                  Select from predefined categories that match backend validation
+                  {availableServices.length > 0 
+                    ? `${availableServices.filter(s => s.status === 'published').length} jenis layanan tersedia`
+                    : 'Memuat data layanan dari database...'
+                  }
                 </p>
               </div>
 

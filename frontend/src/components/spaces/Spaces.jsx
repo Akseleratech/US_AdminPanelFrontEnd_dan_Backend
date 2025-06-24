@@ -3,6 +3,7 @@ import { Search, Plus } from 'lucide-react';
 import SpacesTable from './SpacesTable.jsx';
 import SpaceModal from './SpaceModal.jsx';
 import useSpaces from '../../hooks/useSpaces.js';
+import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext.jsx';
 
 const Spaces = () => {
   const {
@@ -16,6 +17,9 @@ const Spaces = () => {
     deleteSpace,
     refresh: refreshSpaces
   } = useSpaces();
+
+  // Global refresh context
+  const { refreshRelatedToSpaces } = useGlobalRefresh();
 
   const [showSpaceModal, setShowSpaceModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
@@ -59,6 +63,11 @@ const Spaces = () => {
         console.log('Spaces: Calling createSpace...');
         const result = await createSpace(spaceData);
         console.log('Spaces: createSpace result:', result);
+        
+        // Trigger global refresh untuk cities (karena mungkin ada auto-created city)
+        console.log('🔄 Spaces: Triggering global refresh for related components (cities)...');
+        refreshRelatedToSpaces();
+        
         showNotification('Space baru berhasil ditambahkan', 'success');
       } else {
         console.log('Spaces: Calling updateSpace...');

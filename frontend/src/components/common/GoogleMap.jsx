@@ -170,6 +170,70 @@ const GoogleMap = ({
     }
   }, [onLocationSelect]);
 
+  // Function to clean city/regency names by removing administrative prefixes
+  const cleanCityName = (rawCityName) => {
+    if (!rawCityName) return '';
+    
+    // List of prefixes to remove (case insensitive)
+    const prefixesToRemove = [
+      'Kabupaten ', 'Kab. ', 'Kab ', 
+      'Kota ', 'Kotamadya ',
+      'Provinsi ', 'Prov. ', 'Prov ',
+      'Daerah Istimewa ', 'DI ', 
+      'Daerah Khusus Ibukota ', 'DKI '
+    ];
+    
+    let cleanedName = rawCityName;
+    
+    // Remove prefixes (case insensitive)
+    prefixesToRemove.forEach(prefix => {
+      const regex = new RegExp(`^${prefix}`, 'i');
+      cleanedName = cleanedName.replace(regex, '');
+    });
+    
+    // Trim any extra spaces
+    cleanedName = cleanedName.trim();
+    
+    console.log(`🧹 City name cleaned: "${rawCityName}" → "${cleanedName}"`);
+    return cleanedName;
+  };
+
+  // Function to clean province names
+  const cleanProvinceName = (rawProvinceName) => {
+    if (!rawProvinceName) return '';
+    
+    // List of prefixes to remove for provinces
+    const prefixesToRemove = [
+      'Provinsi ', 'Prov. ', 'Prov ',
+      'Daerah Istimewa ', 'DI ',
+      'Daerah Khusus Ibukota ', 'DKI '
+    ];
+    
+    let cleanedName = rawProvinceName;
+    
+    // Remove prefixes (case insensitive) 
+    prefixesToRemove.forEach(prefix => {
+      const regex = new RegExp(`^${prefix}`, 'i');
+      cleanedName = cleanedName.replace(regex, '');
+    });
+    
+    // Special cases for common Indonesian provinces
+    const specialCases = {
+      'Jakarta': 'DKI Jakarta',
+      'Yogyakarta': 'DI Yogyakarta',
+      'Aceh': 'Aceh'
+    };
+    
+    // Check if cleaned name matches special cases
+    if (specialCases[cleanedName]) {
+      cleanedName = specialCases[cleanedName];
+    }
+    
+    cleanedName = cleanedName.trim();
+    console.log(`🧹 Province name processed: "${rawProvinceName}" → "${cleanedName}"`);
+    return cleanedName;
+  };
+
   // Parse address components from Google Geocoding result
   const parseAddressComponents = (geocodeResult, position) => {
     let address = '';
@@ -191,11 +255,11 @@ const GoogleMap = ({
           const types = component.types;
           
           if (types.includes('administrative_area_level_2') || types.includes('locality')) {
-            // City/Kabupaten
-            city = component.long_name;
+            // City/Kabupaten - clean the name
+            city = cleanCityName(component.long_name);
           } else if (types.includes('administrative_area_level_1')) {
-            // Province/State
-            province = component.long_name;
+            // Province/State - clean the name  
+            province = cleanProvinceName(component.long_name);
           } else if (types.includes('postal_code')) {
             // Postal Code
             postalCode = component.long_name;
@@ -211,6 +275,17 @@ const GoogleMap = ({
     if (address.endsWith(', Indonesia')) {
       address = address.replace(', Indonesia', '');
     }
+
+    // Debug logging
+    console.log('📍 Google Maps Location Data:', {
+      originalAddress: geocodeResult.formatted_address,
+      cleanedAddress: address,
+      city: city,
+      province: province,
+      postalCode: postalCode,
+      country: country,
+      coordinates: position
+    });
 
     // Send complete location data
     onLocationSelect && onLocationSelect({

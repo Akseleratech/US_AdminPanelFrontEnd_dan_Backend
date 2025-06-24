@@ -11,6 +11,9 @@ import Spaces from './components/spaces/Spaces.jsx';
 import Cities from './components/cities/Cities.jsx';
 import Services from './components/services/Services.jsx';
 
+// Contexts
+import { GlobalRefreshProvider } from './contexts/GlobalRefreshContext.jsx';
+
 // Custom Hook
 import { useApi } from './hooks/useApi.jsx';
 
@@ -231,7 +234,11 @@ const AdminPanel = () => {
 };
 
 const App = () => {
-  return <AdminPanel />;
+  return (
+    <GlobalRefreshProvider>
+      <AdminPanel />
+    </GlobalRefreshProvider>
+  );
 };
 
 export default App; 

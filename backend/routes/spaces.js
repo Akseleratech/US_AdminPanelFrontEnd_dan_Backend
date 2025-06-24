@@ -10,7 +10,7 @@ const spaceValidationSchema = {
   name: { type: 'string', required: true, minLength: 2, maxLength: 100 },
   description: { type: 'string', required: false, maxLength: 1000 },
   brand: { type: 'string', required: true, enum: ['NextSpace', 'UnionSpace', 'CoSpace'] },
-  category: { type: 'string', required: true, enum: ['co-working', 'meeting-room', 'private-office', 'event-space', 'phone-booth'] },
+  category: { type: 'string', required: true }, // Validated dynamically against services collection
   spaceType: { type: 'string', required: true, enum: ['open-space', 'private-room', 'meeting-room', 'event-hall', 'phone-booth'] },
   capacity: { type: 'number', required: true, min: 1, max: 1000 },
   location: {
@@ -40,6 +40,7 @@ const spaceValidationSchema = {
 
 // Data validation function
 function validateSpaceData(data, isUpdate = false) {
+  console.log('🔍 validateSpaceData called with:', JSON.stringify(data, null, 2));
   const errors = [];
   
   // Basic required fields validation
@@ -60,10 +61,7 @@ function validateSpaceData(data, isUpdate = false) {
     errors.push('Brand must be one of: NextSpace, UnionSpace, CoSpace');
   }
   
-  // Category validation
-  if (data.category && !['co-working', 'meeting-room', 'private-office', 'event-space', 'phone-booth'].includes(data.category)) {
-    errors.push('Invalid category');
-  }
+  // Category validation will be done dynamically in the route handler
   
   // Capacity validation
   if (data.capacity && (isNaN(data.capacity) || data.capacity < 1 || data.capacity > 1000)) {
@@ -111,6 +109,7 @@ function validateSpaceData(data, isUpdate = false) {
     });
   }
   
+  console.log('🔍 validateSpaceData returning errors:', errors);
   return errors;
 }
 
@@ -189,6 +188,22 @@ async function validateCityExists(cityName) {
   }
 }
 
+// Check if category/service exists
+async function validateServiceExists(serviceName) {
+  try {
+    const serviceSnapshot = await db.collection('layanan')
+      .where('name', '==', serviceName)
+      .where('status', '==', 'published')
+      .limit(1)
+      .get();
+    
+    return !serviceSnapshot.empty;
+  } catch (error) {
+    console.warn('Could not validate service existence:', error);
+    return true; // Allow if validation fails
+  }
+}
+
 // Check for duplicate space names in same city
 async function checkDuplicateSpace(name, city, excludeId = null) {
   try {
@@ -207,6 +222,56 @@ async function checkDuplicateSpace(name, city, excludeId = null) {
   } catch (error) {
     console.warn('Could not check for duplicate spaces:', error);
     return false; // Allow if check fails
+  }
+}
+
+// Helper function to generate sequential space ID
+async function generateSequentialSpaceId() {
+  try {
+    const year = new Date().getFullYear();
+    const counterRef = db.collection('counters').doc('spaces');
+    
+    const result = await db.runTransaction(async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      
+      let lastId = 1;
+      let currentYear = year;
+      
+      if (counterDoc.exists) {
+        const data = counterDoc.data();
+        lastId = data.lastId + 1;
+        currentYear = data.year;
+        
+        // Reset counter if year changed
+        if (currentYear !== year) {
+          lastId = 1;
+          currentYear = year;
+        }
+      }
+      
+      const yearSuffix = year.toString().slice(-2); // Last 2 digits of year
+      const sequence = String(lastId).padStart(3, '0'); // 3-digit sequence with leading zeros
+      const spaceId = `SPC${yearSuffix}${sequence}`; // Format: SPC25001
+      
+      // Update counter
+      transaction.set(counterRef, {
+        lastId: lastId,
+        year: currentYear,
+        updatedAt: new Date()
+      });
+      
+      return spaceId;
+    });
+    
+    console.log(`✅ Generated sequential space ID: ${result}`);
+    return result;
+    
+  } catch (error) {
+    console.error('Error generating sequential space ID:', error);
+    // Fallback to timestamp-based ID if sequential fails
+    const fallbackId = `SPC${Date.now().toString().slice(-6)}`;
+    console.log(`⚠️  Using fallback ID: ${fallbackId}`);
+    return fallbackId;
   }
 }
 
@@ -443,17 +508,102 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Helper function to find or create city based on Google Maps data
+async function findOrCreateCity(locationData) {
+  try {
+    console.log('🏙️  findOrCreateCity: Function called with data:', JSON.stringify(locationData, null, 2));
+    
+    const { city, province, country } = locationData;
+    
+    console.log('🏙️  findOrCreateCity: Extracted values - city:', city, 'province:', province, 'country:', country);
+    
+    if (!city || !province || !country) {
+      const errorMsg = `Missing required fields: city=${city}, province=${province}, country=${country}`;
+      console.error('❌ findOrCreateCity: Validation failed -', errorMsg);
+      throw new Error('City, province, and country are required to create/find city');
+    }
+
+    // First, try to find existing city
+    const existingCitySnapshot = await db.collection('cities')
+      .where('name', '==', city)
+      .where('province', '==', province)
+      .where('country', '==', country)
+      .limit(1)
+      .get();
+
+    if (!existingCitySnapshot.empty) {
+      // City exists, return the existing city data
+      const existingCityDoc = existingCitySnapshot.docs[0];
+      console.log(`✅ Found existing city: ${city}, ${province}, ${country}`);
+      return {
+        id: existingCityDoc.id,
+        ...existingCityDoc.data(),
+        existed: true
+      };
+    }
+
+    // City doesn't exist, create new one
+    console.log(`🆕 Creating new city: ${city}, ${province}, ${country}`);
+    
+    const cityId = `CTY${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const newCityData = {
+      cityId,
+      name: city,
+      province,
+      country,
+      postalCodes: locationData.postalCode ? [locationData.postalCode] : [],
+      timezone: 'Asia/Jakarta', // Default timezone - can be enhanced later
+      utcOffset: '+07:00',
+      statistics: {
+        totalSpaces: 0,
+        activeSpaces: 0
+      },
+      search: {
+        keywords: [city.toLowerCase(), province.toLowerCase()],
+        aliases: [],
+        slug: city.toLowerCase().replace(/\s+/g, '-'),
+        metaTitle: `Co-working Spaces in ${city}`,
+        metaDescription: `Find and book workspaces in ${city}, ${province}`
+      },
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'auto_maps_api'
+    };
+
+    // Save to database
+    await db.collection('cities').doc(cityId).set(newCityData);
+
+    console.log(`✅ Successfully created new city: ${cityId}`);
+    
+    return {
+      id: cityId,
+      ...newCityData,
+      existed: false
+    };
+  } catch (error) {
+    console.error('Error in findOrCreateCity:', error);
+    // Don't throw error, just log warning and continue
+    console.warn(`⚠️  Could not create/find city for: ${locationData.city}, continuing with space creation`);
+    return null;
+  }
+}
+
 // POST /api/spaces
 router.post('/', async (req, res) => {
   try {
+    console.log('🔍 POST /spaces: Received raw data:', JSON.stringify(req.body, null, 2));
     const rawData = req.body;
     
     // Sanitize input data
     const sanitizedData = sanitizeSpaceData(rawData);
+    console.log('🔍 POST /spaces: Sanitized data:', JSON.stringify(sanitizedData, null, 2));
     
     // Validate input data
     const validationErrors = validateSpaceData(sanitizedData);
+    console.log('🔍 POST /spaces: Validation errors from validateSpaceData:', validationErrors);
     if (validationErrors.length > 0) {
+      console.log('🔍 POST /spaces: Returning validation errors:', validationErrors);
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
@@ -464,16 +614,18 @@ router.post('/', async (req, res) => {
     // Additional business logic validations
     const businessValidations = [];
     
+    // Validate service/category exists in services collection
+    if (sanitizedData.category) {
+      const serviceExists = await validateServiceExists(sanitizedData.category);
+      if (!serviceExists) {
+        businessValidations.push(`Service "${sanitizedData.category}" does not exist or is not published. Please select a valid service from the available list.`);
+      }
+    }
+    
     // Check for duplicate space names in same city (strict validation)
     const isDuplicate = await checkDuplicateSpace(sanitizedData.name, sanitizedData.location.city);
     if (isDuplicate) {
       businessValidations.push(`A space with name "${sanitizedData.name}" already exists in ${sanitizedData.location.city}`);
-    }
-    
-    // City validation (warning only, not blocking)
-    const cityExists = await validateCityExists(sanitizedData.location.city);
-    if (!cityExists) {
-      console.warn(`⚠️  Warning: City "${sanitizedData.location.city}" not found in cities collection, but allowing creation`);
     }
     
     if (businessValidations.length > 0) {
@@ -484,8 +636,28 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Generate space ID
-    const spaceId = sanitizedData.spaceId || `space_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // AUTO-CREATE CITY: Find or create city based on location data
+    console.log('🔍 POST /spaces: Starting auto-create city process...');
+    console.log('🔍 POST /spaces: Location data:', JSON.stringify(sanitizedData.location, null, 2));
+    
+    const cityResult = await findOrCreateCity(sanitizedData.location);
+    console.log('🔍 POST /spaces: findOrCreateCity result:', cityResult);
+    
+    let cityMessage = '';
+    if (cityResult) {
+      if (cityResult.existed) {
+        cityMessage = ` (City "${sanitizedData.location.city}" already exists)`;
+        console.log('✅ POST /spaces: Using existing city');
+      } else {
+        cityMessage = ` (New city "${sanitizedData.location.city}" created automatically)`;
+        console.log('🆕 POST /spaces: New city created successfully');
+      }
+    } else {
+      console.log('❌ POST /spaces: findOrCreateCity returned null - city creation failed');
+    }
+
+    // Generate space ID using new sequential format
+    const spaceId = sanitizedData.spaceId || await generateSequentialSpaceId();
     
     // Prepare final data
     const newSpaceData = {
@@ -530,7 +702,7 @@ router.post('/', async (req, res) => {
     res.status(201).json({
       success: true,
       data: newSpaceData,
-      message: 'Space created successfully'
+      message: `Space created successfully${cityMessage}`
     });
   } catch (error) {
     console.error('Error creating space:', error);
@@ -636,6 +808,14 @@ router.put('/:id', async (req, res) => {
 
     // Business logic validations
     const businessValidations = [];
+    
+    // Validate service/category exists in services collection (if category is being updated)
+    if (sanitizedData.category) {
+      const serviceExists = await validateServiceExists(sanitizedData.category);
+      if (!serviceExists) {
+        businessValidations.push(`Service "${sanitizedData.category}" does not exist or is not published. Please select a valid service from the available list.`);
+      }
+    }
     
     // Check for duplicate space names (excluding current space)
     if (sanitizedData.name && sanitizedData.location?.city) {
