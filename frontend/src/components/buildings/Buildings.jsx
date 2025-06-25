@@ -1,29 +1,29 @@
 import React, { useState } from 'react';
 import { Search, Plus } from 'lucide-react';
-import SpacesTable from './SpacesTable.jsx';
-import SpaceModal from './SpaceModal.jsx';
-import useSpaces from '../../hooks/useSpaces.js';
+import BuildingsTable from './BuildingsTable.jsx';
+import BuildingModal from './BuildingModal.jsx';
+import useBuildings from '../../hooks/useBuildings.js';
 import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext.jsx';
 
 const Buildings = () => {
   const {
-    spaces,
-    loading: spacesLoading,
-    error: spacesError,
-    searchTerm: spaceSearchTerm,
-    setSearchTerm: setSpaceSearchTerm,
-    createSpace,
-    updateSpace,
-    deleteSpace,
-    refresh: refreshSpaces
-  } = useSpaces();
+    buildings,
+    loading: buildingsLoading,
+    error: buildingsError,
+    searchTerm: buildingSearchTerm,
+    setSearchTerm: setBuildingSearchTerm,
+    createBuilding,
+    updateBuilding,
+    deleteBuilding,
+    refresh: refreshBuildings
+  } = useBuildings();
 
   // Global refresh context
   const { refreshRelatedToSpaces } = useGlobalRefresh();
 
-  const [showSpaceModal, setShowSpaceModal] = useState(false);
+  const [showBuildingModal, setShowBuildingModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
-  const [selectedSpace, setSelectedSpace] = useState(null);
+  const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [notification, setNotification] = useState(null);
 
   const showNotification = (message, type = 'success') => {
@@ -32,37 +32,39 @@ const Buildings = () => {
   };
 
   const handleAddNew = () => {
-    setSelectedSpace(null);
+    console.log('🔧 DEBUG: handleAddNew called');
+    setSelectedBuilding(null);
     setModalMode('add');
-    setShowSpaceModal(true);
+    setShowBuildingModal(true);
+    console.log('🔧 DEBUG: showBuildingModal set to true');
   };
 
-  const handleEdit = (space) => {
-    setSelectedSpace(space);
+  const handleEdit = (building) => {
+    setSelectedBuilding(building);
     setModalMode('edit');
-    setShowSpaceModal(true);
+    setShowBuildingModal(true);
   };
 
-  const handleDelete = async (space) => {
-    if (window.confirm(`Apakah Anda yakin ingin menghapus lokasi/gedung "${space.name}"?`)) {
+  const handleDelete = async (building) => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus lokasi/gedung "${building.name}"?`)) {
       try {
-        await deleteSpace(space.id);
-        showNotification(`Lokasi/gedung "${space.name}" berhasil dihapus`, 'success');
+        await deleteBuilding(building.id);
+        showNotification(`Lokasi/gedung "${building.name}" berhasil dihapus`, 'success');
       } catch (error) {
         showNotification(`Gagal menghapus lokasi/gedung: ${error.message}`, 'error');
       }
     }
   };
 
-  const handleSaveSpace = async (spaceData) => {
+  const handleSaveBuilding = async (buildingData) => {
     try {
-      console.log('Buildings: handleSaveSpace called with:', spaceData);
+      console.log('Buildings: handleSaveBuilding called with:', buildingData);
       console.log('Buildings: modalMode:', modalMode);
       
       if (modalMode === 'add') {
-        console.log('Buildings: Calling createSpace...');
-        const result = await createSpace(spaceData);
-        console.log('Buildings: createSpace result:', result);
+        console.log('Buildings: Calling createBuilding...');
+        const result = await createBuilding(buildingData);
+        console.log('Buildings: createBuilding result:', result);
         
         // Trigger global refresh untuk cities (karena mungkin ada auto-created city)
         console.log('🔄 Buildings: Triggering global refresh for related components (cities)...');
@@ -70,21 +72,23 @@ const Buildings = () => {
         
         showNotification('Lokasi/gedung baru berhasil ditambahkan', 'success');
       } else {
-        console.log('Buildings: Calling updateSpace...');
-        const result = await updateSpace(selectedSpace.id, spaceData);
-        console.log('Buildings: updateSpace result:', result);
+        console.log('Buildings: Calling updateBuilding...');
+        const result = await updateBuilding(selectedBuilding.id, buildingData);
+        console.log('Buildings: updateBuilding result:', result);
         showNotification('Lokasi/gedung berhasil diperbarui', 'success');
       }
-      setShowSpaceModal(false);
-      setSelectedSpace(null);
+      setShowBuildingModal(false);
+      setSelectedBuilding(null);
     } catch (error) {
-      console.error('Buildings: Error in handleSaveSpace:', error);
+      console.error('Buildings: Error in handleSaveBuilding:', error);
       const errorMessage = error.message || 'Unknown error occurred';
       showNotification(`Gagal ${modalMode === 'add' ? 'menambah' : 'memperbarui'} lokasi/gedung: ${errorMessage}`, 'error');
       throw error; // Let the modal handle the error display
     }
   };
 
+  console.log('🔧 DEBUG Buildings: showBuildingModal =', showBuildingModal);
+  
   return (
     <div className="space-y-6">
       {/* Notification */}
@@ -124,8 +128,8 @@ const Buildings = () => {
             <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              value={spaceSearchTerm}
-              onChange={(e) => setSpaceSearchTerm(e.target.value)}
+              value={buildingSearchTerm}
+              onChange={(e) => setBuildingSearchTerm(e.target.value)}
               placeholder="Search lokasi/gedung..."
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
             />
@@ -141,14 +145,14 @@ const Buildings = () => {
       </div>
 
       {/* Error Display */}
-      {spacesError && (
+      {buildingsError && (
         <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center">
           <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
-          <span className="text-sm text-red-600">{spacesError}</span>
+          <span className="text-sm text-red-600">{buildingsError}</span>
           <button
-            onClick={refreshSpaces}
+            onClick={refreshBuildings}
             className="ml-auto text-red-600 hover:text-red-800"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -159,25 +163,25 @@ const Buildings = () => {
       )}
 
       {/* Table */}
-      <SpacesTable 
-        spaces={spaces} 
+      <BuildingsTable 
+        buildings={buildings} 
         onEdit={handleEdit} 
         onDelete={(type, id) => {
-          const space = spaces.find(s => s.id === id);
-          if (space) handleDelete(space);
+          const building = buildings.find(b => b.id === id);
+          if (building) handleDelete(building);
         }}
-        loading={spacesLoading}
+        loading={buildingsLoading}
       />
 
-      {/* Space Modal */}
-      <SpaceModal
-        isOpen={showSpaceModal}
+      {/* Building Modal */}
+      <BuildingModal
+        isOpen={showBuildingModal}
         onClose={() => {
-          setShowSpaceModal(false);
-          setSelectedSpace(null);
+          setShowBuildingModal(false);
+          setSelectedBuilding(null);
         }}
-        onSave={handleSaveSpace}
-        space={selectedSpace}
+        onSave={handleSaveBuilding}
+        building={selectedBuilding}
         mode={modalMode}
       />
     </div>

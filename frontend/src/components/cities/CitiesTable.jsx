@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Edit, Trash2 } from 'lucide-react';
+import { Eye, Edit, Trash2, Image } from 'lucide-react';
 
 const CitiesTable = ({ cities, onEdit, onDelete }) => {
   return (
@@ -7,6 +7,7 @@ const CitiesTable = ({ cities, onEdit, onDelete }) => {
       <table className="min-w-full divide-y divide-primary-200">
         <thead className="bg-primary-50 border-b border-primary-200">
           <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Thumbnail</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Kota/Kabupaten</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Provinsi</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Negara</th>
@@ -18,6 +19,29 @@ const CitiesTable = ({ cities, onEdit, onDelete }) => {
         <tbody className="bg-white divide-y divide-primary-100">
           {cities.map((city) => (
             <tr key={city.id} className="hover:bg-primary-50 transition-colors duration-150">
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                  {city.thumbnail ? (
+                    <img 
+                      src={city.thumbnail} 
+                      alt={`${city.name} thumbnail`}
+                      className="w-full h-full object-cover"
+                      crossOrigin="anonymous"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  {!city.thumbnail && (
+                    <Image className="w-6 h-6 text-gray-400" />
+                  )}
+                  <div style={{ display: 'none' }} className="w-6 h-6 text-red-400 flex items-center justify-center">
+                    <Image className="w-6 h-6" />
+                  </div>
+                </div>
+              </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{city.name}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{city.province || '-'}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

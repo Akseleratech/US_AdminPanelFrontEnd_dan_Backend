@@ -44,6 +44,7 @@ const Cities = () => {
   };
 
   const handleEdit = (city) => {
+    console.log('Cities: handleEdit called with:', city);
     setSelectedCity(city);
     setModalMode('edit');
     setShowModal(true);
@@ -88,6 +89,10 @@ const Cities = () => {
         console.log('Cities: updateCity result:', result);
         showNotification('Kota berhasil diperbarui', 'success');
       }
+      
+      // Auto refresh after successful save
+      refresh();
+      
       setShowModal(false);
       setSelectedCity(null);
     } catch (error) {
@@ -538,8 +543,8 @@ const Cities = () => {
           isOpen={showModal}
           onClose={() => setShowModal(false)}
           onSubmit={handleSave}
-          city={selectedCity}
-          loading={loading}
+          initialData={selectedCity}
+          isEditing={modalMode === 'edit'}
         />
       )}
 

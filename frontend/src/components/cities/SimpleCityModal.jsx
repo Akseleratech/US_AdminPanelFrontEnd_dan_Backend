@@ -1,15 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, X, Image } from 'lucide-react';
 
 const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     name: initialData?.name || '',
     province: initialData?.province || '',
     country: initialData?.country || 'Indonesia',
     postalCode: initialData?.postalCodes?.[0] || '',
-    ...initialData
-  });
+    thumbnail: null // Don't include existing URL as File object
+  }));
+  
+  const [imagePreview, setImagePreview] = useState(initialData?.thumbnail || null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [errors, setErrors] = useState({});
+
+  // Update form data when initialData changes (for edit mode)
+  useEffect(() => {
+    console.log('SimpleCityModal: useEffect triggered', { initialData, isEditing, isOpen });
+    
+    if (initialData && isEditing) {
+      console.log('SimpleCityModal: Setting form data for edit mode', initialData);
+      setFormData({
+        name: initialData.name || '',
+        province: initialData.province || '',
+        country: initialData.country || 'Indonesia',
+        postalCode: initialData.postalCodes?.[0] || '',
+        thumbnail: null
+      });
+      setImagePreview(initialData.thumbnail || null);
+    } else {
+      // Reset form for add mode
+      console.log('SimpleCityModal: Resetting form for add mode');
+      setFormData({
+        name: '',
+        province: '',
+        country: 'Indonesia',
+        postalCode: '',
+        thumbnail: null
+      });
+      setImagePreview(null);
+    }
+    setErrors({});
+  }, [initialData, isEditing, isOpen]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -24,6 +58,67 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
         ...prev,
         [name]: ''
       }));
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setErrors(prev => ({
+        ...prev,
+        thumbnail: 'File harus berupa gambar'
+      }));
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors(prev => ({
+        ...prev,
+        thumbnail: 'Ukuran file maksimal 5MB'
+      }));
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setErrors(prev => ({ ...prev, thumbnail: '' }));
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+
+      // For now, we'll store the file object and handle upload in backend
+      setFormData(prev => ({
+        ...prev,
+        thumbnail: file
+      }));
+
+    } catch (error) {
+      console.error('Error handling image:', error);
+      setErrors(prev => ({
+        ...prev,
+        thumbnail: 'Gagal memproses gambar'
+      }));
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const removeImage = () => {
+    setImagePreview(null);
+    setFormData(prev => ({
+      ...prev,
+      thumbnail: null
+    }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -68,6 +163,7 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
           metaTitle: `Co-working Spaces in ${formData.name}`,
           metaDescription: `Find and book workspaces in ${formData.name}`
         },
+        thumbnail: formData.thumbnail,
         isActive: true
       };
       
@@ -80,9 +176,14 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
       name: '',
       province: '',
       country: 'Indonesia',
-      postalCode: ''
+      postalCode: '',
+      thumbnail: null
     });
+    setImagePreview(null);
     setErrors({});
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     onClose();
   };
 
@@ -183,6 +284,63 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
               <p className="text-gray-500 text-xs mt-1">
                 Opsional - dapat ditambahkan nanti
               </p>
+            </div>
+
+            {/* Upload Thumbnail */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Thumbnail Kota
+              </label>
+              <div className="mt-1">
+                {imagePreview ? (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Preview thumbnail"
+                      className="w-full h-32 object-cover rounded-md border border-gray-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full h-32 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                  >
+                    {uploadingImage ? (
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500 text-center">
+                          Klik untuk upload thumbnail
+                        </p>
+                        <p className="text-xs text-gray-400 text-center mt-1">
+                          PNG, JPG, GIF (Max 5MB)
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                {errors.thumbnail && (
+                  <p className="text-red-500 text-sm mt-1">{errors.thumbnail}</p>
+                )}
+                <p className="text-gray-500 text-xs mt-1">
+                  Thumbnail ini akan digunakan di aplikasi mobile
+                </p>
+              </div>
             </div>
           </div>
 

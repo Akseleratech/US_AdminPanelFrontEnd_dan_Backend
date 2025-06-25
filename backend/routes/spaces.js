@@ -5,14 +5,11 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
 
-// Validation schemas
+// Validation schemas - Simplified for Buildings (no category, capacity, pricing, amenities)
 const spaceValidationSchema = {
   name: { type: 'string', required: true, minLength: 2, maxLength: 100 },
   description: { type: 'string', required: false, maxLength: 1000 },
   brand: { type: 'string', required: true, enum: ['NextSpace', 'UnionSpace', 'CoSpace'] },
-  category: { type: 'string', required: true }, // Validated dynamically against services collection
-  spaceType: { type: 'string', required: true, enum: ['open-space', 'private-room', 'meeting-room', 'event-hall', 'phone-booth'] },
-  capacity: { type: 'number', required: true, min: 1, max: 1000 },
   location: {
     type: 'object',
     required: true,
@@ -25,16 +22,6 @@ const spaceValidationSchema = {
       latitude: { type: 'number', required: false, min: -90, max: 90 },
       longitude: { type: 'number', required: false, min: -180, max: 180 }
     }
-  },
-  pricing: {
-    type: 'object',
-    required: true,
-    properties: {
-      hourly: { type: 'number', required: false, min: 0 },
-      daily: { type: 'number', required: false, min: 0 },
-      monthly: { type: 'number', required: false, min: 0 },
-      currency: { type: 'string', required: true, enum: ['IDR', 'USD'] }
-    }
   }
 };
 
@@ -46,10 +33,7 @@ function validateSpaceData(data, isUpdate = false) {
   // Basic required fields validation
   if (!isUpdate && !data.name) errors.push('Name is required');
   if (!isUpdate && !data.brand) errors.push('Brand is required');
-  if (!isUpdate && !data.category) errors.push('Category is required');
   if (!isUpdate && !data.location) errors.push('Location is required');
-  if (!isUpdate && !data.capacity) errors.push('Capacity is required');
-  if (!isUpdate && !data.pricing) errors.push('Pricing is required');
   
   // Name validation
   if (data.name && (data.name.length < 2 || data.name.length > 100)) {
@@ -59,13 +43,6 @@ function validateSpaceData(data, isUpdate = false) {
   // Brand validation
   if (data.brand && !['NextSpace', 'UnionSpace', 'CoSpace'].includes(data.brand)) {
     errors.push('Brand must be one of: NextSpace, UnionSpace, CoSpace');
-  }
-  
-  // Category validation will be done dynamically in the route handler
-  
-  // Capacity validation
-  if (data.capacity && (isNaN(data.capacity) || data.capacity < 1 || data.capacity > 1000)) {
-    errors.push('Capacity must be a number between 1 and 1000');
   }
   
   // Location validation
@@ -87,27 +64,7 @@ function validateSpaceData(data, isUpdate = false) {
     }
   }
   
-  // Pricing validation
-  if (data.pricing) {
-    if (!data.pricing.currency) {
-      errors.push('Currency is required in pricing');
-    }
-    if (data.pricing.currency && !['IDR', 'USD'].includes(data.pricing.currency)) {
-      errors.push('Currency must be IDR or USD');
-    }
-    
-    // At least one pricing option required
-    if (!data.pricing.hourly && !data.pricing.daily && !data.pricing.monthly) {
-      errors.push('At least one pricing option (hourly, daily, or monthly) is required');
-    }
-    
-    // Validate pricing numbers
-    ['hourly', 'daily', 'monthly'].forEach(priceType => {
-      if (data.pricing[priceType] && (isNaN(data.pricing[priceType]) || data.pricing[priceType] < 0)) {
-        errors.push(`${priceType} price must be a positive number`);
-      }
-    });
-  }
+
   
   console.log('🔍 validateSpaceData returning errors:', errors);
   return errors;
@@ -121,11 +78,6 @@ function sanitizeSpaceData(data) {
   if (data.name) sanitized.name = data.name.trim();
   if (data.description) sanitized.description = data.description.trim();
   if (data.brand) sanitized.brand = data.brand.trim();
-  if (data.category) sanitized.category = data.category.trim();
-  if (data.spaceType) sanitized.spaceType = data.spaceType.trim();
-  
-  // Sanitize numbers
-  if (data.capacity) sanitized.capacity = parseInt(data.capacity);
   
   // Sanitize location
   if (data.location) {
@@ -141,20 +93,7 @@ function sanitizeSpaceData(data) {
     };
   }
   
-  // Sanitize pricing
-  if (data.pricing) {
-    sanitized.pricing = {
-      hourly: data.pricing.hourly ? parseFloat(data.pricing.hourly) : 0,
-      daily: data.pricing.daily ? parseFloat(data.pricing.daily) : 0,
-      monthly: data.pricing.monthly ? parseFloat(data.pricing.monthly) : 0,
-      currency: data.pricing.currency || 'IDR'
-    };
-  }
-  
-  // Sanitize arrays
-  if (data.amenities) {
-    sanitized.amenities = Array.isArray(data.amenities) ? data.amenities : [];
-  }
+
   
   if (data.images) {
     sanitized.images = Array.isArray(data.images) ? data.images : [];
@@ -188,21 +127,8 @@ async function validateCityExists(cityName) {
   }
 }
 
-// Check if category/service exists
-async function validateServiceExists(serviceName) {
-  try {
-    const serviceSnapshot = await db.collection('layanan')
-      .where('name', '==', serviceName)
-      .where('status', '==', 'published')
-      .limit(1)
-      .get();
-    
-    return !serviceSnapshot.empty;
-  } catch (error) {
-    console.warn('Could not validate service existence:', error);
-    return true; // Allow if validation fails
-  }
-}
+
+
 
 // Check for duplicate space names in same city
 async function checkDuplicateSpace(name, city, excludeId = null) {
@@ -285,11 +211,7 @@ router.get('/', async (req, res) => {
       status, 
       limit, 
       brand, 
-      category, 
       city, 
-      minCapacity, 
-      maxCapacity, 
-      priceRange,
       sortBy = 'createdAt',
       sortOrder = 'desc',
       page = 1
@@ -303,8 +225,6 @@ router.get('/', async (req, res) => {
     // Primary filter - choose the most selective one
     if (brand) {
       spacesRef = spacesRef.where('brand', '==', brand);
-    } else if (category) {
-      spacesRef = spacesRef.where('category', '==', category);
     } else if (status === 'active') {
       spacesRef = spacesRef.where('isActive', '==', true);
     } else if (status === 'inactive') {
@@ -326,7 +246,6 @@ router.get('/', async (req, res) => {
       
       // Add computed fields
       spaceData.slug = spaceData.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      spaceData.priceRange = getPriceRange(spaceData.pricing);
       spaceData.hasCoordinates = !!(spaceData.location?.latitude && spaceData.location?.longitude);
       
       spaces.push(spaceData);
@@ -448,19 +367,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Helper function to calculate price range
-function getPriceRange(pricing) {
-  if (!pricing) return 'Unknown';
-  
-  const prices = [pricing.hourly, pricing.daily, pricing.monthly].filter(p => p > 0);
-  if (prices.length === 0) return 'Free';
-  
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
-  
-  if (min === max) return `${pricing.currency} ${min.toLocaleString()}`;
-  return `${pricing.currency} ${min.toLocaleString()} - ${max.toLocaleString()}`;
-}
+
 
 // GET /api/spaces/:id
 router.get('/:id', async (req, res) => {
@@ -491,7 +398,6 @@ router.get('/:id', async (req, res) => {
     
     // Add computed fields
     spaceData.slug = spaceData.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    spaceData.priceRange = getPriceRange(spaceData.pricing);
     spaceData.hasCoordinates = !!(spaceData.location?.latitude && spaceData.location?.longitude);
 
     res.json({
@@ -614,13 +520,7 @@ router.post('/', async (req, res) => {
     // Additional business logic validations
     const businessValidations = [];
     
-    // Validate service/category exists in services collection
-    if (sanitizedData.category) {
-      const serviceExists = await validateServiceExists(sanitizedData.category);
-      if (!serviceExists) {
-        businessValidations.push(`Service "${sanitizedData.category}" does not exist or is not published. Please select a valid service from the available list.`);
-      }
-    }
+
     
     // Check for duplicate space names in same city (strict validation)
     const isDuplicate = await checkDuplicateSpace(sanitizedData.name, sanitizedData.location.city);
@@ -664,23 +564,10 @@ router.post('/', async (req, res) => {
       spaceId,
       ...sanitizedData,
       // Ensure required defaults
-      description: sanitizedData.description || `Professional ${sanitizedData.category} space`,
-      spaceType: sanitizedData.spaceType || sanitizedData.category,
+      description: sanitizedData.description || `Modern building space`,
       isActive: sanitizedData.isActive !== undefined ? sanitizedData.isActive : true,
-      amenities: sanitizedData.amenities || [],
       images: sanitizedData.images || [],
       thumbnail: sanitizedData.thumbnail || null,
-      
-      // Default operating hours if not provided
-      operatingHours: sanitizedData.operatingHours || {
-        monday: { open: "08:00", close: "22:00" },
-        tuesday: { open: "08:00", close: "22:00" },
-        wednesday: { open: "08:00", close: "22:00" },
-        thursday: { open: "08:00", close: "22:00" },
-        friday: { open: "08:00", close: "22:00" },
-        saturday: { open: "09:00", close: "18:00" },
-        sunday: { open: "09:00", close: "18:00" }
-      },
       
       // Metadata
       createdAt: new Date(),
@@ -720,11 +607,8 @@ function generateSearchKeywords(spaceData) {
   
   if (spaceData.name) keywords.push(...spaceData.name.toLowerCase().split(' '));
   if (spaceData.brand) keywords.push(spaceData.brand.toLowerCase());
-  if (spaceData.category) keywords.push(spaceData.category.toLowerCase());
-  if (spaceData.spaceType) keywords.push(spaceData.spaceType.toLowerCase());
   if (spaceData.location?.city) keywords.push(spaceData.location.city.toLowerCase());
   if (spaceData.location?.province) keywords.push(spaceData.location.province.toLowerCase());
-  if (spaceData.amenities) keywords.push(...spaceData.amenities.map(a => a.toLowerCase()));
   
   // Remove duplicates and empty strings
   return [...new Set(keywords.filter(k => k && k.length > 1))];
@@ -809,13 +693,7 @@ router.put('/:id', async (req, res) => {
     // Business logic validations
     const businessValidations = [];
     
-    // Validate service/category exists in services collection (if category is being updated)
-    if (sanitizedData.category) {
-      const serviceExists = await validateServiceExists(sanitizedData.category);
-      if (!serviceExists) {
-        businessValidations.push(`Service "${sanitizedData.category}" does not exist or is not published. Please select a valid service from the available list.`);
-      }
-    }
+
     
     // Check for duplicate space names (excluding current space)
     if (sanitizedData.name && sanitizedData.location?.city) {
@@ -846,7 +724,7 @@ router.put('/:id', async (req, res) => {
     };
 
     // Update search keywords if name or other searchable fields changed
-    if (sanitizedData.name || sanitizedData.amenities || sanitizedData.category) {
+    if (sanitizedData.name) {
       updateData.searchKeywords = generateSearchKeywords({
         ...existingData,
         ...sanitizedData

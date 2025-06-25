@@ -11,7 +11,9 @@ const GoogleMap = ({
   height = '400px',
   zoom = 13,
   className = '',
-  showSearchBox = false // Default to false since we disabled Places API
+  showSearchBox = false, // Default to false since we disabled Places API
+  enableManualSet = false, // New prop to enable manual set mode
+  onLocationPreview = null // Callback for preview position before setting
 }) => {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
@@ -20,6 +22,8 @@ const GoogleMap = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
+  const [previewPosition, setPreviewPosition] = useState(null);
+  const [previewLocationData, setPreviewLocationData] = useState(null);
 
   // Default coordinates (Jakarta, Indonesia)
   const defaultCenter = { lat: -6.2088, lng: 106.8456 };
@@ -144,31 +148,51 @@ const GoogleMap = ({
 
   // Handle location change
   const handleLocationChange = useCallback((position, geocoderInstance, providedAddress = null) => {
-    if (providedAddress) {
-      // Use provided address (from search) - parse it
-      parseAddressComponents(providedAddress, position);
-    } else {
-      // Reverse geocode to get detailed address
-      geocoderInstance.geocode(
-        { location: position },
-        (results, status) => {
-          if (status === 'OK' && results[0]) {
-            parseAddressComponents(results[0], position);
-          } else {
-            // Fallback with basic coordinate info
-            onLocationSelect && onLocationSelect({
-              coordinates: position,
-              address: `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`,
-              city: '',
-              province: '',
-              postalCode: '',
-              country: 'Indonesia'
-            });
+    if (enableManualSet) {
+      // In manual set mode, just update preview position
+      setPreviewPosition(position);
+      
+      // Reverse geocode to get preview data
+      if (geocoderInstance) {
+        geocoderInstance.geocode(
+          { location: position },
+          (results, status) => {
+            if (status === 'OK' && results[0]) {
+              const locationData = buildLocationData(results[0], position);
+              setPreviewLocationData(locationData);
+              onLocationPreview && onLocationPreview(locationData);
+            }
           }
-        }
-      );
+        );
+      }
+    } else {
+      // Normal mode - immediately set location
+      if (providedAddress) {
+        // Use provided address (from search) - parse it
+        parseAddressComponents(providedAddress, position);
+      } else {
+        // Reverse geocode to get detailed address
+        geocoderInstance.geocode(
+          { location: position },
+          (results, status) => {
+            if (status === 'OK' && results[0]) {
+              parseAddressComponents(results[0], position);
+            } else {
+              // Fallback with basic coordinate info
+              onLocationSelect && onLocationSelect({
+                coordinates: position,
+                address: `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`,
+                city: '',
+                province: '',
+                postalCode: '',
+                country: 'Indonesia'
+              });
+            }
+          }
+        );
+      }
     }
-  }, [onLocationSelect]);
+  }, [onLocationSelect, onLocationPreview, enableManualSet]);
 
   // Function to clean city/regency names by removing administrative prefixes
   const cleanCityName = (rawCityName) => {
@@ -234,8 +258,8 @@ const GoogleMap = ({
     return cleanedName;
   };
 
-  // Parse address components from Google Geocoding result
-  const parseAddressComponents = (geocodeResult, position) => {
+  // Build location data from geocoding result
+  const buildLocationData = (geocodeResult, position) => {
     let address = '';
     let city = '';
     let province = '';
@@ -272,30 +296,37 @@ const GoogleMap = ({
     }
 
     // Clean up address by removing country if it's at the end
-    if (address.endsWith(', Indonesia')) {
-      address = address.replace(', Indonesia', '');
+    if (country && address.endsWith(`, ${country}`)) {
+      address = address.replace(`, ${country}`, '');
     }
 
-    // Debug logging
-    console.log('📍 Google Maps Location Data:', {
-      originalAddress: geocodeResult.formatted_address,
-      cleanedAddress: address,
-      city: city,
-      province: province,
-      postalCode: postalCode,
-      country: country,
-      coordinates: position
-    });
-
-    // Send complete location data
-    onLocationSelect && onLocationSelect({
+    return {
       coordinates: position,
       address: address,
       city: city,
       province: province,
       postalCode: postalCode,
       country: country
+    };
+  };
+
+  // Parse address components from Google Geocoding result
+  const parseAddressComponents = (geocodeResult, position) => {
+    const locationData = buildLocationData(geocodeResult, position);
+
+    // Debug logging
+    console.log('📍 Google Maps Location Data:', {
+      originalAddress: geocodeResult.formatted_address,
+      cleanedAddress: locationData.address,
+      city: locationData.city,
+      province: locationData.province,
+      postalCode: locationData.postalCode,
+      country: locationData.country,
+      coordinates: position
     });
+
+    // Send complete location data
+    onLocationSelect && onLocationSelect(locationData);
   };
 
   // Initialize map
@@ -319,7 +350,7 @@ const GoogleMap = ({
         zoom,
         mapTypeControl: true,
         streetViewControl: true,
-        fullscreenControl: true,
+        fullscreenControl: false,
         zoomControl: true,
       });
 
@@ -382,6 +413,27 @@ const GoogleMap = ({
       marker.setPosition(newPosition);
     }
   }, [map, marker, coordinates, isInitialized]);
+
+  // Confirm set location (for manual set mode)
+  const confirmSetLocation = () => {
+    if (previewLocationData) {
+      onLocationSelect && onLocationSelect(previewLocationData);
+      setPreviewPosition(null);
+      setPreviewLocationData(null);
+    }
+  };
+
+  // Cancel location selection (for manual set mode)
+  const cancelLocationSelection = () => {
+    setPreviewPosition(null);
+    setPreviewLocationData(null);
+    
+    // Reset marker to original position
+    if (marker && coordinates) {
+      marker.setPosition(coordinates);
+      map.setCenter(coordinates);
+    }
+  };
 
   // Get current location
   const getCurrentLocation = () => {
@@ -473,12 +525,47 @@ const GoogleMap = ({
         </div>
       )}
 
+      {/* Manual Set Controls */}
+      {enableManualSet && previewPosition && !loading && !error && (
+        <div className="absolute bottom-2 left-2 right-2 z-10">
+          <div className="bg-white bg-opacity-95 px-4 py-3 rounded-md shadow-lg border border-gray-200">
+            <div className="text-center mb-3">
+              <p className="text-sm font-medium text-gray-700">Lokasi Dipilih</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {previewLocationData?.address || `${previewPosition.lat.toFixed(6)}, ${previewPosition.lng.toFixed(6)}`}
+              </p>
+              {previewLocationData?.city && (
+                <p className="text-xs text-gray-500">
+                  {previewLocationData.city}, {previewLocationData.province}
+                </p>
+              )}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={cancelLocationSelection}
+                className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm font-medium"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmSetLocation}
+                className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium"
+              >
+                Set Lokasi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Instructions */}
       {!loading && !error && (
         <div className="absolute bottom-2 left-2 right-2 z-10">
-          <div className="bg-white bg-opacity-90 px-3 py-2 rounded-md text-xs text-gray-600 text-center">
+          <div className={`bg-white bg-opacity-90 px-3 py-2 rounded-md text-xs text-gray-600 text-center ${enableManualSet && previewPosition ? 'hidden' : ''}`}>
             <MapPin className="w-3 h-3 inline mr-1" />
-            Click on the map or drag the marker to set location
+            {enableManualSet ? 'Klik pada peta atau drag marker untuk memilih lokasi' : 'Click on the map or drag the marker to set location'}
           </div>
         </div>
       )}
