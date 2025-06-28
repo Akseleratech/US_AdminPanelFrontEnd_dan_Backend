@@ -1,28 +1,28 @@
 import React, { useState } from 'react';
 import { Search, Plus, AlertCircle, Trash2 } from 'lucide-react';
-import ServicesTable from './ServicesTable.jsx';
-import ServiceModal from './ServiceModal.jsx';
-import useServices from '../../hooks/useServices.js';
+import LayananTable from './LayananTable.jsx';
+import LayananModal from './LayananModal.jsx';
+import useLayanan from '../../hooks/useLayanan.js';
 
-const Services = () => {
+const Layanan = () => {
   const {
-    services,
-    loading: servicesLoading,
-    error: servicesError,
-    searchTerm: serviceSearchTerm,
-    setSearchTerm: setServiceSearchTerm,
-    createService,
-    updateService,
-    deleteService,
-    refresh: refreshServices
-  } = useServices();
+    layananList,
+    loading: layananLoading,
+    error: layananError,
+    searchTerm: layananSearchTerm,
+    setSearchTerm: setLayananSearchTerm,
+    createLayanan,
+    updateLayanan,
+    deleteLayanan,
+    refresh: refreshLayanan
+  } = useLayanan();
 
-  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showLayananModal, setShowLayananModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedLayanan, setSelectedLayanan] = useState(null);
   const [notification, setNotification] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [serviceToDelete, setServiceToDelete] = useState(null);
+  const [layananToDelete, setLayananToDelete] = useState(null);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -30,55 +30,55 @@ const Services = () => {
   };
 
   const handleAddNew = () => {
-    setSelectedService(null);
+    setSelectedLayanan(null);
     setModalMode('add');
-    setShowServiceModal(true);
+    setShowLayananModal(true);
   };
 
-  const handleEdit = (service) => {
-    setSelectedService(service);
+  const handleEdit = (layanan) => {
+    setSelectedLayanan(layanan);
     setModalMode('edit');
-    setShowServiceModal(true);
+    setShowLayananModal(true);
   };
 
-  const handleDelete = (service) => {
-    setServiceToDelete(service);
+  const handleDelete = (layanan) => {
+    setLayananToDelete(layanan);
     setShowDeleteConfirm(true);
   };
 
   const confirmDelete = async () => {
-    if (!serviceToDelete) return;
+    if (!layananToDelete) return;
 
     try {
-      await deleteService(serviceToDelete.id);
-      showNotification(`Layanan "${serviceToDelete.name}" berhasil dihapus`, 'success');
+      await deleteLayanan(layananToDelete.id);
+      showNotification(`Layanan "${layananToDelete.name}" berhasil dihapus`, 'success');
       setShowDeleteConfirm(false);
-      setServiceToDelete(null);
+      setLayananToDelete(null);
     } catch (error) {
       showNotification(`Gagal menghapus layanan: ${error.message}`, 'error');
     }
   };
 
-  const handleSaveService = async (serviceData) => {
+  const handleSaveLayanan = async (layananData) => {
     try {
-      console.log('Services: handleSaveService called with:', serviceData);
-      console.log('Services: modalMode:', modalMode);
+      console.log('Layanan: handleSaveLayanan called with:', layananData);
+      console.log('Layanan: modalMode:', modalMode);
       
       if (modalMode === 'add') {
-        console.log('Services: Calling createService...');
-        const result = await createService(serviceData);
-        console.log('Services: createService result:', result);
+        console.log('Layanan: Calling createLayanan...');
+        const result = await createLayanan(layananData);
+        console.log('Layanan: createLayanan result:', result);
         showNotification('Layanan baru berhasil ditambahkan', 'success');
       } else {
-        console.log('Services: Calling updateService...');
-        const result = await updateService(selectedService.id, serviceData);
-        console.log('Services: updateService result:', result);
+        console.log('Layanan: Calling updateLayanan...');
+        const result = await updateLayanan(selectedLayanan.id, layananData);
+        console.log('Layanan: updateLayanan result:', result);
         showNotification('Layanan berhasil diperbarui', 'success');
       }
-      setShowServiceModal(false);
-      setSelectedService(null);
+      setShowLayananModal(false);
+      setSelectedLayanan(null);
     } catch (error) {
-      console.error('Services: Error in handleSaveService:', error);
+      console.error('Layanan: Error in handleSaveLayanan:', error);
       const errorMessage = error.message || 'Unknown error occurred';
       showNotification(`Gagal ${modalMode === 'add' ? 'menambah' : 'memperbarui'} layanan: ${errorMessage}`, 'error');
       throw error; // Let the modal handle the error display
@@ -112,7 +112,7 @@ const Services = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Services Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Manajemen Layanan</h1>
           <p className="text-gray-600">Kelola semua layanan yang tersedia</p>
         </div>
       </div>
@@ -124,9 +124,9 @@ const Services = () => {
             <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              value={serviceSearchTerm}
-              onChange={(e) => setServiceSearchTerm(e.target.value)}
-              placeholder="Search services..."
+              value={layananSearchTerm}
+              onChange={(e) => setLayananSearchTerm(e.target.value)}
+              placeholder="Cari layanan..."
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
             />
           </div>
@@ -141,14 +141,14 @@ const Services = () => {
       </div>
 
       {/* Error Display */}
-      {servicesError && (
+      {layananError && (
         <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center">
           <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
-          <span className="text-sm text-red-600">{servicesError}</span>
+          <span className="text-sm text-red-600">{layananError}</span>
           <button
-            onClick={refreshServices}
+            onClick={refreshLayanan}
             className="ml-auto text-red-600 hover:text-red-800"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -159,25 +159,25 @@ const Services = () => {
       )}
 
       {/* Table */}
-      <ServicesTable 
-        services={services} 
+      <LayananTable 
+        layananList={layananList} 
         onEdit={handleEdit} 
         onDelete={(type, id) => {
-          const service = services.find(s => s.id === id);
-          if (service) handleDelete(service);
+          const layanan = layananList.find(l => l.id === id);
+          if (layanan) handleDelete(layanan);
         }}
-        loading={servicesLoading}
+        loading={layananLoading}
       />
 
-      {/* Service Modal */}
-      <ServiceModal
-        isOpen={showServiceModal}
+      {/* Layanan Modal */}
+      <LayananModal
+        isOpen={showLayananModal}
         onClose={() => {
-          setShowServiceModal(false);
-          setSelectedService(null);
+          setShowLayananModal(false);
+          setSelectedLayanan(null);
         }}
-        onSave={handleSaveService}
-        service={selectedService}
+        onSave={handleSaveLayanan}
+        layanan={selectedLayanan}
         mode={modalMode}
       />
 
@@ -190,7 +190,7 @@ const Services = () => {
               <h3 className="text-lg font-semibold text-gray-900">Konfirmasi Hapus</h3>
             </div>
             <p className="text-gray-600 mb-6">
-              Apakah Anda yakin ingin menghapus layanan "{serviceToDelete?.name}"? Tindakan ini tidak dapat dibatalkan.
+              Apakah Anda yakin ingin menghapus layanan "{layananToDelete?.name}"? Tindakan ini tidak dapat dibatalkan.
             </p>
             <div className="flex justify-end space-x-3">
               <button
@@ -214,4 +214,4 @@ const Services = () => {
   );
 };
 
-export default Services; 
+export default Layanan; 

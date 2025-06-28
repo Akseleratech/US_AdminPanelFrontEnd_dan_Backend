@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Use relative path for Vite proxy
+// Use consistent base URL with api.jsx
 const API_BASE_URL = '/api/services';
 
 // Configure axios defaults
@@ -31,69 +31,69 @@ axios.interceptors.response.use(
   }
 );
 
-class ServiceAPI {
-  // GET all services
-  async getServices(params = {}) {
+class LayananAPI {
+  // GET all layanan
+  async getLayanan(params = {}) {
     try {
       const response = await axios.get(API_BASE_URL, { params });
       return response.data;
     } catch (error) {
-      console.error('Error fetching services:', error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch services');
+      console.error('Error fetching layanan:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch layanan');
     }
   }
 
-  // GET single service by ID
-  async getService(id) {
+  // GET single layanan by ID
+  async getLayananById(id) {
     try {
       const response = await axios.get(`${API_BASE_URL}/${id}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching service:', error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch service');
+      console.error('Error fetching layanan:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch layanan');
     }
   }
 
-  // CREATE new service
-  async createService(serviceData) {
+  // CREATE new layanan
+  async createLayanan(layananData) {
     try {
       // Transform data to match backend expectations
-      const transformedData = this.transformServiceData(serviceData);
+      const transformedData = this.transformLayananData(layananData);
       const response = await axios.post(API_BASE_URL, transformedData);
       return response.data;
     } catch (error) {
-      console.error('ServiceAPI: Error creating service:', error);
-      console.error('ServiceAPI: Error details:', error.response?.data);
-      throw new Error(error.response?.data?.message || 'Failed to create service');
+      console.error('LayananAPI: Error creating layanan:', error);
+      console.error('LayananAPI: Error details:', error.response?.data);
+      throw new Error(error.response?.data?.message || 'Failed to create layanan');
     }
   }
 
-  // UPDATE existing service
-  async updateService(id, serviceData) {
+  // UPDATE existing layanan
+  async updateLayanan(id, layananData) {
     try {
       // Transform data to match backend expectations
-      const transformedData = this.transformServiceData(serviceData);
+      const transformedData = this.transformLayananData(layananData);
       const response = await axios.put(`${API_BASE_URL}/${id}`, transformedData);
       return response.data;
     } catch (error) {
-      console.error('Error updating service:', error);
-      throw new Error(error.response?.data?.message || 'Failed to update service');
+      console.error('Error updating layanan:', error);
+      throw new Error(error.response?.data?.message || 'Failed to update layanan');
     }
   }
 
-  // DELETE service
-  async deleteService(id) {
+  // DELETE layanan
+  async deleteLayanan(id) {
     try {
       const response = await axios.delete(`${API_BASE_URL}/${id}`);
       return response.data;
     } catch (error) {
-      console.error('Error deleting service:', error);
-      throw new Error(error.response?.data?.message || 'Failed to delete service');
+      console.error('Error deleting layanan:', error);
+      throw new Error(error.response?.data?.message || 'Failed to delete layanan');
     }
   }
 
-  // Transform service data to match backend schema
-  transformServiceData(data) {
+  // Transform layanan data to match backend schema
+  transformLayananData(data) {
     const transformed = {
       serviceId: data.serviceId || undefined,
       name: data.name,
@@ -123,73 +123,73 @@ class ServiceAPI {
     return transformed;
   }
 
-  // Check if service name already exists (for duplicate validation)
-  async checkServiceNameExists(name, excludeId = null) {
+  // Check if layanan name already exists (for duplicate validation)
+  async checkLayananNameExists(name, excludeId = null) {
     try {
-      const response = await this.getServices();
-      const services = response.data || [];
+      const response = await this.getLayanan();
+      const layananList = response.data?.services || [];
       
-      return services.some(service => {
-        const isDuplicate = service.name && 
-                           service.name.toLowerCase().trim() === name.toLowerCase().trim();
-        const isNotExcluded = !excludeId || service.id !== excludeId;
+      return layananList.some(layanan => {
+        const isDuplicate = layanan.name && 
+                           layanan.name.toLowerCase().trim() === name.toLowerCase().trim();
+        const isNotExcluded = !excludeId || layanan.id !== excludeId;
         return isDuplicate && isNotExcluded;
       });
     } catch (error) {
-      console.error('Error checking service name existence:', error);
+      console.error('Error checking layanan name existence:', error);
       throw error;
     }
   }
 
-  // Search services
-  async searchServices(searchTerm, filters = {}) {
+  // Search layanan
+  async searchLayanan(searchTerm, filters = {}) {
     try {
       const params = {
         search: searchTerm,
         ...filters
       };
-      return await this.getServices(params);
+      return await this.getLayanan(params);
     } catch (error) {
-      console.error('Error searching services:', error);
+      console.error('Error searching layanan:', error);
       throw error;
     }
   }
 
-  // Get services by category
-  async getServicesByCategory(category) {
+  // Get layanan by category
+  async getLayananByCategory(category) {
     try {
-      return await this.getServices({ category });
+      return await this.getLayanan({ category });
     } catch (error) {
-      console.error('Error fetching services by category:', error);
+      console.error('Error fetching layanan by category:', error);
       throw error;
     }
   }
 
-  // Get services by type
-  async getServicesByType(type) {
+  // Get layanan by type
+  async getLayananByType(type) {
     try {
-      return await this.getServices({ type });
+      return await this.getLayanan({ type });
     } catch (error) {
-      console.error('Error fetching services by type:', error);
+      console.error('Error fetching layanan by type:', error);
       throw error;
     }
   }
 
-  // Get services by status
-  async getServicesByStatus(status) {
+  // Get layanan by status
+  async getLayananByStatus(status) {
     try {
-      return await this.getServices({ status });
+      return await this.getLayanan({ status });
     } catch (error) {
-      console.error('Error fetching services by status:', error);
+      console.error('Error fetching layanan by status:', error);
       throw error;
     }
   }
 
   // Bulk operations
-  async bulkUpdateStatus(serviceIds, status) {
+  async bulkUpdateStatus(layananIds, status) {
     try {
-      const promises = serviceIds.map(id => 
-        this.updateService(id, { status })
+      const promises = layananIds.map(id => 
+        this.updateLayanan(id, { status })
       );
       const results = await Promise.allSettled(promises);
       
@@ -208,9 +208,9 @@ class ServiceAPI {
     }
   }
 
-  async bulkDelete(serviceIds) {
+  async bulkDelete(layananIds) {
     try {
-      const promises = serviceIds.map(id => this.deleteService(id));
+      const promises = layananIds.map(id => this.deleteLayanan(id));
       const results = await Promise.allSettled(promises);
       
       const successful = results.filter(result => result.status === 'fulfilled');
@@ -230,5 +230,5 @@ class ServiceAPI {
 }
 
 // Create singleton instance
-const serviceAPI = new ServiceAPI();
-export default serviceAPI; 
+const layananAPI = new LayananAPI();
+export default layananAPI; 

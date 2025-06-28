@@ -2,7 +2,7 @@ import React from 'react';
 import { Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
-const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
+const LayananTable = ({ layananList, onEdit, onDelete, loading = false }) => {
   if (loading) {
     return (
       <div className="bg-white border border-primary-200 table-green-theme">
@@ -27,34 +27,34 @@ const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-primary-100">
-          {services && services.length > 0 ? (
-            services.map((service) => (
-              <tr key={service.id} className="hover:bg-primary-50 transition-colors duration-150">
+          {layananList && layananList.length > 0 ? (
+            layananList.map((layanan) => (
+              <tr key={layanan.id} className="hover:bg-primary-50 transition-colors duration-150">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{service.name}</div>
+                  <div className="text-sm font-medium text-gray-900">{layanan.name}</div>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                  <div className="truncate" title={service.description}>
-                    {service.description}
+                  <div className="truncate" title={layanan.description}>
+                    {layanan.description}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div 
                     className="text-center cursor-help" 
-                    title={`Total: ${service.spaceCount?.total || 0} spaces | Active: ${service.spaceCount?.active || 0} | Inactive: ${(service.spaceCount?.total || 0) - (service.spaceCount?.active || 0)}`}
+                    title={`Total: ${layanan.spaceCount?.total || 0} spaces | Active: ${layanan.spaceCount?.active || 0} | Inactive: ${(layanan.spaceCount?.total || 0) - (layanan.spaceCount?.active || 0)}`}
                   >
                     <div className="text-sm font-medium text-gray-900">
-                      {service.spaceCount?.total || 0}
+                      {layanan.spaceCount?.total || 0}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {service.spaceCount?.active || 0} active
+                      {layanan.spaceCount?.active || 0} active
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(service.status)}`}>
-                    {getStatusIcon(service.status)}
-                    <span className="ml-1 capitalize">{service.status}</span>
+                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(layanan.status)}`}>
+                    {getStatusIcon(layanan.status)}
+                    <span className="ml-1 capitalize">{layanan.status}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -66,14 +66,14 @@ const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => onEdit(service)}
+                      onClick={() => onEdit(layanan)}
                       className="text-green-600 hover:text-green-900"
                       title="Edit Layanan"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button 
-                      onClick={() => onDelete('service', service.id)}
+                      onClick={() => onDelete('layanan', layanan.id)}
                       className="text-red-600 hover:text-red-900"
                       title="Hapus Layanan"
                     >
@@ -102,4 +102,4 @@ const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
   );
 };
 
-export default ServicesTable; 
+export default LayananTable; 

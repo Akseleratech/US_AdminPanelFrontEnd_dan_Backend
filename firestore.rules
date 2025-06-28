@@ -1,0 +1,75 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cities collection - Public read, admin write
+    match /cities/{cityId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Services collection - Public read, admin write
+    match /layanan/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Spaces collection - Public read, admin write
+    match /spaces/{spaceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Buildings collection - Public read, admin write
+    match /buildings/{buildingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Orders collection - Admin only
+    match /orders/{orderId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Amenities collection - Public read, admin write
+    match /amenities/{amenityId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Counters collection - Admin only
+    match /counters/{counterId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Admin users collection - Admin only
+    match /admins/{adminId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      // For now, allow all writes (since this is admin panel)
+      // In production, implement proper admin authentication
+      return true;
+      
+      // Uncomment below for proper admin authentication:
+      // return isAuthenticated() && 
+      //        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidData() {
+      return request.resource.data.keys().hasAll(['createdAt', 'updatedAt']) &&
+             request.resource.data.createdAt is timestamp &&
+             request.resource.data.updatedAt is timestamp;
+    }
+  }
+} 

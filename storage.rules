@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Cloud Storage Security Rules
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Images folder structure
+    match /cities/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidImage();
+    }
+    
+    match /spaces/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidImage();
+    }
+    
+    match /buildings/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidImage();
+    }
+    
+    match /services/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidImage();
+    }
+    
+    match /general/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidImage();
+    }
+    
+    // Helper functions
+    function isAdmin() {
+      // For now, allow all writes (since this is admin panel)
+      // In production, implement proper admin authentication
+      return true;
+    }
+    
+    function isValidImage() {
+      return resource == null || (
+        resource.contentType.matches('image/.*') &&
+        resource.size < 5 * 1024 * 1024 // 5MB limit
+      );
+    }
+  }
+} 

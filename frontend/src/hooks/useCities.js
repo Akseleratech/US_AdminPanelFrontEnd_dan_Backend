@@ -19,7 +19,7 @@ const useCities = () => {
     try {
       const response = await cityAPI.getCities(params);
       if (response.success) {
-        setCities(response.data || []);
+        setCities(response.data.cities || []);
       } else {
         throw new Error(response.message || 'Failed to fetch cities');
       }
@@ -42,7 +42,7 @@ const useCities = () => {
     try {
       const response = await cityAPI.searchCities(term, { ...filters, ...additionalFilters });
       if (response.success) {
-        setCities(response.data || []);
+        setCities(response.data.cities || []);
       } else {
         throw new Error(response.message || 'Failed to search cities');
       }

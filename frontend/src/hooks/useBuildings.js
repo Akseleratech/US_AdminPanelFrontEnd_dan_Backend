@@ -46,12 +46,22 @@ const useBuildings = () => {
 
       const response = await buildingApiService.getBuildings(params);
       
-      setBuildings(response.buildings || []);
-      setPagination(prev => ({
-        ...prev,
-        total: response.pagination?.total || 0,
-        totalPages: response.pagination?.totalPages || 0
-      }));
+      // Fix: Handle nested response structure
+      if (response.success) {
+        setBuildings(response.data?.buildings || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.data?.total || 0,
+          totalPages: response.data?.totalPages || Math.ceil((response.data?.total || 0) / pagination.limit)
+        }));
+      } else {
+        setBuildings(response.buildings || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.pagination?.total || 0,
+          totalPages: response.pagination?.totalPages || 0
+        }));
+      }
 
       console.log('✅ useBuildings: Buildings fetched successfully:', response.buildings?.length);
     } catch (err) {

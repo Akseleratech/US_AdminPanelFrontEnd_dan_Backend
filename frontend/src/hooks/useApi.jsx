@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { dashboardAPI, ordersAPI, citiesAPI, servicesAPI } from '../services/api.jsx';
+import { dashboardAPI, ordersAPI, citiesAPI, layananAPI } from '../services/api.jsx';
 
 export const useApi = (activeTab) => {
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export const useApi = (activeTab) => {
         const citiesRes = await citiesAPI.getAll();
         setCities(citiesRes.data);
       } else if (activeTab === 'services') {
-        const servicesRes = await servicesAPI.getAll();
+        const servicesRes = await layananAPI.getAll();
         setServices(servicesRes.data);
       }
     } catch (error) {
@@ -54,7 +54,7 @@ export const useApi = (activeTab) => {
         await citiesAPI.delete(id);
         setCities(cities.filter(c => c.id !== id));
       } else if (type === 'service') {
-        await servicesAPI.delete(id);
+        await layananAPI.delete(id);
         setServices(services.filter(s => s.id !== id));
       }
     } catch (error) {

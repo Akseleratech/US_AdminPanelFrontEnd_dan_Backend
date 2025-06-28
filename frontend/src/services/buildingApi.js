@@ -1,9 +1,9 @@
 // Building API service
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = '/api/buildings'; // Use relative path for Vite proxy
 
 class BuildingApiService {
   constructor() {
-    this.baseURL = `${API_BASE_URL}/buildings`;
+    this.baseURL = API_BASE_URL;
   }
 
   // Get all buildings with optional filters

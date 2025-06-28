@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
-import serviceApi from '../../services/serviceApi';
+import layananApi from '../../services/layananApi.jsx';
 
-const ServiceModal = ({ 
+const LayananModal = ({ 
   isOpen, 
   onClose, 
   onSave, 
-  service = null, 
+  layanan = null, 
   mode = 'add' // 'add' or 'edit'
 }) => {
   const [loading, setLoading] = useState(false);
@@ -53,15 +53,15 @@ const ServiceModal = ({
   }, []);
 
   useEffect(() => {
-    if (service && mode === 'edit') {
+    if (layanan && mode === 'edit') {
       setFormData({
-        serviceId: service.serviceId || service.id || '',
-        name: service.name || '',
-        slug: service.slug || '',
-        description: typeof service.description === 'object' 
-          ? service.description.short || service.description.long || ''
-          : service.description || '',
-        status: service.status || 'draft'
+        serviceId: layanan.serviceId || layanan.id || '',
+        name: layanan.name || '',
+        slug: layanan.slug || '',
+        description: typeof layanan.description === 'object' 
+          ? layanan.description.short || layanan.description.long || ''
+          : layanan.description || '',
+        status: layanan.status || 'draft'
       });
     } else {
       // Reset form for add mode
@@ -74,7 +74,7 @@ const ServiceModal = ({
       });
     }
     setErrors({});
-  }, [service, mode, isOpen]);
+  }, [layanan, mode, isOpen]);
 
   const generateSlug = (name) => {
     return name
@@ -110,8 +110,8 @@ const ServiceModal = ({
       checkDuplicateTimeout.current = setTimeout(async () => {
         try {
           setCheckingDuplicate(true);
-          const excludeId = mode === 'edit' ? service?.id || service?.serviceId : null;
-          const isDuplicate = await serviceApi.checkServiceNameExists(value.trim(), excludeId);
+          const excludeId = mode === 'edit' ? layanan?.id || layanan?.serviceId : null;
+          const isDuplicate = await layananApi.checkLayananNameExists(value.trim(), excludeId);
           
           if (isDuplicate) {
             setErrors(prev => ({
@@ -143,8 +143,8 @@ const ServiceModal = ({
     if (!newErrors.name && formData.name.trim()) {
       try {
         setCheckingDuplicate(true);
-        const excludeId = mode === 'edit' ? service?.id || service?.serviceId : null;
-        const isDuplicate = await serviceApi.checkServiceNameExists(formData.name.trim(), excludeId);
+        const excludeId = mode === 'edit' ? layanan?.id || layanan?.serviceId : null;
+        const isDuplicate = await layananApi.checkLayananNameExists(formData.name.trim(), excludeId);
         
         if (isDuplicate) {
           newErrors.name = `Layanan dengan nama "${formData.name.trim()}" sudah ada. Silakan gunakan nama yang berbeda.`;
@@ -171,7 +171,7 @@ const ServiceModal = ({
 
     setLoading(true);
     try {
-      console.log('ServiceModal: Submitting form data:', formData);
+      console.log('LayananModal: Submitting form data:', formData);
       
       // Prepare data in the format expected by backend
       const submitData = {
@@ -196,11 +196,11 @@ const ServiceModal = ({
       };
       
       const result = await onSave(submitData);
-      console.log('ServiceModal: Save result:', result);
+      console.log('LayananModal: Save result:', result);
       onClose();
     } catch (error) {
-      console.error('ServiceModal: Error saving service:', error);
-      console.error('ServiceModal: Error details:', error.response?.data);
+      console.error('LayananModal: Error saving layanan:', error);
+      console.error('LayananModal: Error details:', error.response?.data);
       setErrors({ submit: `Gagal menyimpan layanan: ${error.message}` });
     } finally {
       setLoading(false);
@@ -343,4 +343,4 @@ const ServiceModal = ({
   );
 };
 
-export default ServiceModal; 
+export default LayananModal; 

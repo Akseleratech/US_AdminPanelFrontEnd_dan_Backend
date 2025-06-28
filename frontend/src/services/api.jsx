@@ -1,7 +1,7 @@
 import { auth } from '../config/firebase.jsx';
 
-// API Base URL
-const API_BASE_URL = 'http://localhost:5000/api';
+// API Base URL - using relative path for Vite proxy
+const API_BASE_URL = '/api';
 
 // Helper function to get auth token
 const getAuthToken = async () => {
@@ -116,8 +116,8 @@ export const citiesAPI = {
   delete: (id) => fetch(`${API_BASE_URL}/cities/${id}`, { method: 'DELETE' })
 };
 
-// Services API
-export const servicesAPI = {
+// Layanan API (Services)
+export const layananAPI = {
   getAll: () => apiCall('/services'),
   getById: (id) => apiCall(`/services/${id}`),
   create: (data) => fetch(`${API_BASE_URL}/services`, {

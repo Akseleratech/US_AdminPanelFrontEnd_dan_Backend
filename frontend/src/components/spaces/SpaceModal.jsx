@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, ChevronDown, Plus, Trash2, Edit3, MapPin } from 'lucide-react';
-import { servicesAPI, citiesAPI, amenitiesAPI } from '../../services/api.jsx';
+import { layananAPI, citiesAPI, amenitiesAPI } from '../../services/api.jsx';
 import GoogleMap from '../common/GoogleMap.jsx';
 
 const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
@@ -94,7 +94,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     const fetchData = async () => {
       try {
         const [servicesResponse, citiesResponse, amenitiesResponse] = await Promise.all([
-          servicesAPI.getAll(),
+          layananAPI.getAll(),
           citiesAPI.getAll(),
           amenitiesAPI.getActive()
         ]);
