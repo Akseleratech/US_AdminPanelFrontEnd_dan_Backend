@@ -11,6 +11,8 @@ import Spaces from './components/spaces/Spaces.jsx';
 import Buildings from './components/buildings/Buildings.jsx';
 import Cities from './components/cities/Cities.jsx';
 import Services from './components/services/Services.jsx';
+import Promo from './components/promo/Promo.jsx';
+import Users from './components/users/Users.jsx';
 
 // Contexts
 import { GlobalRefreshProvider } from './contexts/GlobalRefreshContext.jsx';
@@ -191,6 +193,10 @@ const AdminPanel = () => {
         return <Cities />;
       case 'services':
         return <Services />;
+      case 'promo':
+        return <Promo />;
+      case 'users':
+        return <Users />;
       default:
         return (
           <Dashboard 

@@ -349,7 +349,7 @@ const GoogleMap = ({
         center,
         zoom,
         mapTypeControl: true,
-        streetViewControl: true,
+        streetViewControl: false,
         fullscreenControl: false,
         zoomControl: true,
       });

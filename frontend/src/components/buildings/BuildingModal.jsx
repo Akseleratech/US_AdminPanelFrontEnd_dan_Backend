@@ -166,8 +166,8 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
@@ -399,8 +399,8 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
 
       {/* Google Maps Modal */}
       {showMapModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-60 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-6xl max-h-[95vh] overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <MapPin className="w-5 h-5 mr-2" />
@@ -437,7 +437,7 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
                 onLocationSelect={handleLocationSelect}
                 onLocationPreview={handleLocationPreview}
                 enableManualSet={true}
-                height="400px"
+                height="500px"
                 className="border border-gray-300 rounded-md"
               />
             </div>

@@ -198,6 +198,22 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Check for duplicate name (case-insensitive)
+    const existingServicesSnapshot = await db.collection('layanan').get();
+    const duplicateService = existingServicesSnapshot.docs.find(doc => {
+      const existingData = doc.data();
+      return existingData.name && 
+             existingData.name.toLowerCase().trim() === name.toLowerCase().trim();
+    });
+
+    if (duplicateService) {
+      console.log('Backend: Validation failed - duplicate service name');
+      return res.status(400).json({
+        success: false,
+        message: `Layanan dengan nama "${name}" sudah ada. Silakan gunakan nama yang berbeda.`
+      });
+    }
+
     const newServiceData = {
       serviceId: serviceId || `SVC${Date.now()}`,
       name,
@@ -264,6 +280,25 @@ router.put('/:id', async (req, res) => {
         success: false,
         message: 'Service not found'
       });
+    }
+
+    // Check for duplicate name if name is being updated (case-insensitive)
+    if (req.body.name) {
+      const existingServicesSnapshot = await db.collection('layanan').get();
+      const duplicateService = existingServicesSnapshot.docs.find(docSnap => {
+        const existingData = docSnap.data();
+        return docSnap.id !== req.params.id && // Exclude current service
+               existingData.name && 
+               existingData.name.toLowerCase().trim() === req.body.name.toLowerCase().trim();
+      });
+
+      if (duplicateService) {
+        console.log('Backend: Validation failed - duplicate service name');
+        return res.status(400).json({
+          success: false,
+          message: `Layanan dengan nama "${req.body.name}" sudah ada. Silakan gunakan nama yang berbeda.`
+        });
+      }
     }
 
     const updateData = {

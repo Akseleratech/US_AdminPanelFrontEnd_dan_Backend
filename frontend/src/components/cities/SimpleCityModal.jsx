@@ -190,8 +190,8 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-md mx-4">
+    <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md mx-4 animate-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold">
             {isEditing ? 'Edit Kota' : 'Tambah Kota Baru'}
