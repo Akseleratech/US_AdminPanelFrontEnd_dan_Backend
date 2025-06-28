@@ -44,15 +44,7 @@ const useSpaces = () => {
     try {
       console.log('useSpaces: Creating space with data:', spaceData);
       
-      const response = await spacesAPI.create(spaceData);
-      console.log('useSpaces: Create response:', response);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create space');
-      }
-      
-      const result = await response.json();
+      const result = await spacesAPI.create(spaceData);
       console.log('useSpaces: Space created successfully:', result);
       
       // Refresh the spaces list
@@ -68,15 +60,7 @@ const useSpaces = () => {
     try {
       console.log('useSpaces: Updating space:', spaceId, spaceData);
       
-      const response = await spacesAPI.update(spaceId, spaceData);
-      console.log('useSpaces: Update response:', response);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update space');
-      }
-      
-      const result = await response.json();
+      const result = await spacesAPI.update(spaceId, spaceData);
       console.log('useSpaces: Space updated successfully:', result);
       
       // Refresh the spaces list
@@ -92,14 +76,7 @@ const useSpaces = () => {
     try {
       console.log('useSpaces: Deleting space:', spaceId);
       
-      const response = await spacesAPI.delete(spaceId);
-      console.log('useSpaces: Delete response:', response);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete space');
-      }
-      
+      const result = await spacesAPI.delete(spaceId);
       console.log('useSpaces: Space deleted successfully');
       
       // Refresh the spaces list

@@ -123,6 +123,24 @@ class ServiceAPI {
     return transformed;
   }
 
+  // Check if service name already exists (for duplicate validation)
+  async checkServiceNameExists(name, excludeId = null) {
+    try {
+      const response = await this.getServices();
+      const services = response.data || [];
+      
+      return services.some(service => {
+        const isDuplicate = service.name && 
+                           service.name.toLowerCase().trim() === name.toLowerCase().trim();
+        const isNotExcluded = !excludeId || service.id !== excludeId;
+        return isDuplicate && isNotExcluded;
+      });
+    } catch (error) {
+      console.error('Error checking service name existence:', error);
+      throw error;
+    }
+  }
+
   // Search services
   async searchServices(searchTerm, filters = {}) {
     try {

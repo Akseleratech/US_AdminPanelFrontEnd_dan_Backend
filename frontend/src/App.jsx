@@ -8,8 +8,14 @@ import LoadingSpinner from './components/common/LoadingSpinner.jsx';
 import Dashboard from './components/dashboard/Dashboard.jsx';
 import Orders from './components/orders/Orders.jsx';
 import Spaces from './components/spaces/Spaces.jsx';
+import Buildings from './components/buildings/Buildings.jsx';
 import Cities from './components/cities/Cities.jsx';
 import Services from './components/services/Services.jsx';
+import Promo from './components/promo/Promo.jsx';
+import Users from './components/users/Users.jsx';
+
+// Contexts
+import { GlobalRefreshProvider } from './contexts/GlobalRefreshContext.jsx';
 
 // Custom Hook
 import { useApi } from './hooks/useApi.jsx';
@@ -131,15 +137,15 @@ const AdminPanel = () => {
         totalSpaces: 0,
         totalUsers: 0
       },
-          recentOrders: [],
-    quickStats: {
-      pendingOrders: 0,
-      completedToday: 0,
-      activeSpaces: 0,
-      revenue: 0
-    },
-    orders: [],
-    cities: [],
+      recentOrders: [],
+      quickStats: {
+        pendingOrders: 0,
+        completedToday: 0,
+        activeSpaces: 0,
+        revenue: 0
+      },
+      orders: [],
+      cities: [],
       services: [],
       handleDelete: () => alert('Feature not available without Firebase')
     };
@@ -181,10 +187,16 @@ const AdminPanel = () => {
         return <Orders orders={orders} />;
       case 'spaces':
         return <Spaces />;
+      case 'buildings':
+        return <Buildings />;
       case 'cities':
         return <Cities />;
       case 'services':
         return <Services />;
+      case 'promo':
+        return <Promo />;
+      case 'users':
+        return <Users />;
       default:
         return (
           <Dashboard 
@@ -231,7 +243,11 @@ const AdminPanel = () => {
 };
 
 const App = () => {
-  return <AdminPanel />;
+  return (
+    <GlobalRefreshProvider>
+      <AdminPanel />
+    </GlobalRefreshProvider>
+  );
 };
 
 export default App; 

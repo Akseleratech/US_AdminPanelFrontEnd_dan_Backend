@@ -45,7 +45,8 @@ const initializeFirebase = () => {
     try {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        databaseURL: `https://${projectId}-default-rtdb.firebaseio.com`
+        databaseURL: `https://${projectId}-default-rtdb.firebaseio.com`,
+        storageBucket: `${projectId}.firebasestorage.app`
       });
       
       console.log('✅ Firebase Admin SDK initialized successfully');
@@ -64,9 +65,11 @@ const initializeFirebase = () => {
 const firebaseAdmin = initializeFirebase();
 const db = firebaseAdmin.firestore();
 const auth = firebaseAdmin.auth();
+const bucket = firebaseAdmin.storage().bucket(); // Use default bucket
 
 module.exports = {
   admin: firebaseAdmin,
   db,
-  auth
+  auth,
+  bucket
 }; 

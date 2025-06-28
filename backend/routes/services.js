@@ -42,12 +42,20 @@ router.get('/', async (req, res) => {
     snapshot.forEach(doc => {
       const data = doc.data();
       
-      // Count spaces using this service
-      const serviceSpaces = spacesData.filter(space => 
-        space.category === data.serviceId || 
-        space.category === data.name ||
-        space.serviceId === data.serviceId
-      );
+      // Count spaces using this service (enhanced matching)
+      const serviceSpaces = spacesData.filter(space => {
+        // Direct category match with service name (most common)
+        if (space.category === data.name) return true;
+        
+        // Alternative matches for backwards compatibility
+        if (space.category === data.serviceId || space.serviceId === data.serviceId) return true;
+        
+        // Case-insensitive match
+        if (space.category && data.name && 
+            space.category.toLowerCase() === data.name.toLowerCase()) return true;
+            
+        return false;
+      });
       
       const activeSpaces = serviceSpaces.filter(space => space.isActive === true);
       
@@ -116,9 +124,21 @@ router.get('/:id', async (req, res) => {
     
     spacesSnapshot.forEach(spaceDoc => {
       const spaceData = spaceDoc.data();
-      if (spaceData.category === data.serviceId || 
-          spaceData.category === data.name ||
-          spaceData.serviceId === data.serviceId) {
+      
+      // Enhanced matching logic (same as in getAll)
+      let isMatch = false;
+      
+      // Direct category match with service name (most common)
+      if (spaceData.category === data.name) isMatch = true;
+      
+      // Alternative matches for backwards compatibility
+      if (spaceData.category === data.serviceId || spaceData.serviceId === data.serviceId) isMatch = true;
+      
+      // Case-insensitive match
+      if (spaceData.category && data.name && 
+          spaceData.category.toLowerCase() === data.name.toLowerCase()) isMatch = true;
+      
+      if (isMatch) {
         serviceSpaces.push(spaceData);
         if (spaceData.isActive === true) {
           activeSpaces.push(spaceData);
@@ -175,6 +195,22 @@ router.post('/', async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Name is required'
+      });
+    }
+
+    // Check for duplicate name (case-insensitive)
+    const existingServicesSnapshot = await db.collection('layanan').get();
+    const duplicateService = existingServicesSnapshot.docs.find(doc => {
+      const existingData = doc.data();
+      return existingData.name && 
+             existingData.name.toLowerCase().trim() === name.toLowerCase().trim();
+    });
+
+    if (duplicateService) {
+      console.log('Backend: Validation failed - duplicate service name');
+      return res.status(400).json({
+        success: false,
+        message: `Layanan dengan nama "${name}" sudah ada. Silakan gunakan nama yang berbeda.`
       });
     }
 
@@ -244,6 +280,25 @@ router.put('/:id', async (req, res) => {
         success: false,
         message: 'Service not found'
       });
+    }
+
+    // Check for duplicate name if name is being updated (case-insensitive)
+    if (req.body.name) {
+      const existingServicesSnapshot = await db.collection('layanan').get();
+      const duplicateService = existingServicesSnapshot.docs.find(docSnap => {
+        const existingData = docSnap.data();
+        return docSnap.id !== req.params.id && // Exclude current service
+               existingData.name && 
+               existingData.name.toLowerCase().trim() === req.body.name.toLowerCase().trim();
+      });
+
+      if (duplicateService) {
+        console.log('Backend: Validation failed - duplicate service name');
+        return res.status(400).json({
+          success: false,
+          message: `Layanan dengan nama "${req.body.name}" sudah ada. Silakan gunakan nama yang berbeda.`
+        });
+      }
     }
 
     const updateData = {

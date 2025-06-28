@@ -15,12 +15,23 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/dashboard', require('./routes/dashboard'));
-app.use('/api/orders', require('./routes/orders'));
-app.use('/api/spaces', require('./routes/spaces'));
-app.use('/api/cities', require('./routes/cities'));
-app.use('/api/services', require('./routes/services'));
-app.use('/api/database', require('./routes/database'));
+const citiesRoutes = require('./routes/cities');
+const servicesRoutes = require('./routes/services');
+const spacesRoutes = require('./routes/spaces');
+const buildingsRoutes = require('./routes/buildings');
+const ordersRoutes = require('./routes/orders');
+const dashboardRoutes = require('./routes/dashboard');
+const databaseRoutes = require('./routes/database');
+const amenitiesRoutes = require('./routes/amenities');
+
+app.use('/api/cities', citiesRoutes);
+app.use('/api/services', servicesRoutes);
+app.use('/api/spaces', spacesRoutes);
+app.use('/api/buildings', buildingsRoutes);
+app.use('/api/orders', ordersRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/database', databaseRoutes);
+app.use('/api/amenities', amenitiesRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

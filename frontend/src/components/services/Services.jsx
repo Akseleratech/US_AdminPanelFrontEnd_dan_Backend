@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, AlertCircle, Trash2 } from 'lucide-react';
 import ServicesTable from './ServicesTable.jsx';
 import ServiceModal from './ServiceModal.jsx';
 import useServices from '../../hooks/useServices.js';
@@ -21,6 +21,8 @@ const Services = () => {
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
   const [selectedService, setSelectedService] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState(null);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -39,14 +41,21 @@ const Services = () => {
     setShowServiceModal(true);
   };
 
-  const handleDelete = async (service) => {
-    if (window.confirm(`Apakah Anda yakin ingin menghapus layanan "${service.name}"?`)) {
-      try {
-        await deleteService(service.id);
-        showNotification(`Layanan "${service.name}" berhasil dihapus`, 'success');
-      } catch (error) {
-        showNotification(`Gagal menghapus layanan: ${error.message}`, 'error');
-      }
+  const handleDelete = (service) => {
+    setServiceToDelete(service);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!serviceToDelete) return;
+
+    try {
+      await deleteService(serviceToDelete.id);
+      showNotification(`Layanan "${serviceToDelete.name}" berhasil dihapus`, 'success');
+      setShowDeleteConfirm(false);
+      setServiceToDelete(null);
+    } catch (error) {
+      showNotification(`Gagal menghapus layanan: ${error.message}`, 'error');
     }
   };
 
@@ -171,6 +180,36 @@ const Services = () => {
         service={selectedService}
         mode={modalMode}
       />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-md w-full mx-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center mb-4">
+              <AlertCircle className="w-6 h-6 text-red-500 mr-2" />
+              <h3 className="text-lg font-semibold text-gray-900">Konfirmasi Hapus</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Apakah Anda yakin ingin menghapus layanan "{serviceToDelete?.name}"? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                <Trash2 className="w-4 h-4 mr-1 inline" />
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

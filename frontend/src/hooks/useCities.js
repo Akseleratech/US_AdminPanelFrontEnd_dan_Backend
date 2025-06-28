@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import cityAPI from '../services/cityApi';
+import { useGlobalRefresh } from '../contexts/GlobalRefreshContext.jsx';
 
 const useCities = () => {
   const [cities, setCities] = useState([]);
@@ -7,6 +8,9 @@ const useCities = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({});
+  
+  // Global refresh context
+  const { refreshTriggers } = useGlobalRefresh();
 
   // Fetch all cities
   const fetchCities = useCallback(async (params = {}) => {
@@ -185,6 +189,14 @@ const useCities = () => {
       return () => clearTimeout(debounceTimer);
     }
   }, [searchTerm, filters, searchCities]);
+
+  // Listen to global refresh triggers
+  useEffect(() => {
+    if (refreshTriggers.cities > 0) {
+      console.log('🔄 useCities: Global refresh triggered, refreshing cities data...');
+      refresh();
+    }
+  }, [refreshTriggers.cities, refresh]);
 
   return {
     // State

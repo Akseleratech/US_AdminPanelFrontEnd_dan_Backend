@@ -3,7 +3,25 @@ require('dotenv').config();
 
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const { db } = require('../config/firebase');
+const imageUploadService = require('../services/imageUploadService');
+const base64ImageService = require('../services/base64ImageService');
+
+// Configure multer for memory storage
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 // GET /api/cities
 router.get('/', async (req, res) => {
@@ -38,12 +56,12 @@ router.get('/', async (req, res) => {
         province: data.province,
         cityId: data.cityId,
         country: data.country,
-        location: data.location,
         postalCodes: data.postalCodes,
         timezone: data.timezone,
         utcOffset: data.utcOffset,
         statistics: data.statistics,
         search: data.search,
+        thumbnail: data.thumbnail || null,
         isActive: data.isActive,
         createdBy: data.createdBy,
         createdAt: data.createdAt,
@@ -53,6 +71,7 @@ router.get('/', async (req, res) => {
         totalSpaces: data.statistics?.totalSpaces || 0,
         status: data.isActive ? 'active' : 'inactive' // Convert boolean to string
       };
+      
       cities.push(cityData);
     });
 
@@ -108,12 +127,12 @@ router.get('/:id', async (req, res) => {
         province: data.province,
         cityId: data.cityId,
         country: data.country,
-        location: data.location,
         postalCodes: data.postalCodes,
         timezone: data.timezone,
         utcOffset: data.utcOffset,
         statistics: data.statistics,
         search: data.search,
+        thumbnail: data.thumbnail || null,
         isActive: data.isActive,
         createdBy: data.createdBy,
         createdAt: data.createdAt,
@@ -134,15 +153,74 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// POST /api/cities/upload-image/:cityId
+router.post('/upload-image/:cityId', upload.single('thumbnail'), async (req, res) => {
+  try {
+    const { cityId } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    // Check if city exists
+    const cityDoc = await db.collection('cities').doc(cityId).get();
+    if (!cityDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: 'City not found'
+      });
+    }
+
+    const cityData = cityDoc.data();
+
+    // Upload image
+    const uploadResult = await imageUploadService.uploadImage(
+      file,
+      'cities',
+      cityId,
+      cityData.thumbnail // Delete existing image if any
+    );
+
+    // Update city document with new thumbnail URL
+    await db.collection('cities').doc(cityId).update({
+      thumbnail: uploadResult.url,
+      updatedAt: new Date()
+    });
+
+    console.log(`✅ Successfully updated city ${cityId} with thumbnail: ${uploadResult.url}`);
+
+    res.json({
+      success: true,
+      data: {
+        thumbnail: uploadResult.url,
+        filename: uploadResult.filename,
+        size: uploadResult.size
+      },
+      message: 'Image uploaded successfully'
+    });
+
+  } catch (error) {
+    console.error('Error uploading city image:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload image',
+      error: error.message
+    });
+  }
+});
+
 // POST /api/cities
-router.post('/', async (req, res) => {
+router.post('/', upload.single('thumbnail'), async (req, res) => {
   try {
     const {
       cityId,
       name,
       province,
       country,
-      location,
       postalCodes,
       timezone,
       utcOffset,
@@ -163,7 +241,6 @@ router.post('/', async (req, res) => {
       name,
       province,
       country,
-      location,
       postalCodes: postalCodes || [],
       timezone: timezone || 'Asia/Jakarta',
       utcOffset: utcOffset || '+07:00',
@@ -183,6 +260,24 @@ router.post('/', async (req, res) => {
       updatedAt: new Date(),
       createdBy: 'api'
     };
+
+    // Handle image upload if file is provided
+    if (req.file) {
+      try {
+        // Upload to Firebase Storage
+        console.log('📤 Uploading image to Firebase Storage...');
+        const uploadResult = await imageUploadService.uploadImage(
+          req.file,
+          'cities',
+          newCityData.cityId
+        );
+        newCityData.thumbnail = uploadResult.url;
+        console.log('✅ Image uploaded to Firebase Storage');
+      } catch (imageError) {
+        console.error('Error processing city image:', imageError);
+        // Continue without image, don't fail the entire request
+      }
+    }
 
     await db.collection('cities').doc(newCityData.cityId).set(newCityData);
 
@@ -209,7 +304,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/cities/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', upload.single('thumbnail'), async (req, res) => {
   try {
     const cityRef = db.collection('cities').doc(req.params.id);
     const doc = await cityRef.get();
@@ -221,11 +316,31 @@ router.put('/:id', async (req, res) => {
       });
     }
 
+    const currentData = doc.data();
     const updateData = {
       ...req.body,
       updatedAt: new Date(),
       updatedBy: 'api'
     };
+
+    // Handle image upload if file is provided
+    if (req.file) {
+      try {
+        // Upload to Firebase Storage
+        console.log('📤 Uploading image to Firebase Storage...');
+        const uploadResult = await imageUploadService.uploadImage(
+          req.file,
+          'cities',
+          req.params.id,
+          currentData.thumbnail
+        );
+        updateData.thumbnail = uploadResult.url;
+        console.log('✅ Image uploaded to Firebase Storage');
+      } catch (imageError) {
+        console.error('Error processing city image:', imageError);
+        // Continue without image, don't fail the entire request
+      }
+    }
 
     // Remove undefined values
     Object.keys(updateData).forEach(key => {
@@ -248,7 +363,6 @@ router.put('/:id', async (req, res) => {
         province: data.province,
         cityId: data.cityId,
         country: data.country,
-        location: data.location,
         postalCodes: data.postalCodes,
         timezone: data.timezone,
         utcOffset: data.utcOffset,
@@ -299,6 +413,43 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to delete city',
+      error: error.message
+    });
+  }
+});
+
+// Test endpoint to check thumbnails
+router.get('/test/thumbnails', async (req, res) => {
+  try {
+    console.log('🧪 Test endpoint: Checking city thumbnails...');
+    
+    const citiesSnapshot = await db.collection('cities').get();
+    const cities = [];
+    
+    citiesSnapshot.forEach(doc => {
+      const data = doc.data();
+      cities.push({
+        id: doc.id,
+        name: data.name,
+        thumbnail: data.thumbnail || null,
+        hasThumbnail: !!data.thumbnail
+      });
+    });
+    
+    const citiesWithThumbnails = cities.filter(city => city.hasThumbnail);
+    
+    res.json({
+      success: true,
+      total: cities.length,
+      withThumbnails: citiesWithThumbnails.length,
+      cities: cities,
+      message: `Found ${cities.length} cities, ${citiesWithThumbnails.length} have thumbnails`
+    });
+  } catch (error) {
+    console.error('Error in test endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Test failed',
       error: error.message
     });
   }

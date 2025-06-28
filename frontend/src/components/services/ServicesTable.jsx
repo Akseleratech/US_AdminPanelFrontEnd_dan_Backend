@@ -39,8 +39,16 @@ const ServicesTable = ({ services, onEdit, onDelete, loading = false }) => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <div className="text-center">
-                    <div className="text-sm font-medium">{service.spaceCount?.active || 0}</div>
+                  <div 
+                    className="text-center cursor-help" 
+                    title={`Total: ${service.spaceCount?.total || 0} spaces | Active: ${service.spaceCount?.active || 0} | Inactive: ${(service.spaceCount?.total || 0) - (service.spaceCount?.active || 0)}`}
+                  >
+                    <div className="text-sm font-medium text-gray-900">
+                      {service.spaceCount?.total || 0}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {service.spaceCount?.active || 0} active
+                    </div>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">

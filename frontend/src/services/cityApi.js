@@ -28,8 +28,12 @@ class CityAPI {
   // CREATE new city
   async createCity(cityData) {
     try {
-      const transformedData = this.transformCityData(cityData);
-      const response = await axios.post(API_BASE_URL, transformedData);
+      const formData = this.createFormData(cityData);
+      const response = await axios.post(API_BASE_URL, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       return response.data;
     } catch (error) {
       console.error('Error creating city:', error);
@@ -40,12 +44,34 @@ class CityAPI {
   // UPDATE existing city
   async updateCity(id, cityData) {
     try {
-      const transformedData = this.transformCityData(cityData);
-      const response = await axios.put(`${API_BASE_URL}/${id}`, transformedData);
+      const formData = this.createFormData(cityData);
+      const response = await axios.put(`${API_BASE_URL}/${id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       return response.data;
     } catch (error) {
       console.error('Error updating city:', error);
       throw new Error(error.response?.data?.message || 'Failed to update city');
+    }
+  }
+
+  // Upload city image
+  async uploadCityImage(cityId, imageFile) {
+    try {
+      const formData = new FormData();
+      formData.append('thumbnail', imageFile);
+      
+      const response = await axios.post(`${API_BASE_URL}/upload-image/${cityId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading city image:', error);
+      throw new Error(error.response?.data?.message || 'Failed to upload image');
     }
   }
 
@@ -60,33 +86,54 @@ class CityAPI {
     }
   }
 
-  // Transform city data to match backend schema
+  // Create FormData for city with image support
+  createFormData(data) {
+    const formData = new FormData();
+    
+    // Basic fields
+    if (data.cityId) formData.append('cityId', data.cityId);
+    formData.append('name', data.name);
+    formData.append('province', data.province);
+    formData.append('country', data.country);
+    
+    // Postal codes
+    if (data.postalCode) {
+      formData.append('postalCodes', JSON.stringify([data.postalCode]));
+    }
+    
+    // Timezone
+    formData.append('timezone', data.timezone || 'Asia/Jakarta');
+    formData.append('utcOffset', data.utcOffset || '+07:00');
+    
+    // Search data
+    const searchData = {
+      keywords: [data.name.toLowerCase()],
+      aliases: [],
+      slug: data.name.toLowerCase().replace(/\s+/g, '-'),
+      metaTitle: `Co-working Spaces in ${data.name}`,
+      metaDescription: `Find and book workspaces in ${data.name}`
+    };
+    formData.append('search', JSON.stringify(searchData));
+    
+    // Active status
+    formData.append('isActive', data.isActive ?? true);
+    
+    // Handle image file
+    if (data.thumbnail && data.thumbnail instanceof File) {
+      formData.append('thumbnail', data.thumbnail);
+    }
+    
+    return formData;
+  }
+
+  // Transform city data to match backend schema (for backward compatibility)
   transformCityData(data) {
     return {
       cityId: data.cityId || undefined,
       name: data.name,
       province: data.province,
-      country: {
-        id: data.country.id || 'ID',
-        name: data.country.name || 'Indonesia',
-        code: data.country.code || 'IDN',
-        phoneCode: data.country.phoneCode || '+62'
-      },
-      location: {
-        coordinates: {
-          latitude: parseFloat(data.location.coordinates.latitude) || 0,
-          longitude: parseFloat(data.location.coordinates.longitude) || 0
-        },
-        latitude: parseFloat(data.location.coordinates.latitude) || 0,
-        longitude: parseFloat(data.location.coordinates.longitude) || 0,
-        boundingBox: data.location.boundingBox || {
-          northeast: { lat: 0, lng: 0 },
-          southwest: { lat: 0, lng: 0 }
-        },
-        area: parseFloat(data.location.area) || 0,
-        elevation: parseInt(data.location.elevation) || 0
-      },
-      postalCodes: Array.isArray(data.postalCodes) ? data.postalCodes : [],
+      country: data.country,
+      postalCodes: data.postalCode ? [data.postalCode] : [],
       timezone: data.timezone || 'Asia/Jakarta',
       utcOffset: data.utcOffset || '+07:00',
       statistics: {
@@ -94,15 +141,14 @@ class CityAPI {
         activeSpaces: parseInt(data.statistics?.activeSpaces) || 0
       },
       search: {
-        keywords: Array.isArray(data.search?.keywords) 
-          ? data.search.keywords 
-          : [data.name.toLowerCase()],
-        aliases: Array.isArray(data.search?.aliases) ? data.search.aliases : [],
-        slug: data.search?.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
-        metaTitle: data.search?.metaTitle || `Co-working Spaces in ${data.name}`,
-        metaDescription: data.search?.metaDescription || `Find and book workspaces in ${data.name}`
+        keywords: [data.name.toLowerCase()],
+        aliases: [],
+        slug: data.name.toLowerCase().replace(/\s+/g, '-'),
+        metaTitle: `Co-working Spaces in ${data.name}`,
+        metaDescription: `Find and book workspaces in ${data.name}`
       },
-      isActive: data.isActive ?? true
+      isActive: data.isActive ?? true,
+      thumbnail: data.thumbnail
     };
   }
 
