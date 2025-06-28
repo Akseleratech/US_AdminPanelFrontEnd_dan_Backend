@@ -7,10 +7,9 @@ const useSpaces = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filter spaces based on search term
-  const filteredSpaces = spaces.filter(space =>
+  // Filter spaces based on search term - with safeguard to ensure spaces is always an array
+  const filteredSpaces = (Array.isArray(spaces) ? spaces : []).filter(space =>
     space.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    space.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     space.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     space.location?.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     space.location?.address?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -25,16 +24,17 @@ const useSpaces = () => {
       const response = await spacesAPI.getAll();
       console.log('useSpaces: API response:', response);
       
-      if (response.success) {
-        setSpaces(response.data || []);
-        console.log('useSpaces: Spaces loaded:', response.data?.length || 0);
+      if (response && response.success) {
+        const spacesData = response.data || [];
+        setSpaces(Array.isArray(spacesData) ? spacesData : []);
+        console.log('useSpaces: Spaces loaded:', spacesData.length || 0);
       } else {
-        throw new Error(response.message || 'Failed to fetch spaces');
+        throw new Error(response?.message || 'Failed to fetch spaces');
       }
     } catch (err) {
       console.error('useSpaces: Error fetching spaces:', err);
       setError(err.message);
-      setSpaces([]);
+      setSpaces([]); // Ensure spaces is always an array even on error
     } finally {
       setLoading(false);
     }
@@ -94,7 +94,7 @@ const useSpaces = () => {
 
   return {
     spaces: filteredSpaces,
-    allSpaces: spaces,
+    allSpaces: Array.isArray(spaces) ? spaces : [],
     loading,
     error,
     searchTerm,

@@ -1,72 +1,119 @@
 import React, { useState } from 'react';
-import { Search, Plus, LayoutGrid, MapPin, Users, Clock } from 'lucide-react';
+import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye } from 'lucide-react';
+import useSpaces from '../../hooks/useSpaces';
+import SpaceModal from './SpaceModal';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 const Spaces = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const {
+    spaces,
+    loading,
+    error,
+    searchTerm,
+    setSearchTerm,
+    createSpace,
+    updateSpace,
+    deleteSpace,
+    refresh
+  } = useSpaces();
+
   const [notification, setNotification] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSpace, setSelectedSpace] = useState(null);
+  const [modalMode, setModalMode] = useState('create'); // 'create', 'edit', 'view'
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 5000);
   };
 
-  // Mock data untuk demonstrasi - ini akan diganti dengan data real nanti
-  const spaces = [
-    {
-      id: 1,
-      name: 'Meeting Room A',
-      type: 'Meeting Room',
-      capacity: 8,
-      building: 'Gedung Utama',
-      location: 'Lantai 2',
-      status: 'Available',
-      features: ['Projector', 'WiFi', 'AC']
-    },
-    {
-      id: 2,
-      name: 'Co-working Space 1',
-      type: 'Co-working',
-      capacity: 20,
-      building: 'Gedung B',
-      location: 'Lantai 1',
-      status: 'Occupied',
-      features: ['WiFi', 'Printer', 'AC', 'Kitchen']
-    },
-    {
-      id: 3,
-      name: 'Private Office 101',
-      type: 'Private Office',
-      capacity: 4,
-      building: 'Gedung Utama',
-      location: 'Lantai 1',
-      status: 'Available',
-      features: ['WiFi', 'AC', 'Phone']
-    }
-  ];
+  const handleAddSpace = () => {
+    setSelectedSpace(null);
+    setModalMode('create');
+    setIsModalOpen(true);
+  };
 
-  const filteredSpaces = spaces.filter(space =>
-    space.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    space.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    space.building.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleEditSpace = (space) => {
+    setSelectedSpace(space);
+    setModalMode('edit');
+    setIsModalOpen(true);
+  };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Available': return 'bg-green-100 text-green-800';
-      case 'Occupied': return 'bg-red-100 text-red-800';
-      case 'Maintenance': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const handleViewSpace = (space) => {
+    setSelectedSpace(space);
+    setModalMode('view');
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteSpace = async (space) => {
+    if (window.confirm(`Are you sure you want to delete space "${space.name}"?`)) {
+      try {
+        await deleteSpace(space.id);
+        showNotification('Space deleted successfully!', 'success');
+      } catch (error) {
+        showNotification('Failed to delete space: ' + error.message, 'error');
+      }
     }
   };
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'Meeting Room': return <Users className="w-4 h-4" />;
-      case 'Co-working': return <LayoutGrid className="w-4 h-4" />;
-      case 'Private Office': return <MapPin className="w-4 h-4" />;
+  const handleModalSave = async (spaceData) => {
+    try {
+      if (modalMode === 'create') {
+        await createSpace(spaceData);
+        showNotification('Space created successfully!', 'success');
+      } else if (modalMode === 'edit') {
+        await updateSpace(selectedSpace.id, spaceData);
+        showNotification('Space updated successfully!', 'success');
+      }
+      setIsModalOpen(false);
+      setSelectedSpace(null);
+    } catch (error) {
+      showNotification('Failed to save space: ' + error.message, 'error');
+    }
+  };
+
+  const getStatusColor = (isActive) => {
+    return isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+  };
+
+  const getStatusText = (isActive) => {
+    return isActive ? 'Active' : 'Inactive';
+  };
+
+  const getTypeIcon = (category) => {
+    switch (category) {
+      case 'meeting-room': return <Users className="w-4 h-4" />;
+      case 'co-working': return <LayoutGrid className="w-4 h-4" />;
+      case 'private-office': return <MapPin className="w-4 h-4" />;
+      case 'event-space': return <Clock className="w-4 h-4" />;
+      case 'phone-booth': return <Users className="w-4 h-4" />;
       default: return <LayoutGrid className="w-4 h-4" />;
     }
   };
+
+  const getCategoryDisplayName = (category) => {
+    switch (category) {
+      case 'meeting-room': return 'Meeting Room';
+      case 'co-working': return 'Co-working Space';
+      case 'private-office': return 'Private Office';
+      case 'event-space': return 'Event Space';
+      case 'phone-booth': return 'Phone Booth';
+      default: return category || 'Unknown';
+    }
+  };
+
+  // Statistics calculations
+  const activeSpaces = spaces.filter(s => s.isActive);
+  const inactiveSpaces = spaces.filter(s => !s.isActive);
+  const totalCapacity = spaces.reduce((total, space) => total + (parseInt(space.capacity) || 0), 0);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -100,6 +147,20 @@ const Spaces = () => {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 border border-red-200 text-red-800 px-4 py-3 rounded-md">
+          <p className="font-medium">Error loading spaces:</p>
+          <p className="text-sm">{error}</p>
+          <button 
+            onClick={refresh}
+            className="mt-2 text-sm bg-red-200 hover:bg-red-300 px-3 py-1 rounded"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -117,10 +178,8 @@ const Spaces = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Available</p>
-              <p className="text-2xl font-bold text-green-600">
-                {spaces.filter(s => s.status === 'Available').length}
-              </p>
+              <p className="text-sm font-medium text-gray-600">Active</p>
+              <p className="text-2xl font-bold text-green-600">{activeSpaces.length}</p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <Users className="w-6 h-6 text-green-600" />
@@ -131,10 +190,8 @@ const Spaces = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Occupied</p>
-              <p className="text-2xl font-bold text-red-600">
-                {spaces.filter(s => s.status === 'Occupied').length}
-              </p>
+              <p className="text-sm font-medium text-gray-600">Inactive</p>
+              <p className="text-2xl font-bold text-red-600">{inactiveSpaces.length}</p>
             </div>
             <div className="p-3 bg-red-100 rounded-full">
               <Clock className="w-6 h-6 text-red-600" />
@@ -146,9 +203,7 @@ const Spaces = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Capacity</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {spaces.reduce((total, space) => total + space.capacity, 0)}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{totalCapacity}</p>
             </div>
             <div className="p-3 bg-purple-100 rounded-full">
               <MapPin className="w-6 h-6 text-purple-600" />
@@ -174,7 +229,7 @@ const Spaces = () => {
 
         <button 
           className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-          onClick={() => showNotification('Add Space feature coming soon!', 'success')}
+          onClick={handleAddSpace}
         >
           <Plus className="w-5 h-5" />
           <span>Add Space</span>
@@ -191,19 +246,19 @@ const Spaces = () => {
                   Space
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
+                  Layanan
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Capacity
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Building
+                  Location
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Features
+                  Amenities
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -211,61 +266,71 @@ const Spaces = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSpaces.map((space) => (
+              {spaces.map((space) => (
                 <tr key={space.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
                         <div className="h-10 w-10 rounded-lg bg-primary-light flex items-center justify-center">
-                          {getTypeIcon(space.type)}
+                          {getTypeIcon(space.category)}
                         </div>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{space.name}</div>
-                        <div className="text-sm text-gray-500">{space.location}</div>
+                        <div className="text-sm text-gray-500">{space.description}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{space.type}</div>
+                    <div className="text-sm text-gray-900">{getCategoryDisplayName(space.category)}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{space.capacity} people</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{space.building}</div>
+                    <div className="text-sm text-gray-900">{space.location?.city}</div>
+                    <div className="text-sm text-gray-500">{space.location?.address}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(space.status)}`}>
-                      {space.status}
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(space.isActive)}`}>
+                      {getStatusText(space.isActive)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-wrap gap-1">
-                      {space.features.slice(0, 3).map((feature, index) => (
+                      {space.amenities && space.amenities.slice(0, 3).map((amenity, index) => (
                         <span key={index} className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                          {feature}
+                          {typeof amenity === 'string' ? amenity : amenity.name}
                         </span>
                       ))}
-                      {space.features.length > 3 && (
+                      {space.amenities && space.amenities.length > 3 && (
                         <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                          +{space.features.length - 3} more
+                          +{space.amenities.length - 3} more
                         </span>
                       )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button 
-                      className="text-primary hover:text-primary-dark mr-4"
-                      onClick={() => showNotification('Edit feature coming soon!', 'success')}
+                      className="text-blue-600 hover:text-blue-900 mr-3"
+                      onClick={() => handleViewSpace(space)}
+                      title="View"
                     >
-                      Edit
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button 
+                      className="text-primary hover:text-primary-dark mr-3"
+                      onClick={() => handleEditSpace(space)}
+                      title="Edit"
+                    >
+                      <Edit className="w-4 h-4" />
                     </button>
                     <button 
                       className="text-red-600 hover:text-red-900"
-                      onClick={() => showNotification('Delete feature coming soon!', 'success')}
+                      onClick={() => handleDeleteSpace(space)}
+                      title="Delete"
                     >
-                      Delete
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -274,16 +339,32 @@ const Spaces = () => {
           </table>
         </div>
 
-        {filteredSpaces.length === 0 && (
+        {spaces.length === 0 && !loading && (
           <div className="text-center py-12">
             <LayoutGrid className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No spaces found</h3>
             <p className="mt-1 text-sm text-gray-500">
               {searchTerm ? `No spaces match "${searchTerm}"` : 'Get started by creating your first space.'}
             </p>
+            <button 
+              onClick={handleAddSpace}
+              className="mt-4 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Add Your First Space</span>
+            </button>
           </div>
         )}
       </div>
+
+      {/* Space Modal */}
+      <SpaceModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleModalSave}
+        space={selectedSpace}
+        mode={modalMode}
+      />
     </div>
   );
 };

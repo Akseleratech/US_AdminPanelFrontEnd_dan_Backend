@@ -18,7 +18,7 @@ export default defineConfig({
             console.log('Proxy error:', err);
           });
           proxy.on('proxyReq', (proxyReq, req, res) => {
-            console.log('Proxying request:', req.method, req.url, '-> Functions');
+            console.log('Proxying request:', req.method, req.url, '-> Functions Emulator');
           });
         }
       }

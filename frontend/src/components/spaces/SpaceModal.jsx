@@ -1,25 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, ChevronDown, Plus, Trash2, Edit3, MapPin } from 'lucide-react';
-import { layananAPI, citiesAPI, amenitiesAPI } from '../../services/api.jsx';
-import GoogleMap from '../common/GoogleMap.jsx';
+import { X, Plus, Trash2, Edit3 } from 'lucide-react';
+import { layananAPI, amenitiesAPI, buildingsAPI } from '../../services/api.jsx';
+import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext.jsx';
 
 const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    brand: '',
-    category: '',
+    layanan: '',
     capacity: '',
-    location: {
-      address: '',
-      city: '',
-      province: '',
-      postalCode: '',
-      country: 'Indonesia',
-      coordinates: null,
-      latitude: null,
-      longitude: null
-    },
+    buildingId: '',
     pricing: {
       hourly: '',
       daily: '',
@@ -33,23 +23,17 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [availableServices, setAvailableServices] = useState([]);
-  const [availableCities, setAvailableCities] = useState([]);
+  const [availableBuildings, setAvailableBuildings] = useState([]);
   const [availableAmenities, setAvailableAmenities] = useState([]);
-  
-  // Dropdown states for search functionality
-  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
-  const [provinceDropdownOpen, setProvinceDropdownOpen] = useState(false);
-  const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
-  const [countrySearch, setCountrySearch] = useState('');
-  const [provinceSearch, setProvinceSearch] = useState('');
-  const [citySearch, setCitySearch] = useState('');
+
+  // Global refresh context
+  const { refreshTriggers } = useGlobalRefresh();
   
   // Custom amenities states
   const [editingAmenity, setEditingAmenity] = useState(null);
   const [editAmenityValue, setEditAmenityValue] = useState('');
   const [showAmenityModal, setShowAmenityModal] = useState(false);
   const [deletingAmenity, setDeletingAmenity] = useState(null);
-  const [showMapModal, setShowMapModal] = useState(false);
   const [amenityFormData, setAmenityFormData] = useState({
     name: '',
     description: '',
@@ -58,19 +42,13 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     icon: ''
   });
 
-  // Fallback categories if no services available
-  const fallbackCategories = [
+  // Fallback layanan if no services available
+  const fallbackLayanan = [
     { value: 'co-working', label: 'Co-working Space' },
     { value: 'meeting-room', label: 'Meeting Room' },
     { value: 'private-office', label: 'Private Office' },
     { value: 'event-space', label: 'Event Space' },
     { value: 'phone-booth', label: 'Phone Booth' }
-  ];
-
-  const brands = [
-    { value: 'UnionSpace', label: 'UnionSpace' },
-    { value: 'NextSpace', label: 'NextSpace' },
-    { value: 'CoSpace', label: 'CoSpace' }
   ];
 
   // Categories for amenities
@@ -89,139 +67,142 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     { value: 'specialized', label: 'Specialized' }
   ];
 
-  // Fetch available services, cities, and amenities
-  useEffect(() => {
-    const fetchData = async () => {
+  // Fetch available services, buildings, and amenities
+  const fetchData = async () => {
+    try {
+      console.log('🔄 SpaceModal: Fetching layanan, buildings, and amenities...');
+      
+      // Test API calls individually for comparison
+      console.log('🔄 SpaceModal: Testing layananAPI.getAll() first...');
+      const servicesResponse = await layananAPI.getAll();
+      console.log('📊 SpaceModal: Services API response:', servicesResponse);
+      
+      // Also test manual /api/services for comparison
+      console.log('🔄 SpaceModal: Testing manual /api/services for comparison...');
       try {
-        const [servicesResponse, citiesResponse, amenitiesResponse] = await Promise.all([
-          layananAPI.getAll(),
-          citiesAPI.getAll(),
-          amenitiesAPI.getActive()
-        ]);
-        
-        if (servicesResponse.success) {
-          setAvailableServices(servicesResponse.data || []);
-        }
-        
-        if (citiesResponse.success) {
-          setAvailableCities(citiesResponse.data || []);
-        }
-
-        if (amenitiesResponse.success) {
-          setAvailableAmenities(amenitiesResponse.data || []);
-        }
+        const servicesManualResponse = await fetch('/api/services');
+        const servicesManualData = await servicesManualResponse.json();
+        console.log('📊 SpaceModal: Manual services fetch result:', servicesManualData);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('💥 SpaceModal: Manual services fetch failed:', error);
+      }
+      
+      console.log('🔄 SpaceModal: Testing buildingsAPI.getAll()...');
+      console.log('🔍 SpaceModal: buildingsAPI object:', buildingsAPI);
+      console.log('🔍 SpaceModal: buildingsAPI.getAll function:', typeof buildingsAPI.getAll);
+      console.log('🔄 SpaceModal: Using UPDATED buildingsAPI.getAll() with query params...');
+      
+      let buildingsResponse;
+      try {
+        console.log('🔄 SpaceModal: Making buildingsAPI.getAll() call...');
+        buildingsResponse = await buildingsAPI.getAll();
+        console.log('🏢 SpaceModal: Buildings API call successful:', buildingsResponse);
+      } catch (buildingsError) {
+        console.error('💥 SpaceModal: Buildings API failed:', buildingsError);
+        console.log('🔄 SpaceModal: Trying manual fetch to /api/buildings...');
+        
+        // Fallback: Try manual fetch
+        try {
+          const manualResponse = await fetch('/api/buildings');
+          console.log('🔄 SpaceModal: Manual fetch response status:', manualResponse.status);
+          const manualData = await manualResponse.json();
+          console.log('🔄 SpaceModal: Manual fetch result:', manualData);
+          buildingsResponse = manualData;
+        } catch (manualError) {
+          console.error('💥 SpaceModal: Manual fetch also failed:', manualError);
+          buildingsResponse = { success: false, error: buildingsError.message };
+        }
+      }
+      
+      console.log('🔄 SpaceModal: Testing amenitiesAPI.getActive()...');
+      const amenitiesResponse = await amenitiesAPI.getActive();
+      
+      console.log('📊 SpaceModal: Services response:', servicesResponse);
+      console.log('🏢 SpaceModal: Buildings response:', buildingsResponse);
+      console.log('🛠️ SpaceModal: Amenities response:', amenitiesResponse);
+      
+      if (servicesResponse && servicesResponse.success) {
+        // API returns data in response.data.services format
+        const servicesData = servicesResponse.data?.services || [];
+        console.log('✅ SpaceModal: Layanan data loaded:', servicesData);
+        setAvailableServices(Array.isArray(servicesData) ? servicesData : []);
+      } else {
+        console.log('❌ SpaceModal: No layanan data or failed response');
         setAvailableServices([]);
-        setAvailableCities([]);
+      }
+      
+      if (buildingsResponse && buildingsResponse.success) {
+        // API returns data in response.data.buildings format (similar to services)
+        const buildingsData = buildingsResponse.data?.buildings || [];
+        console.log('✅ SpaceModal: Buildings data loaded:', buildingsData.length, 'buildings');
+        console.log('🔍 SpaceModal: Full buildings response structure:', {
+          success: buildingsResponse.success,
+          data: buildingsResponse.data,
+          buildingsArray: buildingsData,
+          dataLength: buildingsData.length,
+          isArray: Array.isArray(buildingsData),
+          firstBuilding: buildingsData[0]
+        });
+        setAvailableBuildings(Array.isArray(buildingsData) ? buildingsData : []);
+      } else {
+        console.log('❌ SpaceModal: No buildings data or failed response:', buildingsResponse);
+        setAvailableBuildings([]);
+      }
+
+      if (amenitiesResponse && amenitiesResponse.success) {
+        // Check if amenities has similar structure to services/buildings
+        const amenitiesData = amenitiesResponse.data?.amenities || amenitiesResponse.data || [];
+        console.log('✅ SpaceModal: Amenities data loaded:', Array.isArray(amenitiesData) ? amenitiesData.length : 'unknown', 'amenities');
+        console.log('🔍 SpaceModal: Amenities response structure:', {
+          success: amenitiesResponse.success,
+          data: amenitiesResponse.data,
+          amenitiesArray: amenitiesData,
+          isArray: Array.isArray(amenitiesData)
+        });
+        setAvailableAmenities(Array.isArray(amenitiesData) ? amenitiesData : []);
+      } else {
+        console.log('❌ SpaceModal: No amenities data or failed response');
         setAvailableAmenities([]);
       }
-    };
+    } catch (error) {
+      console.error('💥 SpaceModal: Error fetching data:', error);
+      setAvailableServices([]);
+      setAvailableBuildings([]);
+      setAvailableAmenities([]);
+    }
+  };
 
+  useEffect(() => {
     if (isOpen) {
       fetchData();
     }
   }, [isOpen]);
 
-  // Get unique countries from cities data
-  const getUniqueCountries = () => {
-    const countries = [...new Set(availableCities.map(city => 
-      typeof city.country === 'object' ? city.country.name : city.country
-    ))];
-    return countries.filter(Boolean).map(country => ({ value: country, label: country }));
-  };
-
-  // Get provinces for selected country
-  const getProvincesForCountry = (country) => {
-    const provinces = [...new Set(
-      availableCities
-        .filter(city => {
-          const cityCountry = typeof city.country === 'object' ? city.country.name : city.country;
-          return cityCountry === country;
-        })
-        .map(city => city.province)
-    )];
-    return provinces.filter(Boolean).map(province => ({ value: province, label: province }));
-  };
-
-  // Get cities for selected province
-  const getCitiesForProvince = (country, province) => {
-    return availableCities
-      .filter(city => {
-        const cityCountry = typeof city.country === 'object' ? city.country.name : city.country;
-        return cityCountry === country && city.province === province;
-      })
-      .map(city => ({ value: city.name, label: city.name, cityData: city }));
-  };
-
-  // Handle location selection changes
-  const handleLocationChange = (type, value, cityData = null) => {
-    setFormData(prev => {
-      const newLocation = { ...prev.location };
-      
-      if (type === 'country') {
-        newLocation.country = value;
-        newLocation.province = '';
-        newLocation.city = '';
-        newLocation.postalCode = '';
-      } else if (type === 'province') {
-        newLocation.province = value;
-        newLocation.city = '';
-        newLocation.postalCode = '';
-      } else if (type === 'city') {
-        newLocation.city = value;
-        // Auto-fill postal codes if available
-        if (cityData && cityData.postalCodes && cityData.postalCodes.length > 0) {
-          newLocation.postalCode = cityData.postalCodes[0];
-        }
-      }
-      
-      return { ...prev, location: newLocation };
-    });
-    
-    // Close all dropdowns
-    setCountryDropdownOpen(false);
-    setProvinceDropdownOpen(false);
-    setCityDropdownOpen(false);
-    
-    // Reset search
-    setCountrySearch('');
-    setProvinceSearch('');
-    setCitySearch('');
-  };
-
-  // Handle dropdown toggle (close others when one opens)
-  const handleDropdownToggle = (dropdownType) => {
-    if (dropdownType === 'country') {
-      setCountryDropdownOpen(!countryDropdownOpen);
-      setProvinceDropdownOpen(false);
-      setCityDropdownOpen(false);
-    } else if (dropdownType === 'province') {
-      setCountryDropdownOpen(false);
-      setProvinceDropdownOpen(!provinceDropdownOpen);
-      setCityDropdownOpen(false);
-    } else if (dropdownType === 'city') {
-      setCountryDropdownOpen(false);
-      setProvinceDropdownOpen(false);
-      setCityDropdownOpen(!cityDropdownOpen);
-    }
-  };
-
-  // Close dropdowns when clicking outside
+  // Listen to global refresh triggers for buildings
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest('.dropdown-container')) {
-        setCountryDropdownOpen(false);
-        setProvinceDropdownOpen(false);
-        setCityDropdownOpen(false);
-      }
-    };
-
-    if (countryDropdownOpen || provinceDropdownOpen || cityDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (refreshTriggers.buildings > 0 && isOpen) {
+      console.log('🔄 SpaceModal: Buildings refresh triggered, refreshing data...');
+      fetchData();
     }
-  }, [countryDropdownOpen, provinceDropdownOpen, cityDropdownOpen]);
+  }, [refreshTriggers.buildings, isOpen]);
+
+  // Get available buildings
+  const getAvailableBuildings = () => {
+    console.log('🏗️ getAvailableBuildings called, availableBuildings:', availableBuildings);
+    
+    if (Array.isArray(availableBuildings) && availableBuildings.length > 0) {
+      const buildingOptions = availableBuildings.map(building => ({
+        value: building.id || building.buildingId,
+        label: building.name,
+        buildingData: building
+      }));
+      console.log('✅ Building options created:', buildingOptions);
+      return buildingOptions;
+    }
+    
+    console.log('⚠️ No buildings available for dropdown');
+    return [];
+  };
 
   // Reset form when modal opens
   useEffect(() => {
@@ -230,19 +211,9 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
         setFormData({
           name: space.name || '',
           description: space.description || '',
-          brand: space.brand || '',
-          category: space.category || '',
+          layanan: space.category || space.layanan || '',
           capacity: space.capacity || '',
-          location: {
-            address: space.location?.address || '',
-            city: space.location?.city || '',
-            province: space.location?.province || '',
-            postalCode: space.location?.postalCode || '',
-            country: space.location?.country || 'Indonesia',
-            coordinates: space.location?.coordinates || null,
-            latitude: space.location?.latitude || null,
-            longitude: space.location?.longitude || null
-          },
+          buildingId: space.buildingId || '',
           pricing: {
             hourly: space.pricing?.hourly || '',
             daily: space.pricing?.daily || '',
@@ -256,19 +227,9 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
         setFormData({
           name: '',
           description: '',
-          brand: '',
-          category: '',
+          layanan: '',
           capacity: '',
-          location: {
-            address: '',
-            city: '',
-            province: '',
-            postalCode: '',
-            country: 'Indonesia',
-            coordinates: null,
-            latitude: null,
-            longitude: null
-          },
+          buildingId: '',
           pricing: {
             hourly: '',
             daily: '',
@@ -369,19 +330,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     }
   };
 
-  const handleMapLocationSelect = (location) => {
-    if (formData.location.latitude && formData.location.longitude) {
-      setFormData(prev => ({
-        ...prev,
-        location: {
-          ...prev.location,
-          coordinates: [location.lng, location.lat],
-          latitude: location.lat,
-          longitude: location.lng
-        }
-      }));
-    }
-  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -392,8 +341,13 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
       return;
     }
     
-    if (!formData.category) {
-      setError('Category is required');
+    if (!formData.layanan) {
+      setError('Layanan is required');
+      return;
+    }
+
+    if (!formData.buildingId) {
+      setError('Building selection is required');
       return;
     }
 
@@ -406,9 +360,10 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     setError('');
 
     try {
-      // Prepare data for submission
+      // Prepare data for submission - convert layanan to category for backend compatibility
       const submitData = {
         ...formData,
+        category: formData.layanan, // Backend expects 'category' field
         capacity: parseInt(formData.capacity),
         pricing: {
           ...formData.pricing,
@@ -417,6 +372,9 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           monthly: formData.pricing.monthly ? parseFloat(formData.pricing.monthly) : null
         }
       };
+
+      // Remove layanan field from submitData since we're using category
+      delete submitData.layanan;
 
       await onSave(submitData);
       onClose();
@@ -427,85 +385,24 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     }
   };
 
-  // Searchable dropdown component
-  const SearchableDropdown = ({ 
-    isOpen, 
-    onToggle, 
-    options, 
-    selectedValue, 
-    onSelect, 
-    searchValue, 
-    onSearchChange, 
-    placeholder, 
-    label,
-    required = false 
-  }) => {
-    const filteredOptions = options.filter(option =>
-      option.label.toLowerCase().includes(searchValue.toLowerCase())
-    );
 
-    return (
-      <div className="dropdown-container relative">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <div className="flex items-center justify-between">
-            <span className={selectedValue ? 'text-gray-900' : 'text-gray-500'}>
-              {selectedValue || placeholder}
-            </span>
-            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-          </div>
-        </button>
-        
-        {isOpen && (
-          <div className="absolute z-50 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
-            <div className="sticky top-0 z-10 bg-white p-2 border-b">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Search..."
-                  value={searchValue}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                />
-              </div>
-            </div>
-            
-            {filteredOptions.length === 0 ? (
-              <div className="px-4 py-2 text-sm text-gray-500">No options found</div>
-            ) : (
-              filteredOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className="w-full text-left px-4 py-2 text-sm text-gray-900 hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
-                  onClick={() => onSelect(option.value, option.cityData)}
-                >
-                  {option.label}
-                </button>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
 
-  // Get available categories (from services or fallback)
-  const getAvailableCategories = () => {
-    if (availableServices.length > 0) {
-      return availableServices.map(service => ({
-        value: service.name.toLowerCase().replace(/\s+/g, '-'),
-        label: service.name
+  // Get available layanan (from services table)
+  const getAvailableLayanan = () => {
+    console.log('🎯 getAvailableLayanan called, availableServices:', availableServices);
+    
+    if (Array.isArray(availableServices) && availableServices.length > 0) {
+      const layananOptions = availableServices.map(service => ({
+        value: service.layananId || service.id || service.slug || service.name.toLowerCase().replace(/\s+/g, '-'),
+        label: service.name,
+        serviceData: service // Include full service data for reference
       }));
+      console.log('✅ Using layanan from database:', layananOptions);
+      return layananOptions;
     }
-    return fallbackCategories;
+    
+    console.log('⚠️ No layanan from database, using fallback:', fallbackLayanan);
+    return fallbackLayanan;
   };
 
   if (!isOpen) return null;
@@ -553,38 +450,19 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Brand
+                Layanan <span className="text-red-500">*</span>
               </label>
               <select
-                name="brand"
-                value={formData.brand}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Brand</option>
-                {brands.map(brand => (
-                  <option key={brand.value} value={brand.value}>
-                    {brand.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="category"
-                value={formData.category}
+                name="layanan"
+                value={formData.layanan}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="">Select Category</option>
-                {getAvailableCategories().map(category => (
-                  <option key={category.value} value={category.value}>
-                    {category.label}
+                <option value="">Select Layanan</option>
+                {getAvailableLayanan().map(layanan => (
+                  <option key={layanan.value} value={layanan.value}>
+                    {layanan.label}
                   </option>
                 ))}
               </select>
@@ -622,97 +500,25 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
             />
           </div>
 
-          {/* Location */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Location</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Country Dropdown */}
-              <SearchableDropdown
-                isOpen={countryDropdownOpen}
-                onToggle={() => handleDropdownToggle('country')}
-                options={getUniqueCountries()}
-                selectedValue={formData.location.country}
-                onSelect={(value) => handleLocationChange('country', value)}
-                searchValue={countrySearch}
-                onSearchChange={setCountrySearch}
-                placeholder="Select Country"
-                label="Country"
-                required
-              />
-
-              {/* Province Dropdown */}
-              <SearchableDropdown
-                isOpen={provinceDropdownOpen}
-                onToggle={() => handleDropdownToggle('province')}
-                options={getProvincesForCountry(formData.location.country)}
-                selectedValue={formData.location.province}
-                onSelect={(value) => handleLocationChange('province', value)}
-                searchValue={provinceSearch}
-                onSearchChange={setProvinceSearch}
-                placeholder="Select Province"
-                label="Province"
-              />
-
-              {/* City Dropdown */}
-              <SearchableDropdown
-                isOpen={cityDropdownOpen}
-                onToggle={() => handleDropdownToggle('city')}
-                options={getCitiesForProvince(formData.location.country, formData.location.province)}
-                selectedValue={formData.location.city}
-                onSelect={(value, cityData) => handleLocationChange('city', value, cityData)}
-                searchValue={citySearch}
-                onSearchChange={setCitySearch}
-                placeholder="Select City"
-                label="City"
-              />
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Postal Code
-                </label>
-                <input
-                  type="text"
-                  name="location.postalCode"
-                  value={formData.location.postalCode}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter postal code"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Street Address
-              </label>
-              <input
-                type="text"
-                name="location.address"
-                value={formData.location.address}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter street address"
-              />
-            </div>
-
-            {/* Map Integration */}
-            <div className="flex items-center space-x-4">
-              <button
-                type="button"
-                onClick={() => setShowMapModal(true)}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                <MapPin className="w-4 h-4 mr-2" />
-                Set Location on Map
-              </button>
-              
-              {formData.location.latitude && formData.location.longitude && (
-                <span className="text-sm text-green-600">
-                  ✓ Location set: {formData.location.latitude.toFixed(6)}, {formData.location.longitude.toFixed(6)}
-                </span>
-              )}
-            </div>
+          {/* Building Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Building <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="buildingId"
+              value={formData.buildingId}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select Building</option>
+              {getAvailableBuildings().map(building => (
+                <option key={building.value} value={building.value}>
+                  {building.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Pricing */}
@@ -801,7 +607,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
             </div>
             
             {/* Available Amenities */}
-            {availableAmenities.length > 0 && (
+            {Array.isArray(availableAmenities) && availableAmenities.length > 0 && (
               <div>
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Available Amenities:</h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -822,13 +628,13 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
 
             {/* Custom Amenities */}
             {formData.amenities.filter(amenity => 
-              !availableAmenities.some(available => available.name === amenity)
+              !Array.isArray(availableAmenities) || !availableAmenities.some(available => available.name === amenity)
             ).length > 0 && (
               <div>
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Custom Amenities:</h4>
                 <div className="space-y-2">
                   {formData.amenities
-                    .filter(amenity => !availableAmenities.some(available => available.name === amenity))
+                    .filter(amenity => !Array.isArray(availableAmenities) || !availableAmenities.some(available => available.name === amenity))
                     .map((amenity, index) => (
                       <div key={index} className="flex items-center space-x-2">
                         {editingAmenity === amenity ? (
@@ -928,32 +734,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
         </form>
       </div>
 
-      {/* Map Modal */}
-      {showMapModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-60">
-          <div className="bg-white rounded-lg w-full max-w-4xl h-96 m-4">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-medium">Select Location</h3>
-              <button
-                onClick={() => setShowMapModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="h-80">
-              <GoogleMap
-                onLocationSelect={handleMapLocationSelect}
-                initialLocation={
-                  formData.location.latitude && formData.location.longitude
-                    ? { lat: formData.location.latitude, lng: formData.location.longitude }
-                    : null
-                }
-              />
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Create Amenity Modal */}
       {showAmenityModal && (

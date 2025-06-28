@@ -19,7 +19,7 @@ const Buildings = () => {
   } = useBuildings();
 
   // Global refresh context
-  const { refreshRelatedToSpaces } = useGlobalRefresh();
+  const { refreshRelatedToSpaces, refreshRelatedToBuildings } = useGlobalRefresh();
 
   const [showBuildingModal, setShowBuildingModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
@@ -75,15 +75,20 @@ const Buildings = () => {
         const result = await createBuilding(buildingData);
         console.log('Buildings: createBuilding result:', result);
         
-        // Trigger global refresh untuk cities (karena mungkin ada auto-created city)
-        console.log('🔄 Buildings: Triggering global refresh for related components (cities)...');
-        refreshRelatedToSpaces();
+        // Trigger global refresh untuk buildings dan spaces (karena space modal butuh building data)
+        console.log('🔄 Buildings: Triggering global refresh for related components (buildings, spaces)...');
+        refreshRelatedToBuildings();
         
         showNotification('Lokasi/gedung baru berhasil ditambahkan', 'success');
       } else {
         console.log('Buildings: Calling updateBuilding...');
         const result = await updateBuilding(selectedBuilding.id, buildingData);
         console.log('Buildings: updateBuilding result:', result);
+        
+        // Trigger global refresh untuk buildings dan spaces (karena space modal butuh building data)
+        console.log('🔄 Buildings: Triggering global refresh for updated building...');
+        refreshRelatedToBuildings();
+        
         showNotification('Lokasi/gedung berhasil diperbarui', 'success');
       }
       setShowBuildingModal(false);

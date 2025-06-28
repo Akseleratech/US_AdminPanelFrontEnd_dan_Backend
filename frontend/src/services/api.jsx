@@ -133,6 +133,32 @@ export const layananAPI = {
   delete: (id) => fetch(`${API_BASE_URL}/services/${id}`, { method: 'DELETE' })
 };
 
+// Buildings API
+export const buildingsAPI = {
+  getAll: (params = {}) => {
+    // Use same pattern as Buildings tab - with query parameters
+    const defaultParams = {
+      page: 1,
+      limit: 100, // Get more buildings for dropdown
+      sortBy: 'metadata.createdAt',
+      sortOrder: 'desc',
+      ...params
+    };
+    const queryParams = new URLSearchParams(defaultParams).toString();
+    return apiCall(`/buildings?${queryParams}`);
+  },
+  getById: (id) => apiCall(`/buildings/${id}`),
+  create: (data) => apiCall('/buildings', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  update: (id, data) => apiCall(`/buildings/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  delete: (id) => apiCall(`/buildings/${id}`, { method: 'DELETE' })
+};
+
 // Amenities API
 export const amenitiesAPI = {
   getAll: (params = {}) => {

@@ -18,7 +18,8 @@ export const GlobalRefreshProvider = ({ children }) => {
     cities: 0,
     spaces: 0,
     services: 0,
-    orders: 0
+    orders: 0,
+    buildings: 0
   });
 
   // Generic refresh trigger untuk semua components
@@ -54,13 +55,21 @@ export const GlobalRefreshProvider = ({ children }) => {
     triggerRefresh('orders');
   }, [triggerRefresh]);
 
+  const refreshBuildings = useCallback(() => {
+    triggerRefresh('buildings');
+  }, [triggerRefresh]);
+
   // Cross-component refresh untuk related data
   const refreshRelatedToSpaces = useCallback(() => {
-    triggerRefresh(['cities', 'spaces']); // Ketika space dibuat, refresh cities juga
+    triggerRefresh(['buildings', 'cities', 'spaces']); // Ketika space dibuat, refresh buildings, cities, dan spaces
   }, [triggerRefresh]);
 
   const refreshRelatedToCities = useCallback(() => {
     triggerRefresh(['cities', 'spaces']); // Ketika city diupdate, refresh spaces juga
+  }, [triggerRefresh]);
+
+  const refreshRelatedToBuildings = useCallback(() => {
+    triggerRefresh(['buildings', 'spaces']); // Ketika building dibuat/diupdate, refresh spaces juga
   }, [triggerRefresh]);
 
   const value = {
@@ -75,10 +84,12 @@ export const GlobalRefreshProvider = ({ children }) => {
     refreshSpaces,
     refreshServices,
     refreshOrders,
+    refreshBuildings,
     
     // Cross-component refresh functions
     refreshRelatedToSpaces,
-    refreshRelatedToCities
+    refreshRelatedToCities,
+    refreshRelatedToBuildings
   };
 
   return (
