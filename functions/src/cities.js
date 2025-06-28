@@ -11,6 +11,193 @@ const {
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
 
+// Enhanced validation function for cities
+function validateCityData(data, isUpdate = false) {
+  const errors = [];
+  
+  // Basic required fields validation
+  if (!isUpdate && !data.name) errors.push('Name is required');
+  if (!isUpdate && !data.province) errors.push('Province is required');
+  
+  // Name validation
+  if (data.name && (data.name.length < 2 || data.name.length > 100)) {
+    errors.push('Name must be between 2 and 100 characters');
+  }
+  
+  // Province validation
+  if (data.province && (data.province.length < 2 || data.province.length > 100)) {
+    errors.push('Province must be between 2 and 100 characters');
+  }
+  
+  // Country validation
+  if (data.country && data.country.length < 2) {
+    errors.push('Country must be at least 2 characters');
+  }
+  
+  return errors;
+}
+
+// Enhanced data sanitization function for cities
+function sanitizeCityData(data) {
+  const sanitized = {};
+  
+  // Sanitize strings
+  if (data.name) sanitized.name = data.name.trim();
+  if (data.province) sanitized.province = data.province.trim();
+  if (data.country) sanitized.country = data.country.trim() || 'Indonesia';
+  
+  // Sanitize arrays
+  if (data.postalCodes && Array.isArray(data.postalCodes)) {
+    sanitized.postalCodes = data.postalCodes.map(code => code.toString().trim()).filter(code => code);
+  }
+  
+  // Sanitize timezone data
+  if (data.timezone) sanitized.timezone = data.timezone.trim();
+  if (data.utcOffset) sanitized.utcOffset = data.utcOffset;
+  
+  // Boolean values
+  if (data.isActive !== undefined) {
+    sanitized.isActive = Boolean(data.isActive);
+  }
+  
+  return sanitized;
+}
+
+// Check for duplicate city names in same province
+async function checkDuplicateCity(name, province, excludeId = null) {
+  try {
+    const db = getDb();
+    let query = db.collection('cities')
+      .where('name', '==', name)
+      .where('province', '==', province);
+    
+    const snapshot = await query.get();
+    
+    if (excludeId) {
+      // Filter out the current city being updated
+      return snapshot.docs.some(doc => doc.id !== excludeId);
+    }
+    
+    return !snapshot.empty;
+  } catch (error) {
+    console.warn('Could not check for duplicate cities:', error);
+    return false; // Allow if check fails
+  }
+}
+
+// Generate sequential city ID
+async function generateSequentialCityId() {
+  try {
+    const db = getDb();
+    const year = new Date().getFullYear();
+    const counterRef = db.collection('counters').doc('cities');
+    
+    const result = await db.runTransaction(async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      
+      let lastId = 1;
+      let currentYear = year;
+      
+      if (counterDoc.exists) {
+        const data = counterDoc.data();
+        lastId = data.lastId + 1;
+        currentYear = data.year;
+        
+        // Reset counter if year changed
+        if (currentYear !== year) {
+          lastId = 1;
+          currentYear = year;
+        }
+      }
+      
+      const yearSuffix = year.toString().slice(-2);
+      const sequence = String(lastId).padStart(3, '0');
+      const cityId = `CIT${yearSuffix}${sequence}`;
+      
+      // Update counter
+      transaction.set(counterRef, {
+        lastId: lastId,
+        year: currentYear,
+        updatedAt: new Date()
+      });
+      
+      return cityId;
+    });
+    
+    console.log(`✅ Generated sequential city ID: ${result}`);
+    return result;
+    
+  } catch (error) {
+    console.error('Error generating sequential city ID:', error);
+    const fallbackId = `CIT${Date.now().toString().slice(-6)}`;
+    console.log(`⚠️  Using fallback ID: ${fallbackId}`);
+    return fallbackId;
+  }
+}
+
+// Generate search keywords for cities
+function generateCitySearchKeywords(cityData) {
+  const keywords = [];
+  
+  // Add name keywords
+  if (cityData.name) {
+    keywords.push(cityData.name.toLowerCase());
+    keywords.push(...cityData.name.toLowerCase().split(' '));
+  }
+  
+  // Add province keywords
+  if (cityData.province) {
+    keywords.push(cityData.province.toLowerCase());
+    keywords.push(...cityData.province.toLowerCase().split(' '));
+  }
+  
+  // Add country keywords
+  if (cityData.country) {
+    keywords.push(cityData.country.toLowerCase());
+  }
+  
+  // Remove duplicates and empty strings
+  return [...new Set(keywords.filter(keyword => keyword && keyword.length > 1))];
+}
+
+// Calculate city statistics
+async function calculateCityStatistics(cityName) {
+  try {
+    const db = getDb();
+    
+    // Count buildings in this city
+    const buildingSnapshot = await db.collection('buildings')
+      .where('location.city', '==', cityName)
+      .get();
+    
+    const totalBuildings = buildingSnapshot.size;
+    const activeBuildings = buildingSnapshot.docs.filter(doc => doc.data().isActive).length;
+    
+    // Count spaces in this city
+    const spaceSnapshot = await db.collection('spaces')
+      .where('location.city', '==', cityName)
+      .get();
+    
+    const totalSpaces = spaceSnapshot.size;
+    const activeSpaces = spaceSnapshot.docs.filter(doc => doc.data().isActive).length;
+    
+    return {
+      totalBuildings,
+      activeBuildings,
+      totalSpaces,
+      activeSpaces
+    };
+  } catch (error) {
+    console.error('Error calculating city statistics:', error);
+    return {
+      totalBuildings: 0,
+      activeBuildings: 0,
+      totalSpaces: 0,
+      activeSpaces: 0
+    };
+  }
+}
+
 // Main cities function that handles all city routes
 const cities = onRequest(async (req, res) => {
   return cors(req, res, async () => {
@@ -56,51 +243,70 @@ const cities = onRequest(async (req, res) => {
 const getAllCities = async (req, res) => {
   try {
     const db = getDb();
-    const { search, status, limit, featured } = req.query;
-    let citiesRef = db.collection('cities');
+    const { 
+      search = '', 
+      status = '', 
+      limit = '', 
+      featured = '',
+      page = 1,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
 
-    // Build query
+    let query = db.collection('cities');
+
+    // Apply filters
     if (status === 'active') {
-      citiesRef = citiesRef.where('isActive', '==', true);
+      query = query.where('isActive', '==', true);
     } else if (status === 'inactive') {
-      citiesRef = citiesRef.where('isActive', '==', false);
+      query = query.where('isActive', '==', false);
     }
 
-    // Order by creation date
-    citiesRef = citiesRef.orderBy('createdAt', 'desc');
+    // Apply sorting
+    query = query.orderBy(sortBy, sortOrder);
 
-    // Execute query
-    const snapshot = await citiesRef.get();
+    const snapshot = await query.get();
     let cities = [];
 
-    snapshot.forEach(doc => {
+    // Process each city and add frontend-compatible fields
+    for (const doc of snapshot.docs) {
       const data = doc.data();
+      
+      // Calculate real-time statistics
+      const statistics = await calculateCityStatistics(data.name);
+      
       const cityData = {
         id: doc.id,
+        cityId: data.cityId,
         name: data.name,
         province: data.province,
-        cityId: data.cityId,
         country: data.country,
-        postalCodes: data.postalCodes,
-        timezone: data.timezone,
-        utcOffset: data.utcOffset,
-        statistics: data.statistics,
-        search: data.search,
+        postalCodes: data.postalCodes || [],
+        timezone: data.timezone || 'Asia/Jakarta',
+        utcOffset: data.utcOffset || '+07:00',
+        statistics: {
+          ...data.statistics,
+          ...statistics // Use real-time calculated statistics
+        },
+        search: data.search || {
+          keywords: generateCitySearchKeywords(data),
+          aliases: []
+        },
         thumbnail: data.thumbnail || null,
-        isActive: data.isActive,
-        createdBy: data.createdBy,
+        isActive: data.isActive !== undefined ? data.isActive : true,
+        createdBy: data.createdBy || 'system',
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
-        // Frontend-compatible fields
-        locations: data.statistics?.totalSpaces || 0,
-        totalSpaces: data.statistics?.totalSpaces || 0,
-        status: data.isActive ? 'active' : 'inactive'
+        // Add frontend-compatible fields
+        locations: statistics.totalBuildings, // Jumlah gedung/lokasi
+        totalSpaces: statistics.totalSpaces,   // Total ruang/space
+        status: data.isActive ? 'active' : 'inactive' // Convert boolean to string
       };
       
       cities.push(cityData);
-    });
+    }
 
-    // Apply client-side filtering for search
+    // Apply client-side filtering for search (since Firestore has limited text search)
     if (search) {
       const searchLower = search.toLowerCase();
       cities = cities.filter(city =>
@@ -111,13 +317,23 @@ const getAllCities = async (req, res) => {
       );
     }
 
-    // Apply limit
+    // Apply pagination
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || cities.length;
+    const offset = (pageNum - 1) * limitNum;
+    
     if (limit) {
-      cities = cities.slice(0, parseInt(limit));
+      cities = cities.slice(offset, offset + limitNum);
     }
 
     handleResponse(res, {
       cities,
+      pagination: limit ? {
+        page: pageNum,
+        limit: limitNum,
+        total: cities.length,
+        totalPages: Math.ceil(cities.length / limitNum)
+      } : undefined,
       total: cities.length
     });
   } catch (error) {
@@ -137,25 +353,35 @@ const getCityById = async (cityId, req, res) => {
     }
 
     const data = doc.data();
+    
+    // Calculate real-time statistics
+    const statistics = await calculateCityStatistics(data.name);
+    
     const cityData = {
       id: doc.id,
+      cityId: data.cityId,
       name: data.name,
       province: data.province,
-      cityId: data.cityId,
       country: data.country,
-      postalCodes: data.postalCodes,
-      timezone: data.timezone,
-      utcOffset: data.utcOffset,
-      statistics: data.statistics,
-      search: data.search,
+      postalCodes: data.postalCodes || [],
+      timezone: data.timezone || 'Asia/Jakarta',
+      utcOffset: data.utcOffset || '+07:00',
+      statistics: {
+        ...data.statistics,
+        ...statistics // Use real-time calculated statistics
+      },
+      search: data.search || {
+        keywords: generateCitySearchKeywords(data),
+        aliases: []
+      },
       thumbnail: data.thumbnail || null,
-      isActive: data.isActive,
-      createdBy: data.createdBy,
+      isActive: data.isActive !== undefined ? data.isActive : true,
+      createdBy: data.createdBy || 'system',
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
-      // Frontend-compatible fields
-      locations: data.statistics?.totalSpaces || 0,
-      totalSpaces: data.statistics?.totalSpaces || 0,
+      // Add frontend-compatible fields
+      locations: statistics.totalBuildings, // Jumlah gedung/lokasi
+      totalSpaces: statistics.totalSpaces,   // Total ruang/space
       status: data.isActive ? 'active' : 'inactive'
     };
 
@@ -170,53 +396,74 @@ const getCityById = async (cityId, req, res) => {
 const createCity = async (req, res) => {
   try {
     const db = getDb();
-    const { name, province, country = 'Indonesia', postalCodes, timezone, utcOffset, createdBy } = req.body;
+    console.log('🏙️ POST /cities - Request received');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
 
-    // Validation
-    validateRequired(req.body, ['name', 'province']);
+    // Validate data
+    const validationErrors = validateCityData(req.body);
+    if (validationErrors.length > 0) {
+      console.log('❌ Validation failed:', validationErrors);
+      return handleResponse(res, {
+        message: 'Validation failed',
+        errors: validationErrors
+      }, 400);
+    }
+
+    // Sanitize data
+    const sanitizedData = sanitizeCityData(req.body);
+    console.log('✅ Data sanitized:', JSON.stringify(sanitizedData, null, 2));
+
+    // Check for duplicate city
+    const isDuplicate = await checkDuplicateCity(
+      sanitizedData.name,
+      sanitizedData.province
+    );
+
+    if (isDuplicate) {
+      return handleResponse(res, {
+        message: 'A city with this name already exists in the same province'
+      }, 409);
+    }
 
     // Generate city ID
-    const cityId = await generateSequentialId('cities', 'CTY', 3);
+    const cityId = await generateSequentialCityId();
 
-    // Create search keywords
-    const searchKeywords = [
-      name.toLowerCase(),
-      province.toLowerCase(),
-      ...(name.split(' ').map(word => word.toLowerCase())),
-      ...(province.split(' ').map(word => word.toLowerCase()))
-    ];
+    // Calculate initial statistics
+    const statistics = await calculateCityStatistics(sanitizedData.name);
 
+    // Prepare city data
     const cityData = {
       cityId,
-      name: sanitizeString(name),
-      province: sanitizeString(province),
-      country: sanitizeString(country),
-      postalCodes: postalCodes || [],
-      timezone: timezone || 'Asia/Jakarta',
-      utcOffset: utcOffset || '+07:00',
-      statistics: {
-        totalSpaces: 0,
-        activeSpaces: 0,
-        totalOrders: 0,
-        totalRevenue: 0
-      },
+      ...sanitizedData,
+      statistics,
       search: {
-        keywords: searchKeywords,
+        keywords: generateCitySearchKeywords(sanitizedData),
         aliases: []
       },
       thumbnail: null,
-      isActive: true,
-      createdBy: createdBy || 'system',
+      isActive: sanitizedData.isActive !== undefined ? sanitizedData.isActive : true,
+      createdBy: req.body.createdBy || 'system',
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
-    const docRef = await db.collection('cities').add(cityData);
+    console.log('💾 Saving city data:', JSON.stringify(cityData, null, 2));
 
-    handleResponse(res, {
-      id: docRef.id,
-      ...cityData
-    }, 201);
+    // Save to Firestore using structured ID as document ID
+    await db.collection('cities').doc(cityId).set(cityData);
+
+    console.log(`✅ City created successfully with ID: ${cityId}`);
+
+    // Return with frontend-compatible fields
+    const responseData = {
+      id: cityId,
+      ...cityData,
+      locations: statistics.totalSpaces,
+      totalSpaces: statistics.totalSpaces,
+      status: cityData.isActive ? 'active' : 'inactive'
+    };
+
+    handleResponse(res, responseData, 201);
   } catch (error) {
     console.error('Error creating city:', error);
     handleError(res, error);
@@ -227,49 +474,75 @@ const createCity = async (req, res) => {
 const updateCity = async (cityId, req, res) => {
   try {
     const db = getDb();
-    const updateData = { ...req.body };
-    delete updateData.id; // Remove id from update data
+    console.log(`🏙️ PUT /cities/${cityId} - Request received`);
     
-    // Check if city exists
     const cityDoc = await db.collection('cities').doc(cityId).get();
     if (!cityDoc.exists) {
       return handleResponse(res, { message: 'City not found' }, 404);
     }
 
-    // Sanitize strings
-    if (updateData.name) updateData.name = sanitizeString(updateData.name);
-    if (updateData.province) updateData.province = sanitizeString(updateData.province);
-    if (updateData.country) updateData.country = sanitizeString(updateData.country);
-
-    // Update search keywords if name or province changed
-    if (updateData.name || updateData.province) {
-      const existingData = cityDoc.data();
-      const name = updateData.name || existingData.name;
-      const province = updateData.province || existingData.province;
-      
-      updateData.search = {
-        keywords: [
-          name.toLowerCase(),
-          province.toLowerCase(),
-          ...(name.split(' ').map(word => word.toLowerCase())),
-          ...(province.split(' ').map(word => word.toLowerCase()))
-        ],
-        aliases: existingData.search?.aliases || []
-      };
+    // Validate data
+    const validationErrors = validateCityData(req.body, true);
+    if (validationErrors.length > 0) {
+      return handleResponse(res, {
+        message: 'Validation failed',
+        errors: validationErrors
+      }, 400);
     }
 
-    updateData.updatedAt = new Date();
+    // Sanitize data
+    const sanitizedData = sanitizeCityData(req.body);
 
+    // Check for duplicate city (excluding current one)
+    if (sanitizedData.name && sanitizedData.province) {
+      const isDuplicate = await checkDuplicateCity(
+        sanitizedData.name,
+        sanitizedData.province,
+        cityId
+      );
+
+      if (isDuplicate) {
+        return handleResponse(res, {
+          message: 'A city with this name already exists in the same province'
+        }, 409);
+      }
+    }
+
+    const existingData = cityDoc.data();
+
+    // Calculate updated statistics
+    const statistics = await calculateCityStatistics(sanitizedData.name || existingData.name);
+
+    // Prepare update data
+    const updateData = {
+      ...sanitizedData,
+      statistics,
+      search: {
+        keywords: generateCitySearchKeywords({
+          ...existingData,
+          ...sanitizedData
+        }),
+        aliases: existingData.search?.aliases || []
+      },
+      updatedAt: new Date()
+    };
+
+    // Update in Firestore
     await db.collection('cities').doc(cityId).update(updateData);
 
-    // Get updated document
+    // Get updated city
     const updatedDoc = await db.collection('cities').doc(cityId).get();
-    const data = updatedDoc.data();
+    const updatedData = updatedDoc.data();
+    
+    const responseData = {
+      id: updatedDoc.id,
+      ...updatedData,
+      locations: statistics.totalSpaces,
+      totalSpaces: statistics.totalSpaces,
+      status: updatedData.isActive ? 'active' : 'inactive'
+    };
 
-    handleResponse(res, {
-      id: cityId,
-      ...data
-    });
+    handleResponse(res, responseData);
   } catch (error) {
     console.error('Error updating city:', error);
     handleError(res, error);
@@ -281,32 +554,100 @@ const deleteCity = async (cityId, req, res) => {
   try {
     const db = getDb();
     
-    // Check if city exists
+    console.log(`🗑️ DELETE /cities/${cityId} - Request received`);
+    
     const cityDoc = await db.collection('cities').doc(cityId).get();
     if (!cityDoc.exists) {
       return handleResponse(res, { message: 'City not found' }, 404);
     }
 
-    // Check if city has associated spaces
-    const spacesSnapshot = await db.collection('spaces')
-      .where('location.city', '==', cityDoc.data().name)
-      .limit(1)
+    const cityData = cityDoc.data();
+    console.log(`🏙️ Attempting to delete city: ${cityData.name}`);
+
+    // Enhanced check for buildings and spaces with exact match
+    console.log('🔍 Checking for buildings with exact city name match...');
+    const buildingSnapshot = await db.collection('buildings')
+      .where('location.city', '==', cityData.name)
       .get();
 
-    if (!spacesSnapshot.empty) {
-      return handleResponse(res, { 
-        message: 'Cannot delete city with associated spaces' 
-      }, 400);
+    console.log('🔍 Checking for spaces with exact city name match...');
+    const spaceSnapshot = await db.collection('spaces')
+      .where('location.city', '==', cityData.name)
+      .get();
+
+    console.log(`📊 Found ${buildingSnapshot.size} buildings and ${spaceSnapshot.size} spaces`);
+
+    // Also check for case-insensitive matches and partial matches to be extra safe
+    console.log('🔍 Double-checking with broader search...');
+    const allBuildingsSnapshot = await db.collection('buildings').get();
+    const allSpacesSnapshot = await db.collection('spaces').get();
+
+    const relatedBuildings = [];
+    const relatedSpaces = [];
+
+    allBuildingsSnapshot.forEach(doc => {
+      const building = doc.data();
+      const buildingCity = building.location?.city || '';
+      
+      // Exact match
+      if (buildingCity === cityData.name) {
+        relatedBuildings.push(building);
+      }
+      // Case-insensitive match
+      else if (buildingCity.toLowerCase() === cityData.name.toLowerCase()) {
+        relatedBuildings.push(building);
+      }
+      // Partial match (to catch potential data inconsistencies)
+      else if (buildingCity.toLowerCase().includes(cityData.name.toLowerCase()) || 
+               cityData.name.toLowerCase().includes(buildingCity.toLowerCase())) {
+        console.log(`⚠️ Potential related building found: "${building.name}" in "${buildingCity}"`);
+      }
+    });
+
+    allSpacesSnapshot.forEach(doc => {
+      const space = doc.data();
+      const spaceCity = space.location?.city || '';
+      
+      // Exact match
+      if (spaceCity === cityData.name) {
+        relatedSpaces.push(space);
+      }
+      // Case-insensitive match
+      else if (spaceCity.toLowerCase() === cityData.name.toLowerCase()) {
+        relatedSpaces.push(space);
+      }
+      // Partial match (to catch potential data inconsistencies)
+      else if (spaceCity.toLowerCase().includes(cityData.name.toLowerCase()) || 
+               cityData.name.toLowerCase().includes(spaceCity.toLowerCase())) {
+        console.log(`⚠️ Potential related space found: "${space.name}" in "${spaceCity}"`);
+      }
+    });
+
+    console.log(`📊 Enhanced check found ${relatedBuildings.length} buildings and ${relatedSpaces.length} spaces`);
+
+    if (relatedBuildings.length > 0 || relatedSpaces.length > 0) {
+      console.log('❌ Cannot delete city - has related buildings or spaces:');
+      relatedBuildings.forEach(building => {
+        console.log(`   Building: ${building.name} in "${building.location?.city}"`);
+      });
+      relatedSpaces.forEach(space => {
+        console.log(`   Space: ${space.name} in "${space.location?.city}"`);
+      });
+
+      return handleResponse(res, {
+        message: 'Cannot delete city that has buildings or spaces',
+        details: {
+          buildingCount: relatedBuildings.length,
+          spaceCount: relatedSpaces.length
+        }
+      }, 409);
     }
 
-    // Delete thumbnail if exists
-    const cityData = cityDoc.data();
-    if (cityData.thumbnail) {
-      await deleteImage(cityData.thumbnail);
-    }
-
+    // Safe to delete
+    console.log('✅ City has no related buildings or spaces, proceeding with deletion');
     await db.collection('cities').doc(cityId).delete();
 
+    console.log(`✅ City deleted successfully: ${cityData.name}`);
     handleResponse(res, { message: 'City deleted successfully' });
   } catch (error) {
     console.error('Error deleting city:', error);

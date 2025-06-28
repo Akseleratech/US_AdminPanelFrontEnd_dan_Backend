@@ -75,8 +75,17 @@ const Layanan = () => {
         console.log('Layanan: updateLayanan result:', result);
         showNotification('Layanan berhasil diperbarui', 'success');
       }
+      
+      // Close modal
       setShowLayananModal(false);
       setSelectedLayanan(null);
+      
+      // Manual refresh as fallback to ensure UI updates
+      console.log('Layanan: Performing manual refresh...');
+      setTimeout(() => {
+        refreshLayanan();
+      }, 500); // Small delay to ensure backend has processed the data
+      
     } catch (error) {
       console.error('Layanan: Error in handleSaveLayanan:', error);
       const errorMessage = error.message || 'Unknown error occurred';

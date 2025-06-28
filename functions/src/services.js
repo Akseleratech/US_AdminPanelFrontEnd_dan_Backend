@@ -89,7 +89,7 @@ const getAllServices = async (req, res) => {
         if (space.category === data.name) return true;
         
         // Alternative matches for backwards compatibility
-        if (space.category === data.serviceId || space.serviceId === data.serviceId) return true;
+        if (space.category === (data.layananId || data.serviceId) || space.serviceId === (data.layananId || data.serviceId)) return true;
         
         // Case-insensitive match
         if (space.category && data.name && 
@@ -110,7 +110,9 @@ const getAllServices = async (req, res) => {
         spaceCount: {
           total: serviceSpaces.length,
           active: activeSpaces.length
-        }
+        },
+        // Ensure layananId is available (for backward compatibility)
+        layananId: data.layananId || data.serviceId || doc.id
       });
     });
 
@@ -166,7 +168,7 @@ const getServiceById = async (serviceId, req, res) => {
       if (spaceData.category === data.name) isMatch = true;
       
       // Alternative matches for backwards compatibility
-      if (spaceData.category === data.serviceId || spaceData.serviceId === data.serviceId) isMatch = true;
+      if (spaceData.category === (data.layananId || data.serviceId) || spaceData.serviceId === (data.layananId || data.serviceId)) isMatch = true;
       
       // Case-insensitive match
       if (spaceData.category && data.name && 
@@ -190,7 +192,9 @@ const getServiceById = async (serviceId, req, res) => {
       spaceCount: {
         total: serviceSpaces.length,
         active: activeSpaces.length
-      }
+      },
+      // Ensure layananId is available (for backward compatibility)
+      layananId: data.layananId || data.serviceId || doc.id
     };
 
     handleResponse(res, serviceData);
@@ -220,8 +224,8 @@ const createService = async (req, res) => {
     // Validation
     validateRequired(req.body, ['name']);
 
-    // Generate service ID if not provided
-    const finalServiceId = serviceId || await generateSequentialId('services', 'SRV', 3);
+    // Generate structured layanan ID for both field and document ID
+    const finalLayananId = serviceId || await generateSequentialId('layanan', 'LAY', 3);
 
     // Generate slug if not provided
     const finalSlug = slug || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -233,7 +237,7 @@ const createService = async (req, res) => {
     }
 
     const serviceData = {
-      serviceId: finalServiceId,
+      layananId: finalLayananId,
       name: sanitizeString(name),
       slug: finalSlug,
       category: category || 'general',
@@ -255,12 +259,13 @@ const createService = async (req, res) => {
       updatedAt: new Date()
     };
 
-    const docRef = await db.collection('layanan').add(serviceData);
+    // Use structured ID as document ID instead of random
+    await db.collection('layanan').doc(finalLayananId).set(serviceData);
 
-    console.log(`✅ Service created: ${docRef.id} - ${name}`);
+    console.log(`✅ Service created: ${finalLayananId} - ${name}`);
 
     handleResponse(res, {
-      id: docRef.id,
+      id: finalLayananId,
       ...serviceData
     }, 201);
   } catch (error) {

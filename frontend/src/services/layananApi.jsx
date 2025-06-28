@@ -36,6 +36,26 @@ class LayananAPI {
   async getLayanan(params = {}) {
     try {
       const response = await axios.get(API_BASE_URL, { params });
+      
+      // Normalize data before returning
+      if (response.data.success && response.data.data?.services) {
+        const normalizedServices = response.data.data.services.map(service => ({
+          ...service,
+          // Normalize description to string
+          description: typeof service.description === 'object' 
+            ? service.description?.short || service.description?.long || 'No description'
+            : service.description || 'No description'
+        }));
+        
+        return {
+          ...response.data,
+          data: {
+            ...response.data.data,
+            services: normalizedServices
+          }
+        };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Error fetching layanan:', error);
@@ -47,6 +67,23 @@ class LayananAPI {
   async getLayananById(id) {
     try {
       const response = await axios.get(`${API_BASE_URL}/${id}`);
+      
+      // Normalize response data
+      if (response.data.success && response.data.data) {
+        const normalizedData = {
+          ...response.data.data,
+          // Normalize description to string
+          description: typeof response.data.data.description === 'object' 
+            ? response.data.data.description?.short || response.data.data.description?.long || 'No description'
+            : response.data.data.description || 'No description'
+        };
+        
+        return {
+          ...response.data,
+          data: normalizedData
+        };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Error fetching layanan:', error);
@@ -60,6 +97,23 @@ class LayananAPI {
       // Transform data to match backend expectations
       const transformedData = this.transformLayananData(layananData);
       const response = await axios.post(API_BASE_URL, transformedData);
+      
+      // Normalize response data
+      if (response.data.success && response.data.data) {
+        const normalizedData = {
+          ...response.data.data,
+          // Normalize description to string
+          description: typeof response.data.data.description === 'object' 
+            ? response.data.data.description?.short || response.data.data.description?.long || 'No description'
+            : response.data.data.description || 'No description'
+        };
+        
+        return {
+          ...response.data,
+          data: normalizedData
+        };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('LayananAPI: Error creating layanan:', error);
@@ -74,6 +128,23 @@ class LayananAPI {
       // Transform data to match backend expectations
       const transformedData = this.transformLayananData(layananData);
       const response = await axios.put(`${API_BASE_URL}/${id}`, transformedData);
+      
+      // Normalize response data
+      if (response.data.success && response.data.data) {
+        const normalizedData = {
+          ...response.data.data,
+          // Normalize description to string
+          description: typeof response.data.data.description === 'object' 
+            ? response.data.data.description?.short || response.data.data.description?.long || 'No description'
+            : response.data.data.description || 'No description'
+        };
+        
+        return {
+          ...response.data,
+          data: normalizedData
+        };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Error updating layanan:', error);
@@ -148,6 +219,7 @@ class LayananAPI {
         search: searchTerm,
         ...filters
       };
+      // getLayanan already handles normalization
       return await this.getLayanan(params);
     } catch (error) {
       console.error('Error searching layanan:', error);

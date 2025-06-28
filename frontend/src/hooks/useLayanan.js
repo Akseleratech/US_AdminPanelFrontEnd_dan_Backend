@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import layananAPI from '../services/layananApi.jsx';
+import { useGlobalRefresh } from '../contexts/GlobalRefreshContext.jsx';
 
 const useLayanan = () => {
   const [layananList, setLayananList] = useState([]);
@@ -7,6 +8,9 @@ const useLayanan = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({});
+  
+  // Global refresh context
+  const { refreshTriggers, refreshServices } = useGlobalRefresh();
 
   // Fetch all layanan
   const fetchLayanan = useCallback(async (params = {}) => {
@@ -15,13 +19,17 @@ const useLayanan = () => {
     try {
       const response = await layananAPI.getLayanan(params);
       if (response.success) {
-        setLayananList(response.data.services || []);
+        const services = response.data.services || [];
+        console.log('useLayanan: Fetched services:', services);
+        setLayananList(services);
       } else {
         throw new Error(response.message || 'Failed to fetch layanan');
       }
     } catch (err) {
       setError(err.message);
       console.error('Error fetching layanan:', err);
+      // Don't clear the existing list on error - preserve current state
+      console.log('useLayanan: Preserving existing layanan list due to error');
     } finally {
       setLoading(false);
     }
@@ -38,13 +46,17 @@ const useLayanan = () => {
     try {
       const response = await layananAPI.searchLayanan(term, { ...filters, ...additionalFilters });
       if (response.success) {
-        setLayananList(response.data.services || []);
+        const services = response.data.services || [];
+        console.log('useLayanan: Search results:', services);
+        setLayananList(services);
       } else {
         throw new Error(response.message || 'Failed to search layanan');
       }
     } catch (err) {
       setError(err.message);
       console.error('Error searching layanan:', err);
+      // Don't clear the existing list on error - preserve current state
+      console.log('useLayanan: Preserving existing layanan list due to search error');
     } finally {
       setLoading(false);
     }
@@ -61,15 +73,22 @@ const useLayanan = () => {
       console.log('useLayanan: layananAPI response:', response);
       
       if (response.success) {
+        // Extract the actual layanan data from response.data
+        const newLayanan = response.data;
+        console.log('useLayanan: Extracted layanan data:', newLayanan);
+        
         // Add the new layanan to the list
         setLayananList(prev => {
           console.log('useLayanan: Adding new layanan to list, prev:', prev);
-          const newList = [response.data, ...prev];
+          const newList = [newLayanan, ...prev];
           console.log('useLayanan: New layanan list:', newList);
           return newList;
         });
-        console.log('useLayanan: Successfully created layanan:', response.data);
-        return response.data;
+        
+        // Trigger global refresh for services
+        refreshServices();
+        console.log('useLayanan: Successfully created layanan and triggered global refresh:', newLayanan);
+        return newLayanan;
       } else {
         throw new Error(response.message || 'Failed to create layanan');
       }
@@ -89,13 +108,21 @@ const useLayanan = () => {
     try {
       const response = await layananAPI.updateLayanan(id, layananData);
       if (response.success) {
+        // Extract the actual layanan data from response.data
+        const updatedLayanan = response.data;
+        console.log('useLayanan: Updated layanan data:', updatedLayanan);
+        
         // Update the layanan in the list
         setLayananList(prev => 
           prev.map(layanan => 
-            layanan.id === id ? response.data : layanan
+            layanan.id === id ? updatedLayanan : layanan
           )
         );
-        return response.data;
+        
+        // Trigger global refresh for services
+        refreshServices();
+        console.log('useLayanan: Successfully updated layanan and triggered global refresh:', updatedLayanan);
+        return updatedLayanan;
       } else {
         throw new Error(response.message || 'Failed to update layanan');
       }
@@ -117,6 +144,10 @@ const useLayanan = () => {
       if (response.success) {
         // Remove the layanan from the list
         setLayananList(prev => prev.filter(layanan => layanan.id !== id));
+        
+        // Trigger global refresh for services
+        refreshServices();
+        console.log('useLayanan: Successfully deleted layanan and triggered global refresh:', id);
         return true;
       } else {
         throw new Error(response.message || 'Failed to delete layanan');
@@ -251,6 +282,14 @@ const useLayanan = () => {
 
     return () => clearTimeout(debounceTimer);
   }, [searchTerm, filters]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Global refresh effect - listen to global service refresh triggers
+  useEffect(() => {
+    if (refreshTriggers.services > 0) {
+      console.log('useLayanan: Global services refresh triggered, count:', refreshTriggers.services);
+      fetchLayanan();
+    }
+  }, [refreshTriggers.services, fetchLayanan]);
 
   return {
     // State

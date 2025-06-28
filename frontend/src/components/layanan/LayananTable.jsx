@@ -34,8 +34,11 @@ const LayananTable = ({ layananList, onEdit, onDelete, loading = false }) => {
                   <div className="text-sm font-medium text-gray-900">{layanan.name}</div>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                  <div className="truncate" title={layanan.description}>
-                    {layanan.description}
+                  <div className="truncate" title={typeof layanan.description === 'object' ? layanan.description?.short || layanan.description?.long || 'No description' : layanan.description || 'No description'}>
+                    {typeof layanan.description === 'object' 
+                      ? layanan.description?.short || layanan.description?.long || 'No description'
+                      : layanan.description || 'No description'
+                    }
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
