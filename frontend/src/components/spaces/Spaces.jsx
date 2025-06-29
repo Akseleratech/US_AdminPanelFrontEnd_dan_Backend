@@ -228,7 +228,7 @@ const Spaces = () => {
         </div>
 
         <button 
-          className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+          className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-all duration-200 shadow-sm hover:shadow font-medium text-sm"
           onClick={handleAddSpace}
         >
           <Plus className="w-5 h-5" />
@@ -348,7 +348,7 @@ const Spaces = () => {
             </p>
             <button 
               onClick={handleAddSpace}
-              className="mt-4 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto transition-colors"
+              className="mt-4 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto transition-all duration-200 shadow-sm hover:shadow font-medium text-sm"
             >
               <Plus className="w-5 h-5" />
               <span>Add Your First Space</span>

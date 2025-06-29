@@ -93,6 +93,27 @@
   background-color: var(--primary-900);
 }
 
+/* Primary button colors */
+.bg-primary {
+  background-color: var(--primary-500);
+}
+
+.hover\:bg-primary-dark:hover {
+  background-color: var(--primary-700);
+}
+
+.bg-primary-light {
+  background-color: var(--primary-100);
+}
+
+.text-primary {
+  color: var(--primary-500);
+}
+
+.hover\:text-primary-dark:hover {
+  color: var(--primary-700);
+}
+
 /* Gradient Backgrounds for Sidebar */
 .from-primary-700 {
   --tw-gradient-from: var(--primary-700);

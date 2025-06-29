@@ -233,20 +233,23 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-gray-50/50 z-10">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {isEditing ? 'Edit Kota' : 'Tambah Kota Baru'}
+          </h2>
+          <button
+            onClick={handleClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form */}
         <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {isEditing ? 'Edit Kota' : 'Tambah Kota Baru'}
-            </h2>
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
 
           {errors.submit && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
@@ -266,7 +269,7 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 ring-primary ${
                   errors.name ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Contoh: Jakarta"
@@ -287,7 +290,7 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
                 name="province"
                 value={formData.province}
                 onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 ring-primary ${
                   errors.province ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Contoh: DKI Jakarta"
@@ -308,7 +311,7 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
                 name="country"
                 value={formData.country}
                 onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 ring-primary ${
                   errors.country ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Contoh: Indonesia"
@@ -342,10 +345,10 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
                 ) : (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-32 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    className="w-full h-32 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary-50 transition-colors"
                   >
                     {uploadingImage ? (
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     ) : (
                       <>
                         <Upload className="w-8 h-8 text-gray-400 mb-2" />
@@ -377,25 +380,26 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
           </form>
 
           {/* Note untuk user */}
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-blue-700 text-sm">
+          <div className="mt-4 p-3 bg-primary-50 border border-primary-200 rounded-md">
+            <p className="text-primary-700 text-sm">
               💡 <strong>Tips:</strong> Sebagian besar kota akan dibuat otomatis saat menambah space. 
               Gunakan form ini hanya untuk kota yang tidak otomatis terbuat.
             </p>
           </div>
 
-          <div className="flex gap-3 pt-6">
+          {/* Form Actions */}
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 bg-gray-50/50 -mx-6 px-6 pb-6 mt-6">
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 ring-primary transition-all duration-200"
             >
               Batal
             </button>
             <button
               type="submit"
               onClick={handleSubmit}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-6 py-2.5 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover focus:outline-none focus:ring-2 ring-primary shadow-primary transition-all duration-200"
             >
               {isEditing ? 'Update' : 'Tambah'} Kota
             </button>

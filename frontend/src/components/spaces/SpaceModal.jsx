@@ -330,8 +330,6 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     }
   };
 
-
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -385,8 +383,6 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     }
   };
 
-
-
   // Get available layanan (from services table)
   const getAvailableLayanan = () => {
     console.log('🎯 getAvailableLayanan called, availableServices:', availableServices);
@@ -408,18 +404,18 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-gray-50/50 z-10">
           <h2 className="text-xl font-semibold text-gray-900">
             {mode === 'edit' ? 'Edit Space' : 'Add New Space'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -442,7 +438,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                 placeholder="Enter space name"
                 required
               />
@@ -456,7 +452,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                 name="layanan"
                 value={formData.layanan}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                 required
               >
                 <option value="">Select Layanan</option>
@@ -477,7 +473,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                 name="capacity"
                 value={formData.capacity}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                 placeholder="Enter capacity"
                 min="1"
                 required
@@ -495,7 +491,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
               value={formData.description}
               onChange={handleInputChange}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
               placeholder="Enter space description"
             />
           </div>
@@ -509,7 +505,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
               name="buildingId"
               value={formData.buildingId}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
               required
             >
               <option value="">Select Building</option>
@@ -534,7 +530,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                   name="pricing.currency"
                   value={formData.pricing.currency}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                 >
                   <option value="IDR">IDR</option>
                   <option value="USD">USD</option>
@@ -551,7 +547,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                   name="pricing.hourly"
                   value={formData.pricing.hourly}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                   placeholder="0.00"
                   step="0.01"
                   min="0"
@@ -567,7 +563,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                   name="pricing.daily"
                   value={formData.pricing.daily}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                   placeholder="0.00"
                   step="0.01"
                   min="0"
@@ -583,7 +579,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                   name="pricing.monthly"
                   value={formData.pricing.monthly}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                   placeholder="0.00"
                   step="0.01"
                   min="0"
@@ -599,7 +595,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
               <button
                 type="button"
                 onClick={() => setShowAmenityModal(true)}
-                className="flex items-center px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
+                className="flex items-center px-3 py-1 bg-gradient-primary text-white text-sm rounded-md hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Add New
@@ -715,18 +711,18 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 bg-gray-50/50 -mx-6 px-6 pb-6 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 ring-primary transition-all duration-200"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-6 py-2.5 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover focus:outline-none focus:ring-2 ring-primary shadow-primary transition-all duration-200 disabled:opacity-50"
             >
               {loading ? 'Saving...' : (mode === 'edit' ? 'Update Space' : 'Create Space')}
             </button>
@@ -734,19 +730,17 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
         </form>
       </div>
 
-
-
       {/* Create Amenity Modal */}
       {showAmenityModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-60">
-          <div className="bg-white rounded-lg w-full max-w-md m-4">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-medium">Create New Amenity</h3>
+        <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-60 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md m-4 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-gray-50/50 z-10">
+              <h3 className="text-lg font-medium text-gray-900">Create New Amenity</h3>
               <button
                 onClick={() => setShowAmenityModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
             
@@ -759,7 +753,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                   type="text"
                   value={amenityFormData.name}
                   onChange={(e) => setAmenityFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                   placeholder="Enter amenity name"
                 />
               </div>
@@ -771,7 +765,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                 <textarea
                   value={amenityFormData.description}
                   onChange={(e) => setAmenityFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                   placeholder="Enter description"
                   rows={3}
                 />
@@ -784,7 +778,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                 <select
                   value={amenityFormData.category}
                   onChange={(e) => setAmenityFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                 >
                   {amenityCategories.map(category => (
                     <option key={category.value} value={category.value}>
@@ -801,7 +795,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                 <select
                   value={amenityFormData.type}
                   onChange={(e) => setAmenityFormData(prev => ({ ...prev, type: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                 >
                   {amenityTypes.map(type => (
                     <option key={type.value} value={type.value}>
@@ -819,23 +813,23 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                   type="text"
                   value={amenityFormData.icon}
                   onChange={(e) => setAmenityFormData(prev => ({ ...prev, icon: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                   placeholder="Enter icon name or emoji"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end space-x-4 p-4 border-t">
+            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 bg-gray-50/50 -mx-6 px-6 pb-6 mt-6">
               <button
                 onClick={() => setShowAmenityModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 ring-primary transition-all duration-200"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateAmenity}
                 disabled={!amenityFormData.name.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-2.5 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover focus:outline-none focus:ring-2 ring-primary shadow-primary transition-all duration-200 disabled:opacity-50"
               >
                 Create
               </button>
