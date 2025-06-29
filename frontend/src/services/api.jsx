@@ -57,6 +57,37 @@ const apiCall = async (endpoint, options = {}) => {
   }
 };
 
+const apiCallWithFormData = async (endpoint, formData, method = 'POST') => {
+  try {
+    const token = await getAuthToken();
+    const headers = {};
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method,
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.message) errorMessage = errorData.message;
+      } catch (e) {
+        // ignore
+      }
+      throw new Error(errorMessage);
+    }
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Dashboard API
 export const dashboardAPI = {
   getStats: () => apiCall('/dashboard/stats'),
@@ -162,14 +193,8 @@ export const amenitiesAPI = {
     return apiCall(`/amenities${queryParams ? `?${queryParams}` : ''}`);
   },
   getById: (id) => apiCall(`/amenities/${id}`),
-  create: (data) => apiCall('/amenities', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  update: (id, data) => apiCall(`/amenities/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
+  create: (formData) => apiCallWithFormData('/amenities', formData, 'POST'),
+  update: (id, formData) => apiCallWithFormData(`/amenities/${id}`, formData, 'PUT'),
   delete: (id) => apiCall(`/amenities/${id}`, { method: 'DELETE' }),
   toggleStatus: (id) => apiCall(`/amenities/${id}/toggle`, { method: 'PATCH' }),
   getActive: () => apiCall('/amenities?status=active')

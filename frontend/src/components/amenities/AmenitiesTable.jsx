@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { Edit, Trash2, ToggleLeft, ToggleRight, Package, AlertCircle } from 'lucide-react';
+import { Edit, Trash2, Image, Package } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
 const AmenitiesTable = ({ amenities, onEdit, onDelete, onToggleStatus, loading }) => {
@@ -10,9 +10,9 @@ const AmenitiesTable = ({ amenities, onEdit, onDelete, onToggleStatus, loading }
         <table className="min-w-full divide-y divide-primary-200">
           <thead className="bg-primary-50 border-b border-primary-200">
             <tr>
+              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider">Icon</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Name</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Description</th>
-              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider">Icon</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Status</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Created At</th>
               <th scope="col" className="relative px-6 py-3 text-right text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
@@ -31,9 +31,19 @@ const AmenitiesTable = ({ amenities, onEdit, onDelete, onToggleStatus, loading }
             ) : amenities && amenities.length > 0 ? (
               amenities.map((amenity) => (
                 <tr key={amenity.id} className="hover:bg-primary-50 transition-colors duration-150">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="w-10 h-10 flex items-center justify-center">
+                      {amenity.icon ? (
+                        <img src={amenity.icon} alt={amenity.name} className="w-full h-full object-contain rounded-md" />
+                      ) : (
+                        <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center">
+                          <Image className="w-5 h-5 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{amenity.name}</td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{amenity.description}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{amenity.icon}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button 
                       onClick={() => onToggleStatus(amenity.id)} 

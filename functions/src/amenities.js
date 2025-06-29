@@ -1,5 +1,10 @@
 const { onRequest } = require("firebase-functions/v2/https");
+const admin = require("firebase-admin");
 const cors = require("cors")({ origin: true });
+const busboy = require("busboy");
+const os = require("os");
+const path = require("path");
+const fs = require("fs");
 const { 
   getDb, 
   handleResponse, 
@@ -97,63 +102,153 @@ const getAmenityById = async (amenityId, req, res) => {
 
 // POST /amenities
 const createAmenity = async (req, res) => {
-  try {
-    const db = getDb();
-    const { name, description, icon } = req.body;
+  const bb = busboy({ headers: req.headers });
+  const tmpdir = os.tmpdir();
+  const fields = {};
+  const uploads = {};
 
-    validateRequired(req.body, ['name']);
+  bb.on('field', (fieldname, val) => {
+    fields[fieldname] = val;
+  });
 
-    const amenityData = {
-      name: sanitizeString(name),
-      description: sanitizeString(description || ''),
-      icon: sanitizeString(icon || ''),
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+  bb.on('file', (fieldname, file, info) => {
+    const { filename, mimeType } = info;
+    const filepath = path.join(tmpdir, filename);
+    const writeStream = fs.createWriteStream(filepath);
+    file.pipe(writeStream);
+    uploads[fieldname] = { filepath, mimeType };
+  });
 
-    const docRef = await db.collection('amenities').add(amenityData);
+  bb.on('finish', async () => {
+    try {
+      validateRequired(fields, ['name']);
+      
+      let iconUrl = '';
+      if (uploads.icon) {
+        const { filepath, mimeType } = uploads.icon;
+        const bucket = admin.storage().bucket();
+        const dest = `amenities/${Date.now()}_${path.basename(filepath)}`;
+        const [uploadedFile] = await bucket.upload(filepath, {
+          destination: dest,
+          metadata: { contentType: mimeType },
+        });
+        await uploadedFile.makePublic();
+        iconUrl = uploadedFile.publicUrl();
+        fs.unlinkSync(filepath); // Clean up temp file
+      }
 
-    handleResponse(res, { id: docRef.id, ...amenityData }, 201);
-  } catch (error) {
-    handleError(res, error);
-  }
+      const db = getDb();
+      const amenityData = {
+        name: sanitizeString(fields.name),
+        description: sanitizeString(fields.description || ''),
+        icon: iconUrl,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const docRef = await db.collection('amenities').add(amenityData);
+      handleResponse(res, { id: docRef.id, ...amenityData }, 201);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  bb.end(req.rawBody);
 };
 
 // PUT /amenities/:id
 const updateAmenity = async (amenityId, req, res) => {
-  try {
-    const db = getDb();
-    
-    const amenityDoc = await db.collection('amenities').doc(amenityId).get();
-    if (!amenityDoc.exists) {
-      return handleResponse(res, { message: 'Amenity not found' }, 404);
+  const bb = busboy({ headers: req.headers });
+  const tmpdir = os.tmpdir();
+  const fields = {};
+  const uploads = {};
+
+  bb.on('field', (fieldname, val) => {
+    fields[fieldname] = val;
+  });
+
+  bb.on('file', (fieldname, file, info) => {
+    const { filename, mimeType } = info;
+    const filepath = path.join(tmpdir, filename);
+    const writeStream = fs.createWriteStream(filepath);
+    file.pipe(writeStream);
+    uploads[fieldname] = { filepath, mimeType };
+  });
+
+  bb.on('finish', async () => {
+    try {
+      const db = getDb();
+      const amenityDoc = await db.collection('amenities').doc(amenityId).get();
+      if (!amenityDoc.exists) {
+        return handleResponse(res, { message: 'Amenity not found' }, 404);
+      }
+
+      let iconUrl = fields.icon || amenityDoc.data().icon; // Keep old icon if not updated
+      // If a new file is uploaded, process it
+      if (uploads.icon) {
+        // Delete the old icon from storage if it exists
+        const oldIconUrl = amenityDoc.data().icon;
+        if (oldIconUrl) {
+          try {
+            const bucket = admin.storage().bucket();
+            const oldFileName = decodeURIComponent(oldIconUrl.split('/').pop().split('?')[0]);
+            await bucket.file(oldFileName).delete();
+          } catch (storageError) {
+            console.warn(`Could not delete old icon: ${oldIconUrl}`, storageError);
+          }
+        }
+        
+        const { filepath, mimeType } = uploads.icon;
+        const bucket = admin.storage().bucket();
+        const dest = `amenities/${Date.now()}_${path.basename(filepath)}`;
+        const [uploadedFile] = await bucket.upload(filepath, {
+          destination: dest,
+          metadata: { contentType: mimeType },
+        });
+        await uploadedFile.makePublic();
+        iconUrl = uploadedFile.publicUrl();
+        fs.unlinkSync(filepath); // Clean up temp file
+      }
+
+      const updateData = {
+        updatedAt: new Date()
+      };
+      if (fields.name) updateData.name = sanitizeString(fields.name);
+      if (fields.description) updateData.description = sanitizeString(fields.description);
+      updateData.icon = iconUrl;
+
+
+      await db.collection('amenities').doc(amenityId).update(updateData);
+      const updatedDoc = await db.collection('amenities').doc(amenityId).get();
+      handleResponse(res, { id: amenityId, ...updatedDoc.data() });
+    } catch (error) {
+      handleError(res, error);
     }
+  });
 
-    const updateData = { ...req.body };
-    delete updateData.id;
-    updateData.updatedAt = new Date();
-
-    if (updateData.name) updateData.name = sanitizeString(updateData.name);
-    if (updateData.description) updateData.description = sanitizeString(updateData.description);
-
-    await db.collection('amenities').doc(amenityId).update(updateData);
-
-    const updatedDoc = await db.collection('amenities').doc(amenityId).get();
-    handleResponse(res, { id: amenityId, ...updatedDoc.data() });
-  } catch (error) {
-    handleError(res, error);
-  }
+  bb.end(req.rawBody);
 };
 
 // DELETE /amenities/:id
 const deleteAmenity = async (amenityId, req, res) => {
   try {
     const db = getDb();
-    
     const amenityDoc = await db.collection('amenities').doc(amenityId).get();
     if (!amenityDoc.exists) {
       return handleResponse(res, { message: 'Amenity not found' }, 404);
+    }
+
+    // Delete icon from storage
+    const iconUrl = amenityDoc.data().icon;
+    if (iconUrl) {
+      try {
+        const bucket = admin.storage().bucket();
+        const fileName = decodeURIComponent(iconUrl.split('/').pop().split('?')[0]);
+        await bucket.file(fileName).delete();
+      } catch (storageError) {
+        console.warn(`Could not delete icon for amenity ${amenityId}: ${iconUrl}`, storageError);
+      }
     }
 
     await db.collection('amenities').doc(amenityId).delete();
