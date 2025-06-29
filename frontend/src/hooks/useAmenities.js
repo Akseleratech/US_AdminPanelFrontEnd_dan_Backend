@@ -12,15 +12,15 @@ const useAmenities = (initialLoad = true) => {
     setError(null);
     try {
       const response = await amenitiesAPI.getAll(params);
-      if (response.amenities) {
-        setAmenities(response.amenities);
-        setTotal(response.total || response.amenities.length);
+      if (response && response.data && Array.isArray(response.data.amenities)) {
+        setAmenities(response.data.amenities);
+        setTotal(response.data.total || response.data.amenities.length);
       } else {
         setAmenities([]);
         setTotal(0);
       }
     } catch (err) {
-      setError(err.message || 'Failed to fetch amenities');
+      setError(err.message || 'Gagal memuat fasilitas');
       console.error(err);
     } finally {
       setLoading(false);
@@ -35,12 +35,8 @@ const useAmenities = (initialLoad = true) => {
 
   const addAmenity = async (amenityData) => {
     try {
-      const newAmenity = await amenitiesAPI.create(amenityData);
-      setAmenities(prev => [newAmenity, ...prev]);
-      setTotal(prev => prev + 1);
-      return newAmenity;
+      return await amenitiesAPI.create(amenityData);
     } catch (err) {
-      setError(err.message || 'Failed to add amenity');
       console.error(err);
       throw err;
     }
@@ -48,11 +44,8 @@ const useAmenities = (initialLoad = true) => {
 
   const updateAmenity = async (id, amenityData) => {
     try {
-      const updatedAmenity = await amenitiesAPI.update(id, amenityData);
-      setAmenities(prev => prev.map(a => a.id === id ? updatedAmenity : a));
-      return updatedAmenity;
+      return await amenitiesAPI.update(id, amenityData);
     } catch (err) {
-      setError(err.message || 'Failed to update amenity');
       console.error(err);
       throw err;
     }
@@ -60,39 +53,14 @@ const useAmenities = (initialLoad = true) => {
 
   const deleteAmenity = async (id) => {
     try {
-      await amenitiesAPI.delete(id);
-      setAmenities(prev => prev.filter(a => a.id !== id));
-      setTotal(prev => prev - 1);
+      return await amenitiesAPI.delete(id);
     } catch (err) {
-      setError(err.message || 'Failed to delete amenity');
       console.error(err);
       throw err;
     }
   };
   
-  const toggleAmenityStatus = async (id) => {
-    try {
-      const updatedAmenity = await amenitiesAPI.toggleStatus(id);
-      setAmenities(prev => prev.map(a => a.id === id ? updatedAmenity : a));
-      return updatedAmenity;
-    } catch (err) {
-      setError(err.message || 'Failed to toggle amenity status');
-      console.error(err);
-      throw err;
-    }
-  };
-
-  return { 
-    amenities, 
-    loading, 
-    error, 
-    total, 
-    fetchAmenities, 
-    addAmenity, 
-    updateAmenity, 
-    deleteAmenity,
-    toggleAmenityStatus 
-  };
+  return { amenities, loading, error, total, fetchAmenities, addAmenity, updateAmenity, deleteAmenity };
 };
 
-export default useAmenities; 
+export default useAmenities;

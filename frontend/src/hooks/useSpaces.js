@@ -12,12 +12,10 @@ const useSpaces = () => {
       setError(null);
       
       const response = await spacesAPI.getAll();
-      console.log('useSpaces: Raw API response:', JSON.stringify(response, null, 2));
       
       if (response?.success) {
         // Extract spaces array from nested response
         const spacesArray = response.data?.data || [];
-        console.log('useSpaces: Extracted spaces array:', JSON.stringify(spacesArray, null, 2));
         
         // Map the data to include id
         const mappedSpaces = spacesArray.map(space => ({
@@ -25,14 +23,11 @@ const useSpaces = () => {
           id: space.id || space.spaceId // Use existing id or fallback to spaceId
         }));
         
-        console.log('useSpaces: Final mapped spaces:', JSON.stringify(mappedSpaces, null, 2));
         setSpaces(mappedSpaces);
-        console.log('useSpaces: Spaces loaded successfully:', mappedSpaces.length, 'spaces');
       } else {
         throw new Error(response?.message || 'Failed to fetch spaces');
       }
     } catch (err) {
-      console.error('useSpaces: Error fetching spaces:', err);
       setError(err.message);
       setSpaces([]); // Reset spaces to empty array on error
     } finally {
@@ -54,7 +49,6 @@ const useSpaces = () => {
         throw new Error(newSpace.message || 'Failed to create space');
       }
     } catch (error) {
-      console.error('useSpaces: Error creating space:', error);
       throw error;
     }
   };
@@ -71,7 +65,6 @@ const useSpaces = () => {
         throw new Error(updatedSpace.message || 'Failed to update space');
       }
     } catch (error) {
-      console.error('useSpaces: Error updating space:', error);
       throw error;
     }
   };
@@ -85,7 +78,6 @@ const useSpaces = () => {
         throw new Error(response.message || 'Failed to delete space');
       }
     } catch (error) {
-      console.error('useSpaces: Error deleting space:', error);
       throw error;
     }
   };

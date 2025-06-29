@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye } from 'lucide-react';
 import useSpaces from '../../hooks/useSpaces';
 import useLayanan from '../../hooks/useLayanan';
+import useBuildings from '../../hooks/useBuildings';
 import SpaceModal from './SpaceModal';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { getStatusColor, getStatusIcon } from '../../utils/helpers';
+import SpacesGrid from './SpacesGrid';
 
 const Spaces = () => {
   const {
@@ -21,6 +24,11 @@ const Spaces = () => {
     loading: layananLoading
   } = useLayanan();
 
+  const {
+    buildings,
+    loading: buildingsLoading
+  } = useBuildings();
+
   // Create a map of layanan IDs to names
   const layananMap = {};
   if (Array.isArray(layananList)) {
@@ -31,24 +39,44 @@ const Spaces = () => {
     });
   }
 
-  console.log('Spaces component: Received spaces:', JSON.stringify(spaces, null, 2));
-  console.log('Spaces component: Layanan list:', layananList);
-  console.log('Spaces component: Layanan map:', layananMap);
+  // Create a map of building IDs to names
+  const buildingMap = {};
+  if (Array.isArray(buildings)) {
+    buildings.forEach(building => {
+      if (building && building.id) {
+        buildingMap[building.id] = building.name;
+      }
+    });
+  }
 
   const [searchTerm, setSearchTerm] = useState('');
   const [notification, setNotification] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState(null);
   const [modalMode, setModalMode] = useState('create'); // 'create', 'edit', 'view'
+  const [filters, setFilters] = useState({
+    buildingId: 'all',
+    layanan: 'all',
+    status: 'all', // 'all', 'active', 'inactive'
+  });
 
-  // Filter spaces based on search term
-  const filteredSpaces = spaces.filter(space =>
-    space.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    layananMap[space.category]?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    space.buildingId?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
 
-  console.log('Spaces component: Filtered spaces:', JSON.stringify(filteredSpaces, null, 2));
+  // Filter spaces based on search term and filters
+  const filteredSpaces = spaces.filter(space => {
+    const searchMatch = space.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      layananMap[space.category]?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      buildingMap[space.buildingId]?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const buildingMatch = filters.buildingId === 'all' || space.buildingId === filters.buildingId;
+    const layananMatch = filters.layanan === 'all' || space.category === filters.layanan;
+    const statusMatch = filters.status === 'all' || (filters.status === 'active' && space.isActive) || (filters.status === 'inactive' && !space.isActive);
+
+    return searchMatch && buildingMatch && layananMatch && statusMatch;
+  });
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -123,12 +151,16 @@ const Spaces = () => {
     return layananMap[categoryId] || categoryId || 'Unknown';
   };
 
+  const getBuildingDisplayName = (buildingId) => {
+    return buildingMap[buildingId] || buildingId || 'Unknown';
+  };
+
   // Statistics calculations
   const activeSpaces = filteredSpaces.filter(s => s.isActive);
   const inactiveSpaces = filteredSpaces.filter(s => !s.isActive);
   const totalCapacity = filteredSpaces.reduce((total, space) => total + (parseInt(space.capacity) || 0), 0);
 
-  if (loading || layananLoading) {
+  if (loading || layananLoading || buildingsLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <LoadingSpinner />
@@ -233,156 +265,86 @@ const Spaces = () => {
         </div>
       </div>
 
-      {/* Action Bar */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <div className="relative">
+      {/* Action Bar & Filters */}
+      <div className="bg-white p-4 rounded-lg shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          {/* Search */}
+          <div className="relative w-full md:w-auto">
             <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search spaces..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
+              placeholder="Cari nama, gedung..."
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full md:w-64 focus:outline-none focus:ring-2 ring-primary"
             />
           </div>
+
+          {/* Add Button */}
+          <button
+            onClick={handleAddSpace}
+            className="flex-shrink-0 flex items-center px-4 py-2 bg-gradient-primary text-white text-sm font-semibold rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200 w-full md:w-auto"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add New Space
+          </button>
         </div>
 
-        <button 
-          className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-all duration-200 shadow-sm hover:shadow font-medium text-sm"
-          onClick={handleAddSpace}
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Space</span>
-        </button>
-      </div>
-
-      {/* Spaces Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Space
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Capacity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Building ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amenities
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {console.log('Spaces component: Rendering table with spaces:', filteredSpaces.length)}
-              {filteredSpaces.map((space) => {
-                console.log('Spaces component: Rendering space:', space);
-                return (
-                  <tr key={space.id || space.spaceId} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-lg bg-primary-light flex items-center justify-center">
-                            {getTypeIcon(space.category)}
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{space.name}</div>
-                          <div className="text-sm text-gray-500">{space.description}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{getCategoryDisplayName(space.category)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{space.capacity} people</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{space.buildingId}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(space.isActive)}`}>
-                        {getStatusText(space.isActive)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-wrap gap-1">
-                        {space.amenities && space.amenities.slice(0, 3).map((amenity, index) => (
-                          <span 
-                            key={`${space.id}-amenity-${index}-${typeof amenity === 'string' ? amenity : amenity.id}`} 
-                            className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
-                          >
-                            {typeof amenity === 'string' ? amenity : amenity.name}
-                          </span>
-                        ))}
-                        {space.amenities && space.amenities.length > 3 && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                            +{space.amenities.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button 
-                        className="text-blue-600 hover:text-blue-900 mr-3"
-                        onClick={() => handleViewSpace(space)}
-                        title="View"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button 
-                        className="text-primary hover:text-primary-dark mr-3"
-                        onClick={() => handleEditSpace(space)}
-                        title="Edit"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        className="text-red-600 hover:text-red-900"
-                        onClick={() => handleDeleteSpace(space)}
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredSpaces.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <LayoutGrid className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No spaces found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm ? `No spaces match "${searchTerm}"` : 'Get started by creating your first space.'}
-            </p>
-            <button 
-              onClick={handleAddSpace}
-              className="mt-4 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto transition-all duration-200 shadow-sm hover:shadow font-medium text-sm"
+        {/* Filter Dropdowns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Gedung</label>
+            <select
+              name="buildingId"
+              value={filters.buildingId}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
             >
-              <Plus className="w-5 h-5" />
-              <span>Add Your First Space</span>
-            </button>
+              <option value="all">Semua Gedung</option>
+              {Array.isArray(buildings) && buildings.map(building => (
+                <option key={building.id} value={building.id}>{building.name}</option>
+              ))}
+            </select>
           </div>
-        )}
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Layanan</label>
+            <select
+              name="layanan"
+              value={filters.layanan}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+            >
+              <option value="all">Semua Layanan</option>
+              {Array.isArray(layananList) && layananList.map(layanan => (
+                <option key={layanan.id} value={layanan.id}>{layanan.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Status</label>
+            <select
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+            >
+              <option value="all">Semua Status</option>
+              <option value="active">Aktif</option>
+              <option value="inactive">Tidak Aktif</option>
+            </select>
+          </div>
+        </div>
       </div>
+
+      {/* Spaces Grid */}
+      <SpacesGrid
+        spaces={filteredSpaces}
+        loading={loading || layananLoading}
+        onEdit={handleEditSpace}
+        onDelete={handleDeleteSpace}
+        getCategoryDisplayName={getCategoryDisplayName}
+        getBuildingDisplayName={getBuildingDisplayName}
+      />
 
       {/* Space Modal */}
       <SpaceModal

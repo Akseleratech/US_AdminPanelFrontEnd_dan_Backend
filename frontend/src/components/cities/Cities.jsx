@@ -3,6 +3,7 @@ import { Search, Filter, Plus, RefreshCw, AlertCircle, CheckCircle, Trash2, X, C
 import CitiesTable from './CitiesTable.jsx';
 import SimpleCityModal from './SimpleCityModal.jsx';
 import useCities from '../../hooks/useCities.js';
+import useBuildings from '../../hooks/useBuildings.js';
 
 const Cities = () => {
   const {
@@ -17,6 +18,8 @@ const Cities = () => {
     uploadCityImage,
     refresh
   } = useCities();
+
+  const { buildings, loading: buildingsLoading } = useBuildings();
 
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
@@ -33,6 +36,25 @@ const Cities = () => {
   const [selectedProvinces, setSelectedProvinces] = useState(new Set());
   const [selectedCountries, setSelectedCountries] = useState(new Set());
 
+  const usedCityIds = useMemo(() => {
+    if (!buildings || !cities || cities.length === 0) return new Set();
+
+    // Create a map from city name to city ID for efficient lookup
+    const cityNameToIdMap = new Map(cities.map(city => [city.name.toLowerCase(), city.id]));
+
+    const usedIds = new Set();
+    buildings.forEach(building => {
+      const cityName = building.location?.city;
+      if (cityName) {
+        const cityId = cityNameToIdMap.get(cityName.toLowerCase());
+        if (cityId) {
+          usedIds.add(cityId);
+        }
+      }
+    });
+    return usedIds;
+  }, [buildings, cities]);
+
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 5000);
@@ -45,7 +67,6 @@ const Cities = () => {
   };
 
   const handleEdit = (city) => {
-    console.log('Cities: handleEdit called with:', city);
     setSelectedCity(city);
     setModalMode('edit');
     setShowModal(true);
@@ -55,6 +76,10 @@ const Cities = () => {
     if (type === 'city') {
       const city = cities.find(c => c.id === cityId);
       if (city) {
+        if (usedCityIds.has(city.id)) {
+          showNotification(`Kota "${city.name}" tidak bisa dihapus karena sedang digunakan oleh satu atau lebih gedung.`, 'error');
+          return;
+        }
         setCityToDelete(city);
         setShowDeleteConfirm(true);
       }
@@ -76,18 +101,11 @@ const Cities = () => {
 
   const handleSave = async (cityData) => {
     try {
-      console.log('Cities: handleSave called with:', cityData);
-      console.log('Cities: modalMode:', modalMode);
-      
       if (modalMode === 'add') {
-        console.log('Cities: Calling createCity...');
         const result = await createCity(cityData);
-        console.log('Cities: createCity result:', result);
         showNotification('Kota baru berhasil ditambahkan', 'success');
       } else {
-        console.log('Cities: Calling updateCity...');
         const result = await updateCity(selectedCity.id, cityData);
-        console.log('Cities: updateCity result:', result);
         showNotification('Kota berhasil diperbarui', 'success');
       }
       
@@ -97,7 +115,6 @@ const Cities = () => {
       setShowModal(false);
       setSelectedCity(null);
     } catch (error) {
-      console.error('Cities: Error in handleSave:', error);
       const errorMessage = error.message || 'Unknown error occurred';
       showNotification(`Gagal ${modalMode === 'add' ? 'menambah' : 'memperbarui'} kota: ${errorMessage}`, 'error');
       throw error; // Let the modal handle the error display
@@ -198,11 +215,9 @@ const Cities = () => {
 
   const handleUploadImage = async (cityId, imageFile) => {
     try {
-      console.log('Cities: handleUploadImage called for city:', cityId);
       await uploadCityImage(cityId, imageFile);
       showNotification('Thumbnail berhasil diupload', 'success');
     } catch (error) {
-      console.error('Cities: Error uploading image:', error);
       showNotification(`Gagal upload thumbnail: ${error.message}`, 'error');
     }
   };
@@ -543,7 +558,8 @@ const Cities = () => {
           onEdit={handleEdit} 
           onDelete={handleDelete}
           onUploadImage={handleUploadImage}
-          loading={loading}
+          loading={loading || buildingsLoading}
+          usedCityIds={usedCityIds}
         />
       )}
 

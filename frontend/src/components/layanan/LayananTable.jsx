@@ -2,7 +2,7 @@ import React from 'react';
 import { Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
-const LayananTable = ({ layananList, onEdit, onDelete, loading = false }) => {
+const LayananTable = ({ layananList, onEdit, onDelete, loading = false, usedLayananIds }) => {
   if (loading) {
     return (
       <div className="bg-white border border-primary-200 table-green-theme">
@@ -75,13 +75,21 @@ const LayananTable = ({ layananList, onEdit, onDelete, loading = false }) => {
                     >
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button 
-                      onClick={() => onDelete('layanan', layanan.id)}
-                      className="text-red-600 hover:text-red-900"
-                      title="Hapus Layanan"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="relative group">
+                      <button 
+                        onClick={() => onDelete('layanan', layanan.id)}
+                        className={`text-red-600 hover:text-red-900 ${usedLayananIds.has(layanan.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title="Hapus Layanan"
+                        disabled={usedLayananIds.has(layanan.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      {usedLayananIds.has(layanan.id) && (
+                        <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          Layanan ini tidak bisa dihapus karena sedang digunakan oleh satu atau lebih space.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </td>
               </tr>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Eye, Edit, Trash2, MapPin } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
-const BuildingsTable = ({ buildings, onEdit, onDelete, loading }) => {
+const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds }) => {
   return (
     <div className="bg-white border border-primary-200 table-green-theme rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -81,12 +81,20 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading }) => {
                     >
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button 
-                      onClick={() => onDelete('building', building.id)}
-                      className="text-red-600 hover:text-red-900 p-1"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="relative group">
+                      <button 
+                        onClick={() => onDelete('building', building.id)}
+                        className={`text-red-600 hover:text-red-900 p-1 ${usedBuildingIds.has(building.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={usedBuildingIds.has(building.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      {usedBuildingIds.has(building.id) && (
+                        <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                          Gedung ini tidak bisa dihapus karena sedang digunakan oleh satu atau lebih space.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </td>
               </tr>

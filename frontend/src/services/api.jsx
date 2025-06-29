@@ -11,7 +11,6 @@ const getAuthToken = async () => {
     }
     return null;
   } catch (error) {
-    console.error('Failed to get auth token:', error);
     return null;
   }
 };
@@ -29,12 +28,6 @@ const apiCall = async (endpoint, options = {}) => {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    console.log(`API Request to ${endpoint}:`, {
-      method: options.method || 'GET',
-      headers,
-      body: options.body ? JSON.parse(options.body) : undefined
-    });
-
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
@@ -44,11 +37,6 @@ const apiCall = async (endpoint, options = {}) => {
       let errorMessage = `HTTP error! status: ${response.status}`;
       try {
         const errorData = await response.json();
-        console.error('API Error Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          data: errorData
-        });
         
         if (errorData.message) {
           errorMessage = errorData.message;
@@ -57,20 +45,14 @@ const apiCall = async (endpoint, options = {}) => {
           errorMessage += '\n• ' + errorData.errors.join('\n• ');
         }
       } catch (parseError) {
-        console.error('Could not parse error response:', parseError);
+        // Could not parse error response, stick with the original message
       }
       throw new Error(errorMessage);
     }
 
     const responseData = await response.json();
-    console.log(`API Response from ${endpoint}:`, responseData);
     return responseData;
   } catch (error) {
-    console.error('API call failed:', {
-      endpoint,
-      error: error.message,
-      stack: error.stack
-    });
     throw error;
   }
 };
@@ -191,4 +173,4 @@ export const amenitiesAPI = {
   delete: (id) => apiCall(`/amenities/${id}`, { method: 'DELETE' }),
   toggleStatus: (id) => apiCall(`/amenities/${id}/toggle`, { method: 'PATCH' }),
   getActive: () => apiCall('/amenities?status=active')
-}; 
+};

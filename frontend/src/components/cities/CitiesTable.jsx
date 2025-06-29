@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Edit2, Trash2, MapPin, Image, Upload } from 'lucide-react';
 
-const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading }) => {
+const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCityIds }) => {
   const fileInputRefs = useRef({});
 
   const handleImageUpload = async (cityId, file) => {
@@ -114,13 +114,21 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading }) => {
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={() => onDelete('city', city.id)}
-                  className="text-red-600 hover:text-red-900 transition-colors duration-150"
-                  title="Hapus kota"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="relative group inline-block">
+                  <button
+                    onClick={() => onDelete('city', city.id)}
+                    className={`text-red-600 hover:text-red-900 transition-colors duration-150 ${usedCityIds.has(city.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title="Hapus kota"
+                    disabled={usedCityIds.has(city.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  {usedCityIds.has(city.id) && (
+                    <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      Kota ini tidak bisa dihapus karena sedang digunakan oleh satu atau lebih gedung.
+                    </div>
+                  )}
+                </div>
               </td>
             </tr>
           ))}

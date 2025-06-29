@@ -29,10 +29,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
   // Global refresh context
   const { refreshTriggers } = useGlobalRefresh();
   
-  // Custom amenities states
-  const [editingAmenity, setEditingAmenity] = useState(null);
-  const [editAmenityValue, setEditAmenityValue] = useState('');
-  const [deletingAmenity, setDeletingAmenity] = useState(null);
+  const [amenitySearchTerm, setAmenitySearchTerm] = useState('');
 
   // Fallback layanan if no services available
   const fallbackLayanan = [
@@ -265,53 +262,6 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     }));
   };
 
-  const handleCustomAmenityAdd = (amenityName) => {
-    if (amenityName.trim() && !formData.amenities.includes(amenityName.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        amenities: [...prev.amenities, amenityName.trim()]
-      }));
-    }
-  };
-
-  const handleDeleteCustomAmenity = (amenityToDelete) => {
-    setFormData(prev => ({
-      ...prev,
-      amenities: prev.amenities.filter(amenity => amenity !== amenityToDelete)
-    }));
-  };
-
-  const handleEditAmenity = (oldAmenity, newAmenity) => {
-    if (newAmenity.trim() && newAmenity.trim() !== oldAmenity) {
-      setFormData(prev => ({
-        ...prev,
-        amenities: prev.amenities.map(amenity => 
-          amenity === oldAmenity ? newAmenity.trim() : amenity
-        )
-      }));
-    }
-    setEditingAmenity(null);
-    setEditAmenityValue('');
-  };
-
-  const handleDeleteAmenity = async (amenityId, amenityName) => {
-    if (window.confirm(`Are you sure you want to delete the amenity "${amenityName}"? This cannot be undone.`)) {
-      try {
-        await amenitiesAPI.delete(amenityId);
-        fetchData(); // Refresh the list of amenities
-        
-        // Also remove from the form's selected amenities if it's there
-        setFormData(prev => ({
-          ...prev,
-          amenities: prev.amenities.filter(a => a !== amenityName)
-        }));
-      } catch (error) {
-        console.error('Failed to delete amenity:', error);
-        setError(error.message || 'Failed to delete amenity.');
-      }
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -372,6 +322,13 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
       setLoading(false);
     }
   };
+
+  // Filter amenities
+  const filteredAmenities = Array.isArray(availableAmenities)
+    ? availableAmenities.filter(amenity =>
+        amenity.name.toLowerCase().includes(amenitySearchTerm.toLowerCase())
+      )
+    : [];
 
   // Get available layanan (from services table)
   const getAvailableLayanan = () => {
@@ -581,111 +538,38 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           {/* Amenities */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Amenities</h3>
+              <h3 className="text-lg font-medium text-gray-900">Fasilitas Tersedia:</h3>
             </div>
             
+            {/* Amenity Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Cari fasilitas..."
+                value={amenitySearchTerm}
+                onChange={(e) => setAmenitySearchTerm(e.target.value)}
+                className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
+              />
+            </div>
+
             {/* Available Amenities */}
             {Array.isArray(availableAmenities) && availableAmenities.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Available Amenities:</h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {availableAmenities.map((amenity) => (
-                    <div key={amenity.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
-                      <label className="flex items-center flex-grow cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.amenities.includes(amenity.name)}
-                          onChange={() => handleAmenityToggle(amenity.name)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{amenity.name}</span>
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAmenity(amenity.id, amenity.name)}
-                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors"
-                        title={`Delete ${amenity.name}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                  {filteredAmenities.map((amenity) => (
+                    <label key={amenity.id} className="flex items-center p-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.amenities.includes(amenity.name)}
+                        onChange={() => handleAmenityToggle(amenity.name)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">{amenity.name}</span>
+                    </label>
                   ))}
                 </div>
               </div>
             )}
-
-            {/* Custom Amenities */}
-            {formData.amenities.filter(amenity => 
-              !Array.isArray(availableAmenities) || !availableAmenities.some(available => available.name === amenity)
-            ).length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Custom Amenities:</h4>
-                <div className="space-y-2">
-                  {formData.amenities
-                    .filter(amenity => !Array.isArray(availableAmenities) || !availableAmenities.some(available => available.name === amenity))
-                    .map((amenity, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        {editingAmenity === amenity ? (
-                          <>
-                            <input
-                              type="text"
-                              value={editAmenityValue}
-                              onChange={(e) => setEditAmenityValue(e.target.value)}
-                              className="flex-1 px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              onBlur={() => handleEditAmenity(amenity, editAmenityValue)}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleEditAmenity(amenity, editAmenityValue);
-                                }
-                              }}
-                              autoFocus
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <span className="flex-1 px-3 py-1 bg-gray-100 rounded-md text-sm">
-                              {amenity}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingAmenity(amenity);
-                                setEditAmenityValue(amenity);
-                              }}
-                              className="p-1 text-blue-600 hover:text-blue-800"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCustomAmenity(amenity)}
-                              className="p-1 text-red-600 hover:text-red-800"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Add Custom Amenity */}
-            <div>
-              <input
-                type="text"
-                placeholder="Add custom amenity and press Enter"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleCustomAmenityAdd(e.target.value);
-                    e.target.value = '';
-                  }
-                }}
-              />
-            </div>
           </div>
 
           {/* Active Status */}

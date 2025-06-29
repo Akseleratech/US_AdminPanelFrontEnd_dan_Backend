@@ -38,29 +38,38 @@ const Amenities = () => {
     } else {
       await addAmenity(amenityData);
     }
+    // Refresh the list after saving
+    fetchAmenities();
     handleCloseModal();
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this amenity?')) {
       await deleteAmenity(id);
+      fetchAmenities();
     }
   };
 
   const handleToggle = async (id) => {
     await toggleAmenityStatus(id);
+    fetchAmenities();
   };
 
   return (
-    <div className="p-6">
+    <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Manage Amenities</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Kelola Fasilitas</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Buat, edit, dan kelola semua fasilitas yang tersedia untuk ruangan.
+          </p>
+        </div>
         <button
           onClick={() => handleOpenModal('add')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
+          className="flex items-center px-4 py-2 bg-gradient-primary text-white text-sm font-semibold rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
         >
-          <Plus className="w-5 h-5 mr-2" />
-          Add Amenity
+          <Plus className="w-4 h-4 mr-2" />
+          Tambah Fasilitas
         </button>
       </div>
 

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, Plus, AlertCircle, Trash2 } from 'lucide-react';
 import BuildingsTable from './BuildingsTable.jsx';
 import BuildingModal from './BuildingModal.jsx';
 import useBuildings from '../../hooks/useBuildings.js';
+import useSpaces from '../../hooks/useSpaces.js';
 import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext.jsx';
 
 const Buildings = () => {
@@ -18,6 +19,8 @@ const Buildings = () => {
     refresh: refreshBuildings
   } = useBuildings();
 
+  const { spaces, loading: spacesLoading } = useSpaces();
+
   // Global refresh context
   const { refreshRelatedToSpaces, refreshRelatedToBuildings } = useGlobalRefresh();
 
@@ -28,17 +31,20 @@ const Buildings = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [buildingToDelete, setBuildingToDelete] = useState(null);
 
+  const usedBuildingIds = useMemo(() => {
+    if (!spaces) return new Set();
+    return new Set(spaces.map(space => space.buildingId).filter(Boolean));
+  }, [spaces]);
+
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 5000);
   };
 
   const handleAddNew = () => {
-    console.log('🔧 DEBUG: handleAddNew called');
     setSelectedBuilding(null);
     setModalMode('add');
     setShowBuildingModal(true);
-    console.log('🔧 DEBUG: showBuildingModal set to true');
   };
 
   const handleEdit = (building) => {
@@ -48,6 +54,10 @@ const Buildings = () => {
   };
 
   const handleDelete = (building) => {
+    if (usedBuildingIds.has(building.id)) {
+      showNotification(`Gedung "${building.name}" sedang digunakan oleh sebuah space dan tidak bisa dihapus.`, 'error');
+      return;
+    }
     setBuildingToDelete(building);
     setShowDeleteConfirm(true);
   };
@@ -67,26 +77,17 @@ const Buildings = () => {
 
   const handleSaveBuilding = async (buildingData) => {
     try {
-      console.log('Buildings: handleSaveBuilding called with:', buildingData);
-      console.log('Buildings: modalMode:', modalMode);
-      
       if (modalMode === 'add') {
-        console.log('Buildings: Calling createBuilding...');
         const result = await createBuilding(buildingData);
-        console.log('Buildings: createBuilding result:', result);
         
         // Trigger global refresh untuk buildings dan spaces (karena space modal butuh building data)
-        console.log('🔄 Buildings: Triggering global refresh for related components (buildings, spaces)...');
         refreshRelatedToBuildings();
         
         showNotification('Lokasi/gedung baru berhasil ditambahkan', 'success');
       } else {
-        console.log('Buildings: Calling updateBuilding...');
         const result = await updateBuilding(selectedBuilding.id, buildingData);
-        console.log('Buildings: updateBuilding result:', result);
         
         // Trigger global refresh untuk buildings dan spaces (karena space modal butuh building data)
-        console.log('🔄 Buildings: Triggering global refresh for updated building...');
         refreshRelatedToBuildings();
         
         showNotification('Lokasi/gedung berhasil diperbarui', 'success');
@@ -94,15 +95,12 @@ const Buildings = () => {
       setShowBuildingModal(false);
       setSelectedBuilding(null);
     } catch (error) {
-      console.error('Buildings: Error in handleSaveBuilding:', error);
       const errorMessage = error.message || 'Unknown error occurred';
       showNotification(`Gagal ${modalMode === 'add' ? 'menambah' : 'memperbarui'} lokasi/gedung: ${errorMessage}`, 'error');
       throw error; // Let the modal handle the error display
     }
   };
 
-  console.log('🔧 DEBUG Buildings: showBuildingModal =', showBuildingModal);
-  
   return (
     <div className="space-y-6">
       {/* Notification */}
@@ -184,7 +182,8 @@ const Buildings = () => {
           const building = buildings.find(b => b.id === id);
           if (building) handleDelete(building);
         }}
-        loading={buildingsLoading}
+        loading={buildingsLoading || spacesLoading}
+        usedBuildingIds={usedBuildingIds}
       />
 
       {/* Building Modal */}

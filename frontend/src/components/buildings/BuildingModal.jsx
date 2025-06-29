@@ -154,15 +154,12 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
       await onSave(submissionData);
       onClose();
     } catch (error) {
-      console.error('BuildingModal: Error in handleSubmit:', error);
       setError(error.message || 'Terjadi kesalahan saat menyimpan data');
     } finally {
       setLoading(false);
     }
   };
 
-  console.log('🔧 DEBUG BuildingModal: isOpen =', isOpen);
-  
   if (!isOpen) return null;
 
   return (

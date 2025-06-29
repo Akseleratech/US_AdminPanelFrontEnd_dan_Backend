@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, Plus, AlertCircle, Trash2 } from 'lucide-react';
 import LayananTable from './LayananTable.jsx';
 import LayananModal from './LayananModal.jsx';
 import useLayanan from '../../hooks/useLayanan.js';
+import useSpaces from '../../hooks/useSpaces.js';
 
 const Layanan = () => {
   const {
@@ -17,12 +18,19 @@ const Layanan = () => {
     refresh: refreshLayanan
   } = useLayanan();
 
+  const { spaces, loading: spacesLoading } = useSpaces();
+
   const [showLayananModal, setShowLayananModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
   const [selectedLayanan, setSelectedLayanan] = useState(null);
   const [notification, setNotification] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [layananToDelete, setLayananToDelete] = useState(null);
+
+  const usedLayananIds = useMemo(() => {
+    if (!spaces) return new Set();
+    return new Set(spaces.map(space => space.category).filter(Boolean));
+  }, [spaces]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -42,6 +50,10 @@ const Layanan = () => {
   };
 
   const handleDelete = (layanan) => {
+    if (usedLayananIds.has(layanan.id)) {
+      showNotification(`Layanan "${layanan.name}" sedang digunakan oleh sebuah space dan tidak bisa dihapus.`, 'error');
+      return;
+    }
     setLayananToDelete(layanan);
     setShowDeleteConfirm(true);
   };
@@ -61,18 +73,11 @@ const Layanan = () => {
 
   const handleSaveLayanan = async (layananData) => {
     try {
-      console.log('Layanan: handleSaveLayanan called with:', layananData);
-      console.log('Layanan: modalMode:', modalMode);
-      
       if (modalMode === 'add') {
-        console.log('Layanan: Calling createLayanan...');
         const result = await createLayanan(layananData);
-        console.log('Layanan: createLayanan result:', result);
         showNotification('Layanan baru berhasil ditambahkan', 'success');
       } else {
-        console.log('Layanan: Calling updateLayanan...');
         const result = await updateLayanan(selectedLayanan.id, layananData);
-        console.log('Layanan: updateLayanan result:', result);
         showNotification('Layanan berhasil diperbarui', 'success');
       }
       
@@ -81,13 +86,11 @@ const Layanan = () => {
       setSelectedLayanan(null);
       
       // Manual refresh as fallback to ensure UI updates
-      console.log('Layanan: Performing manual refresh...');
       setTimeout(() => {
         refreshLayanan();
       }, 500); // Small delay to ensure backend has processed the data
       
     } catch (error) {
-      console.error('Layanan: Error in handleSaveLayanan:', error);
       const errorMessage = error.message || 'Unknown error occurred';
       showNotification(`Gagal ${modalMode === 'add' ? 'menambah' : 'memperbarui'} layanan: ${errorMessage}`, 'error');
       throw error; // Let the modal handle the error display
@@ -175,7 +178,8 @@ const Layanan = () => {
           const layanan = layananList.find(l => l.id === id);
           if (layanan) handleDelete(layanan);
         }}
-        loading={layananLoading}
+        loading={layananLoading || spacesLoading}
+        usedLayananIds={usedLayananIds}
       />
 
       {/* Layanan Modal */}

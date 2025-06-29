@@ -37,7 +37,7 @@ const AmenityModal = ({ isOpen, onClose, onSave, amenity, mode }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      setError('Amenity name is required');
+      setError('Nama fasilitas wajib diisi');
       return;
     }
     setLoading(true);
@@ -46,7 +46,7 @@ const AmenityModal = ({ isOpen, onClose, onSave, amenity, mode }) => {
       await onSave(formData);
       onClose();
     } catch (err) {
-      setError(err.message || `Failed to ${mode === 'edit' ? 'update' : 'create'} amenity.`);
+      setError(err.message || `Gagal ${mode === 'edit' ? 'memperbarui' : 'membuat'} fasilitas.`);
       console.error(err);
     } finally {
       setLoading(false);
@@ -60,7 +60,7 @@ const AmenityModal = ({ isOpen, onClose, onSave, amenity, mode }) => {
       <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md m-4 animate-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-gray-50/50 z-10">
           <h3 className="text-lg font-medium text-gray-900">
-            {mode === 'edit' ? 'Edit Amenity' : 'Create New Amenity'}
+            {mode === 'edit' ? 'Edit Fasilitas' : 'Buat Fasilitas Baru'}
           </h3>
           <button
             onClick={onClose}
@@ -86,7 +86,7 @@ const AmenityModal = ({ isOpen, onClose, onSave, amenity, mode }) => {
               value={formData.name}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
-              placeholder="Enter amenity name"
+              placeholder="Masukkan nama fasilitas"
               required
             />
           </div>
