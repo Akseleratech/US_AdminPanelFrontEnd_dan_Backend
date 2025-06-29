@@ -1,4 +1,5 @@
 const { onRequest } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const cors = require("cors")({ origin: true });
@@ -73,4 +74,27 @@ exports.health = onRequest((req, res) => {
       environment: process.env.FUNCTIONS_EMULATOR === "true" ? "emulator" : "production"
     });
   });
+});
+
+// Scheduled function to update spaces operational status every 5 minutes
+exports.updateSpacesOperationalStatus = onSchedule({
+  schedule: "*/5 * * * *", // Every 5 minutes
+  timeZone: "Asia/Jakarta",
+  memory: "256MiB",
+  timeoutSeconds: 300
+}, async (event) => {
+  console.log('🕐 Scheduled update of spaces operational status started');
+  
+  try {
+    // Import the function here to avoid circular imports
+    const { updateAllSpacesOperationalStatus } = require("./src/spacesOperationalStatusUpdater");
+    
+    const updatedCount = await updateAllSpacesOperationalStatus();
+    console.log(`✅ Scheduled update completed: ${updatedCount} spaces updated`);
+    
+    return { success: true, updatedCount };
+  } catch (error) {
+    console.error('❌ Scheduled update failed:', error);
+    throw error;
+  }
 }); 

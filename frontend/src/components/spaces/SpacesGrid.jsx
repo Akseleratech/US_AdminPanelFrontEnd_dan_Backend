@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, Trash2, LayoutGrid, Building, Users, Tag, CheckSquare, DollarSign } from 'lucide-react';
+import { Edit, Trash2, LayoutGrid, Building, Users, Tag, CheckSquare, DollarSign, Clock } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers';
 import LoadingSpinner from '../common/LoadingSpinner';
 
@@ -41,6 +41,48 @@ const SpacesGrid = ({
     }).format(price);
   };
 
+  const formatOperationalHours = (operationalHours) => {
+    if (!operationalHours) return 'Tidak diatur';
+    
+    if (operationalHours.isAlwaysOpen) {
+      return '24 Jam';
+    }
+    
+    // Get current day
+    const now = new Date();
+    const currentDay = now.toLocaleDateString('en-US', {weekday: 'long'}).toLowerCase();
+    
+    const schedule = operationalHours.schedule;
+    if (!schedule || !schedule[currentDay]) {
+      return 'Jadwal tidak tersedia';
+    }
+    
+    const daySchedule = schedule[currentDay];
+    if (!daySchedule.isOpen) {
+      return 'Tutup hari ini';
+    }
+    
+    return `${daySchedule.openTime} - ${daySchedule.closeTime}`;
+  };
+
+  const getOperationalStatusDisplay = (space) => {
+    if (!space.operationalStatus) return null;
+    
+    if (space.operationalStatus.isOperational) {
+      return {
+        text: 'Beroperasi',
+        className: 'bg-green-100 text-green-800',
+        icon: '🟢'
+      };
+    } else {
+      return {
+        text: 'Tutup',
+        className: 'bg-orange-100 text-orange-800',
+        icon: '🟠'
+      };
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {spaces.map((space) => (
@@ -53,9 +95,24 @@ const SpacesGrid = ({
                   <h3 className="text-lg font-medium text-primary-800">{space.name}</h3>
                   <p className="text-sm text-primary-600">{getBuildingDisplayName(space.buildingId)}</p>
                 </div>
-                <div className={`px-2 py-1 text-xs font-medium ${getStatusColor(space.isActive ? 'active' : 'inactive')}`}>
-                  {getStatusIcon(space.isActive ? 'active' : 'inactive')}
-                  <span className="ml-1">{space.isActive ? 'Active' : 'Inactive'}</span>
+                <div className="flex flex-col gap-1">
+                  {/* Active/Inactive Status */}
+                  <div className={`px-2 py-1 text-xs font-medium ${getStatusColor(space.isActive ? 'active' : 'inactive')}`}>
+                    {getStatusIcon(space.isActive ? 'active' : 'inactive')}
+                    <span className="ml-1">{space.isActive ? 'Active' : 'Inactive'}</span>
+                  </div>
+                  
+                  {/* Operational Status */}
+                  {(() => {
+                    const opStatus = getOperationalStatusDisplay(space);
+                    if (!opStatus) return null;
+                    return (
+                      <div className={`px-2 py-1 text-xs font-medium rounded ${opStatus.className}`}>
+                        <span className="mr-1">{opStatus.icon}</span>
+                        {opStatus.text}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -73,6 +130,13 @@ const SpacesGrid = ({
                 <Users className="w-4 h-4 mr-1.5" />
                 {space.capacity} orang
               </div>
+            </div>
+
+            {/* Operational Hours */}
+            <div className="flex items-center text-sm text-primary-700">
+              <Clock className="w-4 h-4 mr-1.5" />
+              <span className="text-primary-600">Jam Operasional: </span>
+              <span className="ml-1 font-medium">{formatOperationalHours(space.operationalHours)}</span>
             </div>
 
             {/* Description */}

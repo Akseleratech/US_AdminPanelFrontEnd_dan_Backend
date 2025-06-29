@@ -10,6 +10,11 @@ const {
   generateSequentialId 
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
+const { 
+  getOperationalStatus, 
+  updateSpaceOperationalStatus,
+  updateAllSpacesOperationalStatus 
+} = require("./spacesOperationalStatusUpdater");
 
 // Main spaces function that handles all space routes
 const spaces = onRequest(async (req, res) => {
@@ -27,6 +32,12 @@ const spaces = onRequest(async (req, res) => {
         } else if (pathParts.length === 1) {
           // GET /spaces/:id
           return await getSpaceById(pathParts[0], req, res);
+        } else if (pathParts.length === 2 && pathParts[1] === 'update-operational-status') {
+          // GET /spaces/:id/update-operational-status
+          return await updateSingleSpaceOperationalStatus(pathParts[0], req, res);
+        } else if (pathParts.length === 1 && pathParts[0] === 'update-all-operational-status') {
+          // GET /spaces/update-all-operational-status
+          return await updateAllOperationalStatusEndpoint(req, res);
         }
       } else if (method === 'POST') {
         if (pathParts.length === 0) {
@@ -80,6 +91,42 @@ const validateSpaceData = (data, isUpdate = false) => {
     if (daily && (isNaN(daily) || daily < 0)) errors.push('Daily rate must be a non-negative number');
     if (monthly && (isNaN(monthly) || monthly < 0)) errors.push('Monthly rate must be a non-negative number');
   }
+
+  // Operational hours validation if provided
+  if (data.operationalHours) {
+    const { isAlwaysOpen, schedule } = data.operationalHours;
+    
+    // If not always open, validate schedule
+    if (!isAlwaysOpen && schedule) {
+      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      
+      days.forEach(day => {
+        const daySchedule = schedule[day];
+        if (daySchedule && daySchedule.isOpen) {
+          const { openTime, closeTime } = daySchedule;
+          
+          if (openTime && !timeRegex.test(openTime)) {
+            errors.push(`${day} open time must be in HH:MM format (e.g., 08:00)`);
+          }
+          
+          if (closeTime && !timeRegex.test(closeTime)) {
+            errors.push(`${day} close time must be in HH:MM format (e.g., 17:00)`);
+          }
+          
+          // Validate that close time is after open time
+          if (openTime && closeTime && timeRegex.test(openTime) && timeRegex.test(closeTime)) {
+            const openMinutes = parseInt(openTime.split(':')[0]) * 60 + parseInt(openTime.split(':')[1]);
+            const closeMinutes = parseInt(closeTime.split(':')[0]) * 60 + parseInt(closeTime.split(':')[1]);
+            
+            if (closeMinutes <= openMinutes) {
+              errors.push(`${day} close time must be after open time`);
+            }
+          }
+        }
+      });
+    }
+  }
   
   console.log('🔍 validateSpaceData returning errors:', errors);
   return errors;
@@ -105,6 +152,22 @@ const sanitizeSpaceData = (data) => {
       daily: data.pricing.daily ? parseFloat(data.pricing.daily) : null,
       monthly: data.pricing.monthly ? parseFloat(data.pricing.monthly) : null,
       currency: data.pricing.currency || 'IDR'
+    };
+  }
+  
+  // Sanitize operational hours
+  if (data.operationalHours) {
+    sanitized.operationalHours = {
+      isAlwaysOpen: Boolean(data.operationalHours.isAlwaysOpen),
+      schedule: data.operationalHours.schedule || {
+        monday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+        tuesday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+        wednesday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+        thursday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+        friday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+        saturday: { isOpen: true, openTime: '09:00', closeTime: '15:00' },
+        sunday: { isOpen: false, openTime: '09:00', closeTime: '15:00' }
+      }
     };
   }
   
@@ -264,9 +327,11 @@ const getAllSpaces = async (req, res) => {
 
     snapshot.forEach(doc => {
       const data = doc.data();
+      const operationalStatus = getOperationalStatus(data);
       spaces.push({
         id: doc.id,
-        ...data
+        ...data,
+        operationalStatus
       });
     });
 
@@ -361,6 +426,18 @@ const createSpace = async (req, res) => {
       category: sanitizedData.category,
       buildingId: sanitizedData.buildingId,
       capacity: sanitizedData.capacity,
+      operationalHours: sanitizedData.operationalHours || {
+        isAlwaysOpen: false,
+        schedule: {
+          monday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+          tuesday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+          wednesday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+          thursday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+          friday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+          saturday: { isOpen: true, openTime: '09:00', closeTime: '15:00' },
+          sunday: { isOpen: false, openTime: '09:00', closeTime: '15:00' }
+        }
+      },
       pricing: sanitizedData.pricing || {
         hourly: null,
         daily: null,
@@ -579,6 +656,43 @@ const updateCityStatistics = async (cityName) => {
   } catch (error) {
     console.error('Error updating city statistics:', error);
     // Don't throw error, just log it
+  }
+};
+
+// GET /spaces/:id/update-operational-status
+const updateSingleSpaceOperationalStatus = async (spaceId, req, res) => {
+  try {
+    const updated = await updateSpaceOperationalStatus(spaceId);
+    
+    if (updated) {
+      handleResponse(res, { 
+        message: `Operational status updated for space ${spaceId}`,
+        updated: true
+      });
+    } else {
+      handleResponse(res, { 
+        message: `No update needed for space ${spaceId}`,
+        updated: false
+      });
+    }
+  } catch (error) {
+    console.error('Error updating single space operational status:', error);
+    handleError(res, error);
+  }
+};
+
+// GET /spaces/update-all-operational-status  
+const updateAllOperationalStatusEndpoint = async (req, res) => {
+  try {
+    const updatedCount = await updateAllSpacesOperationalStatus();
+    
+    handleResponse(res, {
+      message: `Updated operational status for ${updatedCount} spaces`,
+      updatedCount
+    });
+  } catch (error) {
+    console.error('Error updating all spaces operational status:', error);
+    handleError(res, error);
   }
 };
 

@@ -10,6 +10,18 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     layanan: '',
     capacity: '',
     buildingId: '',
+    operationalHours: {
+      isAlwaysOpen: false,
+      schedule: {
+        monday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+        tuesday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+        wednesday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+        thursday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+        friday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+        saturday: { isOpen: true, openTime: '09:00', closeTime: '15:00' },
+        sunday: { isOpen: false, openTime: '09:00', closeTime: '15:00' }
+      }
+    },
     pricing: {
       hourly: '',
       daily: '',
@@ -203,6 +215,18 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           layanan: space.category || space.layanan || '',
           capacity: space.capacity || '',
           buildingId: space.buildingId || '',
+          operationalHours: {
+            isAlwaysOpen: space.operationalHours?.isAlwaysOpen || false,
+            schedule: space.operationalHours?.schedule || {
+              monday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+              tuesday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+              wednesday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+              thursday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+              friday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+              saturday: { isOpen: true, openTime: '09:00', closeTime: '15:00' },
+              sunday: { isOpen: false, openTime: '09:00', closeTime: '15:00' }
+            }
+          },
           pricing: {
             hourly: space.pricing?.hourly || '',
             daily: space.pricing?.daily || '',
@@ -219,6 +243,18 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           layanan: '',
           capacity: '',
           buildingId: '',
+          operationalHours: {
+            isAlwaysOpen: false,
+            schedule: {
+              monday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+              tuesday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+              wednesday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+              thursday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+              friday: { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+              saturday: { isOpen: true, openTime: '09:00', closeTime: '15:00' },
+              sunday: { isOpen: false, openTime: '09:00', closeTime: '15:00' }
+            }
+          },
           pricing: {
             hourly: '',
             daily: '',
@@ -237,14 +273,34 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     const { name, value, type, checked } = e.target;
     
     if (name.includes('.')) {
-      const [section, field] = name.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [section]: {
-          ...prev[section],
-          [field]: type === 'checkbox' ? checked : value
-        }
-      }));
+      const [section, field, subfield] = name.split('.');
+      
+      // Handle schedule updates (operationalHours.schedule.monday.isOpen)
+      if (section === 'operationalHours' && field === 'schedule') {
+        const [day, property] = [subfield, e.target.dataset.property];
+        setFormData(prev => ({
+          ...prev,
+          operationalHours: {
+            ...prev.operationalHours,
+            schedule: {
+              ...prev.operationalHours.schedule,
+              [day]: {
+                ...prev.operationalHours.schedule[day],
+                [property]: type === 'checkbox' ? checked : value
+              }
+            }
+          }
+        }));
+      } else {
+        // Handle other nested fields (pricing.hourly, etc.)
+        setFormData(prev => ({
+          ...prev,
+          [section]: {
+            ...prev[section],
+            [field]: type === 'checkbox' ? checked : value
+          }
+        }));
+      }
     } else {
       setFormData(prev => ({
         ...prev,
@@ -300,6 +356,10 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
         category: formData.layanan, // Backend expects 'category' field
         buildingId: formData.buildingId,
         capacity: parseInt(formData.capacity),
+        operationalHours: {
+          isAlwaysOpen: formData.operationalHours.isAlwaysOpen,
+          schedule: formData.operationalHours.schedule
+        },
         pricing: {
           hourly: formData.pricing.hourly ? parseFloat(formData.pricing.hourly) : null,
           daily: formData.pricing.daily ? parseFloat(formData.pricing.daily) : null,
@@ -462,6 +522,102 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Operational Hours */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">Jam Operasional</h3>
+            
+            {/* Always Open Checkbox */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="operationalHours.isAlwaysOpen"
+                checked={formData.operationalHours.isAlwaysOpen}
+                onChange={handleInputChange}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label className="ml-2 text-sm text-gray-700">
+                Buka 24 Jam
+              </label>
+            </div>
+
+            {/* Daily Schedule - only show if not always open */}
+            {!formData.operationalHours.isAlwaysOpen && (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">Atur jam operasional per hari:</p>
+                
+                {Object.entries(formData.operationalHours.schedule).map(([day, daySchedule]) => {
+                  const dayNames = {
+                    monday: 'Senin',
+                    tuesday: 'Selasa', 
+                    wednesday: 'Rabu',
+                    thursday: 'Kamis',
+                    friday: 'Jumat',
+                    saturday: 'Sabtu',
+                    sunday: 'Minggu'
+                  };
+
+                  return (
+                    <div key={day} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                      {/* Day Name */}
+                      <div className="w-20 text-sm font-medium text-gray-700">
+                        {dayNames[day]}
+                      </div>
+
+                      {/* Open/Closed Toggle */}
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          name={`operationalHours.schedule.${day}`}
+                          data-property="isOpen"
+                          checked={daySchedule.isOpen}
+                          onChange={handleInputChange}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <label className="ml-2 text-sm text-gray-600">
+                          Buka
+                        </label>
+                      </div>
+
+                      {/* Time inputs - only show if day is open */}
+                      {daySchedule.isOpen && (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-gray-600">Dari:</label>
+                            <input
+                              type="time"
+                              name={`operationalHours.schedule.${day}`}
+                              data-property="openTime"
+                              value={daySchedule.openTime}
+                              onChange={handleInputChange}
+                              className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 ring-primary text-sm"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-gray-600">Sampai:</label>
+                            <input
+                              type="time"
+                              name={`operationalHours.schedule.${day}`}
+                              data-property="closeTime"
+                              value={daySchedule.closeTime}
+                              onChange={handleInputChange}
+                              className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 ring-primary text-sm"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {/* Closed indicator */}
+                      {!daySchedule.isOpen && (
+                        <span className="text-sm text-gray-500 italic">Tutup</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Pricing */}
