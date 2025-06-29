@@ -65,17 +65,25 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
     const file = e.target.files[0];
     if (!file) return;
 
+    console.log('🖼️ SimpleCityModal: Image upload started', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    });
+
     // Validate file type
     if (!file.type.startsWith('image/')) {
+      console.error('❌ SimpleCityModal: Invalid file type:', file.type);
       setErrors(prev => ({
         ...prev,
-        thumbnail: 'File harus berupa gambar'
+        thumbnail: 'File harus berupa gambar (JPG, PNG, WebP, GIF)'
       }));
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
+      console.error('❌ SimpleCityModal: File too large:', file.size);
       setErrors(prev => ({
         ...prev,
         thumbnail: 'Ukuran file maksimal 5MB'
@@ -86,25 +94,36 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
     try {
       setUploadingImage(true);
       setErrors(prev => ({ ...prev, thumbnail: '' }));
+      console.log('📤 SimpleCityModal: Processing image upload...');
 
       // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
+        console.log('✅ SimpleCityModal: Image preview created');
         setImagePreview(e.target.result);
+      };
+      reader.onerror = (error) => {
+        console.error('❌ SimpleCityModal: Error creating preview:', error);
+        setErrors(prev => ({
+          ...prev,
+          thumbnail: 'Gagal membuat preview gambar'
+        }));
       };
       reader.readAsDataURL(file);
 
-      // For now, we'll store the file object and handle upload in backend
+      // Store the file object for upload in backend
       setFormData(prev => ({
         ...prev,
         thumbnail: file
       }));
+      
+      console.log('✅ SimpleCityModal: File stored in formData, ready for upload');
 
     } catch (error) {
-      console.error('Error handling image:', error);
+      console.error('💥 SimpleCityModal: Error handling image:', error);
       setErrors(prev => ({
         ...prev,
-        thumbnail: 'Gagal memproses gambar'
+        thumbnail: 'Gagal memproses gambar: ' + error.message
       }));
     } finally {
       setUploadingImage(false);
@@ -141,9 +160,26 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
+    
+    console.log('🚀 SimpleCityModal: Form submission started');
+    console.log('📝 SimpleCityModal: Current formData:', {
+      name: formData.name,
+      province: formData.province,
+      country: formData.country,
+      postalCode: formData.postalCode,
+      hasThumbnail: !!formData.thumbnail,
+      thumbnailType: formData.thumbnail ? formData.thumbnail.type : null,
+      thumbnailSize: formData.thumbnail ? formData.thumbnail.size : null
+    });
+    
+    if (!validateForm()) {
+      console.error('❌ SimpleCityModal: Form validation failed');
+      return;
+    }
+
+    try {
       // Create simplified data structure - hanya yang essential
       const cityData = {
         name: formData.name.trim(),
@@ -163,11 +199,24 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
           metaTitle: `Co-working Spaces in ${formData.name}`,
           metaDescription: `Find and book workspaces in ${formData.name}`
         },
-        thumbnail: formData.thumbnail,
+        thumbnail: formData.thumbnail, // File object will be handled by cityApi.createFormData()
         isActive: true
       };
       
-      onSubmit(cityData);
+      console.log('📤 SimpleCityModal: Submitting city data:', {
+        ...cityData,
+        thumbnail: cityData.thumbnail ? 'FILE_OBJECT' : null
+      });
+      
+      await onSubmit(cityData);
+      console.log('✅ SimpleCityModal: City submitted successfully');
+      
+    } catch (error) {
+      console.error('💥 SimpleCityModal: Error during submission:', error);
+      setErrors(prev => ({
+        ...prev,
+        submit: 'Gagal menyimpan data: ' + error.message
+      }));
     }
   };
 
@@ -207,6 +256,16 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
+          {/* Display submit error */}
+          {errors.submit && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="flex items-center">
+                <X className="w-5 h-5 text-red-500 mr-2" />
+                <span className="text-red-700 text-sm">{errors.submit}</span>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             {/* Nama Kota */}
             <div>

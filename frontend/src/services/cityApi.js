@@ -28,15 +28,35 @@ class CityAPI {
   // CREATE new city
   async createCity(cityData) {
     try {
+      console.log('🏙️ CityAPI: Creating city with data:', {
+        ...cityData,
+        thumbnail: cityData.thumbnail ? 'FILE_OBJECT' : null
+      });
+      
       const formData = this.createFormData(cityData);
+      
+      // Debug FormData contents
+      console.log('📤 CityAPI: FormData contents:');
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: FILE (${value.name}, ${value.size} bytes, ${value.type})`);
+        } else {
+          console.log(`  ${key}: ${value}`);
+        }
+      }
+      
+      console.log('🚀 CityAPI: Sending POST request to', API_BASE_URL);
       const response = await axios.post(API_BASE_URL, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
+      
+      console.log('✅ CityAPI: City created successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error creating city:', error);
+      console.error('💥 CityAPI: Error creating city:', error);
+      console.error('💥 CityAPI: Error response:', error.response?.data);
       throw new Error(error.response?.data?.message || 'Failed to create city');
     }
   }
@@ -44,15 +64,35 @@ class CityAPI {
   // UPDATE existing city
   async updateCity(id, cityData) {
     try {
+      console.log('🏙️ CityAPI: Updating city', id, 'with data:', {
+        ...cityData,
+        thumbnail: cityData.thumbnail ? 'FILE_OBJECT' : null
+      });
+      
       const formData = this.createFormData(cityData);
+      
+      // Debug FormData contents
+      console.log('📤 CityAPI: FormData contents for update:');
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: FILE (${value.name}, ${value.size} bytes, ${value.type})`);
+        } else {
+          console.log(`  ${key}: ${value}`);
+        }
+      }
+      
+      console.log('🚀 CityAPI: Sending PUT request to', `${API_BASE_URL}/${id}`);
       const response = await axios.put(`${API_BASE_URL}/${id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
+      
+      console.log('✅ CityAPI: City updated successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error updating city:', error);
+      console.error('💥 CityAPI: Error updating city:', error);
+      console.error('💥 CityAPI: Error response:', error.response?.data);
       throw new Error(error.response?.data?.message || 'Failed to update city');
     }
   }
@@ -88,6 +128,11 @@ class CityAPI {
 
   // Create FormData for city with image support
   createFormData(data) {
+    console.log('🔨 CityAPI: Creating FormData from data:', {
+      ...data,
+      thumbnail: data.thumbnail ? `FILE: ${data.thumbnail.name}` : null
+    });
+    
     const formData = new FormData();
     
     // Basic fields
@@ -120,9 +165,17 @@ class CityAPI {
     
     // Handle image file
     if (data.thumbnail && data.thumbnail instanceof File) {
+      console.log('📎 CityAPI: Adding thumbnail file to FormData:', {
+        name: data.thumbnail.name,
+        size: data.thumbnail.size,
+        type: data.thumbnail.type
+      });
       formData.append('thumbnail', data.thumbnail);
+    } else {
+      console.log('📎 CityAPI: No thumbnail file to add (not a File object)');
     }
     
+    console.log('✅ CityAPI: FormData created successfully');
     return formData;
   }
 
