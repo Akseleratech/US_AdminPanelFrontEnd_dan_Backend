@@ -729,17 +729,23 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           </div>
 
           {/* Active Status */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="isActive"
-              checked={formData.isActive}
-              onChange={handleInputChange}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <label className="ml-2 text-sm text-gray-700">
-              Active (Space is available for booking)
-            </label>
+          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Status Manual</h3>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="isActive"
+                checked={formData.isActive}
+                onChange={handleInputChange}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label className="ml-2 text-sm text-gray-700">
+                <span className="font-medium">Aktifkan ruang secara manual</span>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ruang tetap harus mengikuti jam operasional meskipun diaktifkan manual
+                </p>
+              </label>
+            </div>
           </div>
 
           {/* Actions */}

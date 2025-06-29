@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye } from 'lucide-react';
+import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye, Calendar } from 'lucide-react';
 import useSpaces from '../../hooks/useSpaces';
 import useLayanan from '../../hooks/useLayanan';
 import useBuildings from '../../hooks/useBuildings';
 import SpaceModal from './SpaceModal';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers';
+import { ordersAPI } from '../../services/api.jsx';
 import SpacesGrid from './SpacesGrid';
 
 const Spaces = () => {
@@ -54,6 +55,8 @@ const Spaces = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState(null);
   const [modalMode, setModalMode] = useState('create'); // 'create', 'edit', 'view'
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const [filters, setFilters] = useState({
     buildingId: 'all',
     layanan: 'all',
@@ -64,6 +67,29 @@ const Spaces = () => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
   };
+
+  // Fetch orders data
+  const fetchOrders = async () => {
+    try {
+      setOrdersLoading(true);
+      const response = await ordersAPI.getAll();
+      
+      if (response?.orders) {
+        setOrders(response.orders);
+      } else {
+        setOrders([]);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   // Filter spaces based on search term and filters
   const filteredSpaces = spaces.filter(space => {
@@ -112,6 +138,26 @@ const Spaces = () => {
     }
   };
 
+  const handleToggleActive = async (space) => {
+    const newStatus = !space.isActive;
+    const action = newStatus ? 'mengaktifkan' : 'menonaktifkan';
+    
+    if (window.confirm(`Apakah Anda yakin ingin ${action} ruang "${space.name}"?`)) {
+      try {
+        await updateSpace(space.id, { 
+          ...space, 
+          isActive: newStatus 
+        });
+        showNotification(
+          `Ruang "${space.name}" berhasil ${newStatus ? 'diaktifkan' : 'dinonaktifkan'}!`, 
+          'success'
+        );
+      } catch (error) {
+        showNotification(`Gagal ${action} ruang: ${error.message}`, 'error');
+      }
+    }
+  };
+
   const handleModalSave = async (spaceData) => {
     try {
       if (modalMode === 'create') {
@@ -155,12 +201,53 @@ const Spaces = () => {
     return buildingMap[buildingId] || buildingId || 'Unknown';
   };
 
-  // Statistics calculations
-  const activeSpaces = filteredSpaces.filter(s => s.isActive);
-  const inactiveSpaces = filteredSpaces.filter(s => !s.isActive);
+  // Helper function to get effective status for statistics
+  const getEffectiveStatus = (space) => {
+    // If manually deactivated, it's inactive
+    if (!space.isActive) return 'inactive';
+    
+    // If outside operational hours, it's effectively inactive
+    if (space.operationalStatus && !space.operationalStatus.isOperational) return 'inactive';
+    
+    // Otherwise it's active and operational
+    return 'active';
+  };
+
+  // Statistics calculations based on effective status
+  const effectivelyActiveSpaces = filteredSpaces.filter(s => getEffectiveStatus(s) === 'active');
+  const effectivelyInactiveSpaces = filteredSpaces.filter(s => getEffectiveStatus(s) === 'inactive');
   const totalCapacity = filteredSpaces.reduce((total, space) => total + (parseInt(space.capacity) || 0), 0);
 
-  if (loading || layananLoading || buildingsLoading) {
+  // More detailed breakdown
+  const manuallyDeactivatedSpaces = filteredSpaces.filter(s => !s.isActive);
+  const outsideOperationalHours = filteredSpaces.filter(s => 
+    s.isActive && s.operationalStatus && !s.operationalStatus.isOperational
+  );
+
+  // Calculate booked spaces from orders
+  const getBookedSpaces = () => {
+    const activeStatuses = ['confirmed', 'ongoing', 'active', 'in-progress', 'pending'];
+    const activeOrders = orders.filter(order => 
+      activeStatuses.includes(order.status?.toLowerCase())
+    );
+    
+    // Get unique space IDs that are currently booked
+    const bookedSpaceIds = [...new Set(activeOrders.map(order => order.spaceId))];
+    
+    // Count how many of our filtered spaces are currently booked
+    const bookedSpacesCount = filteredSpaces.filter(space => 
+      bookedSpaceIds.includes(space.id) || bookedSpaceIds.includes(space.spaceId)
+    ).length;
+    
+    return {
+      count: bookedSpacesCount,
+      totalActiveOrders: activeOrders.length
+    };
+  };
+
+  const bookedSpacesInfo = getBookedSpaces();
+
+  if (loading || layananLoading || buildingsLoading || ordersLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <LoadingSpinner />
@@ -215,7 +302,7 @@ const Spaces = () => {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -231,8 +318,9 @@ const Spaces = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Active</p>
-              <p className="text-2xl font-bold text-green-600">{activeSpaces.length}</p>
+              <p className="text-sm font-medium text-gray-600">Beroperasi</p>
+              <p className="text-2xl font-bold text-green-600">{effectivelyActiveSpaces.length}</p>
+              <p className="text-xs text-gray-500 mt-1">Aktif & dalam jam operasional</p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <Users className="w-6 h-6 text-green-600" />
@@ -243,11 +331,12 @@ const Spaces = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Inactive</p>
-              <p className="text-2xl font-bold text-red-600">{inactiveSpaces.length}</p>
+              <p className="text-sm font-medium text-gray-600">Sedang Digunakan</p>
+              <p className="text-2xl font-bold text-blue-600">{bookedSpacesInfo.count}</p>
+              <p className="text-xs text-gray-500 mt-1">{bookedSpacesInfo.totalActiveOrders} booking aktif</p>
             </div>
-            <div className="p-3 bg-red-100 rounded-full">
-              <Clock className="w-6 h-6 text-red-600" />
+            <div className="p-3 bg-blue-100 rounded-full">
+              <Calendar className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
@@ -255,11 +344,25 @@ const Spaces = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Capacity</p>
-              <p className="text-2xl font-bold text-gray-900">{totalCapacity}</p>
+              <p className="text-sm font-medium text-gray-600">Tutup Sementara</p>
+              <p className="text-2xl font-bold text-orange-600">{outsideOperationalHours.length}</p>
+              <p className="text-xs text-gray-500 mt-1">Di luar jam operasional</p>
             </div>
-            <div className="p-3 bg-purple-100 rounded-full">
-              <MapPin className="w-6 h-6 text-purple-600" />
+            <div className="p-3 bg-orange-100 rounded-full">
+              <Clock className="w-6 h-6 text-orange-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Nonaktif Manual</p>
+              <p className="text-2xl font-bold text-red-600">{manuallyDeactivatedSpaces.length}</p>
+              <p className="text-xs text-gray-500 mt-1">Dimatikan oleh admin</p>
+            </div>
+            <div className="p-3 bg-red-100 rounded-full">
+              <Trash2 className="w-6 h-6 text-red-600" />
             </div>
           </div>
         </div>
@@ -342,6 +445,7 @@ const Spaces = () => {
         loading={loading || layananLoading}
         onEdit={handleEditSpace}
         onDelete={handleDeleteSpace}
+        onToggleActive={handleToggleActive}
         getCategoryDisplayName={getCategoryDisplayName}
         getBuildingDisplayName={getBuildingDisplayName}
       />

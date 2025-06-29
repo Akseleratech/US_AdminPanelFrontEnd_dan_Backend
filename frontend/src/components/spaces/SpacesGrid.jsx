@@ -1,6 +1,5 @@
 import React from 'react';
-import { Edit, Trash2, LayoutGrid, Building, Users, Tag, CheckSquare, DollarSign, Clock } from 'lucide-react';
-import { getStatusColor, getStatusIcon } from '../../utils/helpers';
+import { Edit, Trash2, LayoutGrid, Building, Users, Tag, CheckSquare, DollarSign, Clock, Power } from 'lucide-react';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 const SpacesGrid = ({ 
@@ -8,6 +7,7 @@ const SpacesGrid = ({
   loading, 
   onEdit, 
   onDelete, 
+  onToggleActive,
   getCategoryDisplayName,
   getBuildingDisplayName 
 }) => {
@@ -65,22 +65,34 @@ const SpacesGrid = ({
     return `${daySchedule.openTime} - ${daySchedule.closeTime}`;
   };
 
-  const getOperationalStatusDisplay = (space) => {
-    if (!space.operationalStatus) return null;
-    
-    if (space.operationalStatus.isOperational) {
+  const getEffectiveStatus = (space) => {
+    // If space is manually deactivated by admin
+    if (!space.isActive) {
       return {
-        text: 'Beroperasi',
-        className: 'bg-green-100 text-green-800',
-        icon: '🟢'
+        text: 'Inactive',
+        className: 'bg-red-100 text-red-800',
+        icon: '🔴',
+        priority: 'manual'
       };
-    } else {
+    }
+
+    // If space is active but outside operational hours
+    if (space.operationalStatus && !space.operationalStatus.isOperational) {
       return {
         text: 'Tutup',
         className: 'bg-orange-100 text-orange-800',
-        icon: '🟠'
+        icon: '🟠',
+        priority: 'operational'
       };
     }
+
+    // If space is active and within operational hours
+    return {
+      text: 'Beroperasi',
+      className: 'bg-green-100 text-green-800',
+      icon: '🟢',
+      priority: 'operational'
+    };
   };
 
   return (
@@ -96,23 +108,23 @@ const SpacesGrid = ({
                   <p className="text-sm text-primary-600">{getBuildingDisplayName(space.buildingId)}</p>
                 </div>
                 <div className="flex flex-col gap-1">
-                  {/* Active/Inactive Status */}
-                  <div className={`px-2 py-1 text-xs font-medium ${getStatusColor(space.isActive ? 'active' : 'inactive')}`}>
-                    {getStatusIcon(space.isActive ? 'active' : 'inactive')}
-                    <span className="ml-1">{space.isActive ? 'Active' : 'Inactive'}</span>
-                  </div>
-                  
-                  {/* Operational Status */}
+                  {/* Effective Status - combines manual active/inactive + operational hours */}
                   {(() => {
-                    const opStatus = getOperationalStatusDisplay(space);
-                    if (!opStatus) return null;
+                    const effectiveStatus = getEffectiveStatus(space);
                     return (
-                      <div className={`px-2 py-1 text-xs font-medium rounded ${opStatus.className}`}>
-                        <span className="mr-1">{opStatus.icon}</span>
-                        {opStatus.text}
+                      <div className={`px-2 py-1 text-xs font-medium rounded ${effectiveStatus.className}`}>
+                        <span className="mr-1">{effectiveStatus.icon}</span>
+                        {effectiveStatus.text}
                       </div>
                     );
                   })()}
+                  
+                  {/* Show manual inactive reason if space is manually deactivated */}
+                  {!space.isActive && (
+                    <div className="px-2 py-1 text-xs text-gray-500 italic">
+                      Dinonaktifkan manual
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -183,21 +195,37 @@ const SpacesGrid = ({
           </div>
 
           {/* Actions */}
-          <div className="px-4 py-2 bg-primary-50/50 flex justify-end space-x-1">
-            <button 
-              onClick={() => onEdit(space)} 
-              className="p-1.5 text-primary-600 hover:text-primary-800 hover:bg-primary-100" 
-              title="Edit Space"
-            >
-              <Edit className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => onDelete(space)} 
-              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50" 
-              title="Delete Space"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+          <div className="px-4 py-2 bg-primary-50/50 flex justify-between items-center">
+            <div className="text-xs text-gray-500">
+              {space.isActive ? 'Manual aktif' : 'Manual nonaktif'}
+            </div>
+            <div className="flex space-x-1">
+              <button 
+                onClick={() => onToggleActive && onToggleActive(space)} 
+                className={`p-1.5 rounded transition-colors ${
+                  space.isActive 
+                    ? 'text-green-600 hover:text-green-800 hover:bg-green-50' 
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                }`}
+                title={space.isActive ? 'Nonaktifkan ruang' : 'Aktifkan ruang'}
+              >
+                <Power className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => onEdit(space)} 
+                className="p-1.5 text-primary-600 hover:text-primary-800 hover:bg-primary-100 rounded" 
+                title="Edit Space"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => onDelete(space)} 
+                className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded" 
+                title="Delete Space"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       ))}
