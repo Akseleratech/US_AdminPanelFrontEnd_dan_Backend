@@ -100,19 +100,39 @@ class CityAPI {
   // Upload city image
   async uploadCityImage(cityId, imageFile) {
     try {
-      const formData = new FormData();
-      formData.append('thumbnail', imageFile);
+      console.log('🖼️ CityAPI: Uploading image for city:', cityId);
       
-      const response = await axios.post(`${API_BASE_URL}/upload-image/${cityId}`, formData, {
+      // Convert file to base64 for Cloud Functions
+      const base64 = await this.fileToBase64(imageFile);
+      
+      const payload = {
+        imageData: base64,
+        fileName: imageFile.name
+      };
+      
+      console.log('📤 CityAPI: Sending image upload request');
+      const response = await axios.post(`${API_BASE_URL}/${cityId}/upload-image`, payload, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'application/json'
         }
       });
+      
+      console.log('✅ CityAPI: Image uploaded successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error uploading city image:', error);
+      console.error('💥 CityAPI: Error uploading city image:', error);
       throw new Error(error.response?.data?.message || 'Failed to upload image');
     }
+  }
+
+  // Helper function to convert file to base64
+  fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
   }
 
   // DELETE city
@@ -140,11 +160,6 @@ class CityAPI {
     formData.append('name', data.name);
     formData.append('province', data.province);
     formData.append('country', data.country);
-    
-    // Postal codes
-    if (data.postalCode) {
-      formData.append('postalCodes', JSON.stringify([data.postalCode]));
-    }
     
     // Timezone
     formData.append('timezone', data.timezone || 'Asia/Jakarta');
@@ -186,7 +201,7 @@ class CityAPI {
       name: data.name,
       province: data.province,
       country: data.country,
-      postalCodes: data.postalCode ? [data.postalCode] : [],
+
       timezone: data.timezone || 'Asia/Jakarta',
       utcOffset: data.utcOffset || '+07:00',
       statistics: {
@@ -237,6 +252,27 @@ class CityAPI {
       console.error('Error fetching active cities:', error);
       throw error;
     }
+  }
+
+  // Base64 conversion for image uploads
+  async convertToBase64ForUpload(cityData) {
+    const uploadData = {
+      name: cityData.name,
+      province: cityData.province,
+      country: cityData.country,
+      timezone: cityData.timezone || 'Asia/Jakarta',
+      utcOffset: cityData.utcOffset || '+07:00',
+      isActive: cityData.isActive !== undefined ? cityData.isActive : true
+    };
+
+    // Convert image to base64 if it's a File object
+    if (cityData.thumbnail && cityData.thumbnail instanceof File) {
+      console.log('🔄 Converting image to base64...');
+      const base64 = await this.convertFileToBase64(cityData.thumbnail);
+      uploadData.thumbnail = base64;
+    }
+
+    return uploadData;
   }
 }
 

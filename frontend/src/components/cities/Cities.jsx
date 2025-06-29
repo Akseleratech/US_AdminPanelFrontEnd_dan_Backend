@@ -14,6 +14,7 @@ const Cities = () => {
     createCity,
     updateCity,
     deleteCity,
+    uploadCityImage,
     refresh
   } = useCities();
 
@@ -195,6 +196,17 @@ const Cities = () => {
     return true;
   });
 
+  const handleUploadImage = async (cityId, imageFile) => {
+    try {
+      console.log('Cities: handleUploadImage called for city:', cityId);
+      await uploadCityImage(cityId, imageFile);
+      showNotification('Thumbnail berhasil diupload', 'success');
+    } catch (error) {
+      console.error('Cities: Error uploading image:', error);
+      showNotification(`Gagal upload thumbnail: ${error.message}`, 'error');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Notification */}
@@ -236,8 +248,6 @@ const Cities = () => {
           <span className="text-red-700">{error}</span>
         </div>
       )}
-
-
 
       {/* Action Bar */}
       <div className="flex justify-between items-center">
@@ -532,6 +542,8 @@ const Cities = () => {
           cities={filteredCities} 
           onEdit={handleEdit} 
           onDelete={handleDelete}
+          onUploadImage={handleUploadImage}
+          loading={loading}
         />
       )}
 

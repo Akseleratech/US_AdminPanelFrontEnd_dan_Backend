@@ -124,6 +124,37 @@ const useCities = () => {
     }
   }, []);
 
+  // Upload city image
+  const uploadCityImage = useCallback(async (cityId, imageFile) => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('🖼️ useCities: Uploading image for city:', cityId);
+      const response = await cityAPI.uploadCityImage(cityId, imageFile);
+      
+      if (response.success || response.thumbnail) {
+        // Update the city in the list with new thumbnail
+        setCities(prev => 
+          prev.map(city => 
+            city.id === cityId 
+              ? { ...city, thumbnail: response.thumbnail || response.data?.thumbnail }
+              : city
+          )
+        );
+        console.log('✅ useCities: City image updated successfully');
+        return response;
+      } else {
+        throw new Error(response.message || 'Failed to upload image');
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('💥 useCities: Error uploading city image:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Get a single city by ID
   const getCity = useCallback(async (id) => {
     setLoading(true);
@@ -212,6 +243,7 @@ const useCities = () => {
     createCity,
     updateCity,
     deleteCity,
+    uploadCityImage,
     getCity,
     filterByStatus,
     filterFeatured,

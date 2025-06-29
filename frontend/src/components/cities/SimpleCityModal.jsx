@@ -6,7 +6,6 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
     name: initialData?.name || '',
     province: initialData?.province || '',
     country: initialData?.country || 'Indonesia',
-    postalCode: initialData?.postalCodes?.[0] || '',
     thumbnail: null // Don't include existing URL as File object
   }));
   
@@ -26,7 +25,6 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
         name: initialData.name || '',
         province: initialData.province || '',
         country: initialData.country || 'Indonesia',
-        postalCode: initialData.postalCodes?.[0] || '',
         thumbnail: null
       });
       setImagePreview(initialData.thumbnail || null);
@@ -37,7 +35,6 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
         name: '',
         province: '',
         country: 'Indonesia',
-        postalCode: '',
         thumbnail: null
       });
       setImagePreview(null);
@@ -168,7 +165,6 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
       name: formData.name,
       province: formData.province,
       country: formData.country,
-      postalCode: formData.postalCode,
       hasThumbnail: !!formData.thumbnail,
       thumbnailType: formData.thumbnail ? formData.thumbnail.type : null,
       thumbnailSize: formData.thumbnail ? formData.thumbnail.size : null
@@ -185,7 +181,6 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
         name: formData.name.trim(),
         province: formData.province.trim(),
         country: formData.country.trim(),
-        postalCodes: formData.postalCode ? [formData.postalCode.trim()] : [],
         timezone: 'Asia/Jakarta', // Default timezone Indonesia
         utcOffset: '+07:00',
         statistics: {
@@ -225,7 +220,6 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
       name: '',
       province: '',
       country: 'Indonesia',
-      postalCode: '',
       thumbnail: null
     });
     setImagePreview(null);
@@ -239,48 +233,43 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md mx-4 animate-in zoom-in-95 duration-200">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-semibold">
-            {isEditing ? 'Edit Kota' : 'Tambah Kota Baru'}
-          </h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {isEditing ? 'Edit Kota' : 'Tambah Kota Baru'}
+            </h2>
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          {/* Display submit error */}
           {errors.submit && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <div className="flex items-center">
-                <X className="w-5 h-5 text-red-500 mr-2" />
-                <span className="text-red-700 text-sm">{errors.submit}</span>
-              </div>
+              <p className="text-red-600 text-sm">{errors.submit}</p>
             </div>
           )}
 
-          <div className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Nama Kota */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 Nama Kota *
               </label>
               <input
                 type="text"
+                id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.name ? 'border-red-500' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.name ? 'border-red-300' : 'border-gray-300'
                 }`}
-                placeholder="Contoh: Yogyakarta"
+                placeholder="Contoh: Jakarta"
               />
               {errors.name && (
                 <p className="text-red-500 text-sm mt-1">{errors.name}</p>
@@ -289,18 +278,19 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
 
             {/* Provinsi */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="province" className="block text-sm font-medium text-gray-700 mb-1">
                 Provinsi *
               </label>
               <input
                 type="text"
+                id="province"
                 name="province"
                 value={formData.province}
                 onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.province ? 'border-red-500' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.province ? 'border-red-300' : 'border-gray-300'
                 }`}
-                placeholder="Contoh: DI Yogyakarta"
+                placeholder="Contoh: DKI Jakarta"
               />
               {errors.province && (
                 <p className="text-red-500 text-sm mt-1">{errors.province}</p>
@@ -309,40 +299,23 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
 
             {/* Negara */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
                 Negara *
               </label>
               <input
                 type="text"
+                id="country"
                 name="country"
                 value={formData.country}
                 onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.country ? 'border-red-500' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.country ? 'border-red-300' : 'border-gray-300'
                 }`}
-                placeholder="Indonesia"
+                placeholder="Contoh: Indonesia"
               />
               {errors.country && (
                 <p className="text-red-500 text-sm mt-1">{errors.country}</p>
               )}
-            </div>
-
-            {/* Kode Pos (Optional) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Kode Pos
-              </label>
-              <input
-                type="text"
-                name="postalCode"
-                value={formData.postalCode}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Contoh: 55182"
-              />
-              <p className="text-gray-500 text-xs mt-1">
-                Opsional - dapat ditambahkan nanti
-              </p>
             </div>
 
             {/* Upload Thumbnail */}
@@ -401,7 +374,7 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
                 </p>
               </div>
             </div>
-          </div>
+          </form>
 
           {/* Note untuk user */}
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
@@ -421,12 +394,13 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
             </button>
             <button
               type="submit"
+              onClick={handleSubmit}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {isEditing ? 'Update' : 'Tambah'} Kota
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

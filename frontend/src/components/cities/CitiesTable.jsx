@@ -1,26 +1,59 @@
-import React from 'react';
-import { Eye, Edit, Trash2, Image } from 'lucide-react';
+import React, { useRef } from 'react';
+import { Edit2, Trash2, MapPin, Image, Upload } from 'lucide-react';
 
-const CitiesTable = ({ cities, onEdit, onDelete }) => {
+const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading }) => {
+  const fileInputRefs = useRef({});
+
+  const handleImageUpload = async (cityId, file) => {
+    if (!file || !onUploadImage) return;
+    
+    try {
+      await onUploadImage(cityId, file);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      // Error will be handled by parent component
+    }
+  };
+
+  const triggerFileInput = (cityId) => {
+    if (fileInputRefs.current[cityId]) {
+      fileInputRefs.current[cityId].click();
+    }
+  };
+
   return (
-    <div className="bg-white border border-primary-200 table-green-theme">
+    <div className="overflow-x-auto bg-white shadow-lg rounded-lg border border-primary-200">
       <table className="min-w-full divide-y divide-primary-200">
-        <thead className="bg-primary-50 border-b border-primary-200">
+        <thead className="bg-primary-50">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Thumbnail</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Kota/Kabupaten</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Provinsi</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Negara</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Jumlah Lokasi</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Total Spaces</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+              Thumbnail
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+              Nama Kota
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+              Provinsi
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+              Negara
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+              Lokasi
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+              Spaces
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+              Aksi
+            </th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-primary-100">
           {cities.map((city) => (
             <tr key={city.id} className="hover:bg-primary-50 transition-colors duration-150">
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center group">
                   {city.thumbnail ? (
                     <img 
                       src={city.thumbnail} 
@@ -33,10 +66,34 @@ const CitiesTable = ({ cities, onEdit, onDelete }) => {
                         e.target.nextSibling.style.display = 'flex';
                       }}
                     />
-                  ) : null}
-                  {!city.thumbnail && (
+                  ) : (
                     <Image className="w-6 h-6 text-gray-400" />
                   )}
+                  
+                  {/* Upload overlay */}
+                  <div 
+                    className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    onClick={() => triggerFileInput(city.id)}
+                    title="Upload thumbnail"
+                  >
+                    <Upload className="w-4 h-4 text-white" />
+                  </div>
+                  
+                  {/* Hidden file input */}
+                  <input
+                    ref={el => fileInputRefs.current[city.id] = el}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handleImageUpload(city.id, file);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  
+                  {/* Error fallback */}
                   <div style={{ display: 'none' }} className="w-6 h-6 text-red-400 flex items-center justify-center">
                     <Image className="w-6 h-6" />
                   </div>
@@ -49,29 +106,34 @@ const CitiesTable = ({ cities, onEdit, onDelete }) => {
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{city.locations}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{city.totalSpaces}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <div className="flex space-x-2">
-                  <button className="text-primary-600 hover:text-primary-800">
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onEdit(city)}
-                    className="text-green-600 hover:text-green-900"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => onDelete('city', city.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                <button
+                  onClick={() => onEdit(city)}
+                  className="text-blue-600 hover:text-blue-900 transition-colors duration-150"
+                  title="Edit kota"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onDelete('city', city.id)}
+                  className="text-red-600 hover:text-red-900 transition-colors duration-150"
+                  title="Hapus kota"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      
+      {cities.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <MapPin className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada kota</h3>
+          <p className="mt-1 text-sm text-gray-500">Mulai dengan menambah kota baru.</p>
+        </div>
+      )}
     </div>
   );
 };

@@ -37,30 +37,16 @@ function validateCityData(data, isUpdate = false) {
   return errors;
 }
 
-// Enhanced data sanitization function for cities
+// Sanitize and format city data
 function sanitizeCityData(data) {
-  const sanitized = {};
-  
-  // Sanitize strings
-  if (data.name) sanitized.name = data.name.trim();
-  if (data.province) sanitized.province = data.province.trim();
-  if (data.country) sanitized.country = data.country.trim() || 'Indonesia';
-  
-  // Sanitize arrays
-  if (data.postalCodes && Array.isArray(data.postalCodes)) {
-    sanitized.postalCodes = data.postalCodes.map(code => code.toString().trim()).filter(code => code);
-  }
-  
-  // Sanitize timezone data
-  if (data.timezone) sanitized.timezone = data.timezone.trim();
-  if (data.utcOffset) sanitized.utcOffset = data.utcOffset;
-  
-  // Boolean values
-  if (data.isActive !== undefined) {
-    sanitized.isActive = Boolean(data.isActive);
-  }
-  
-  return sanitized;
+  return {
+    name: sanitizeString(data.name),
+    province: sanitizeString(data.province),
+    country: sanitizeString(data.country) || 'Indonesia',
+    timezone: sanitizeString(data.timezone) || 'Asia/Jakarta',
+    utcOffset: sanitizeString(data.utcOffset) || '+07:00',
+    isActive: data.isActive !== undefined ? Boolean(data.isActive) : true
+  };
 }
 
 // Check for duplicate city names in same province
@@ -357,13 +343,12 @@ const getCityById = async (cityId, req, res) => {
     // Calculate real-time statistics
     const statistics = await calculateCityStatistics(data.name);
     
-    const cityData = {
+    const responseData = {
       id: doc.id,
       cityId: data.cityId,
       name: data.name,
       province: data.province,
       country: data.country,
-      postalCodes: data.postalCodes || [],
       timezone: data.timezone || 'Asia/Jakarta',
       utcOffset: data.utcOffset || '+07:00',
       statistics: {
@@ -382,10 +367,10 @@ const getCityById = async (cityId, req, res) => {
       // Add frontend-compatible fields
       locations: statistics.totalBuildings, // Jumlah gedung/lokasi
       totalSpaces: statistics.totalSpaces,   // Total ruang/space
-      status: data.isActive ? 'active' : 'inactive'
+      status: data.isActive ? 'active' : 'inactive' // Convert boolean to string
     };
 
-    handleResponse(res, cityData);
+    handleResponse(res, responseData);
   } catch (error) {
     console.error('Error fetching city:', error);
     handleError(res, error);

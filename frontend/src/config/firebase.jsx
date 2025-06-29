@@ -32,13 +32,17 @@ let emulatorsConnected = false;
 
 if ((import.meta.env.DEV || window.location.hostname === 'localhost') && !emulatorsConnected) {
   try {
+    console.log('🔧 Connecting to Firebase emulators...');
     connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
     connectFirestoreEmulator(db, '127.0.0.1', 8088);
     connectStorageEmulator(storage, '127.0.0.1', 9199);
     emulatorsConnected = true;
-    console.log('Connected to Firebase emulators');
+    console.log('✅ Connected to Firebase emulators');
+    console.log('   - Auth: http://127.0.0.1:9099');
+    console.log('   - Firestore: 127.0.0.1:8088');
+    console.log('   - Storage: 127.0.0.1:9199');
   } catch (error) {
-    console.warn('Emulators already connected or failed to connect:', error);
+    console.warn('⚠️ Emulators already connected or failed to connect:', error.message);
   }
 }
 
