@@ -44,11 +44,60 @@ const useSpaces = () => {
     fetchSpaces();
   }, []);
 
+  const createSpace = async (spaceData) => {
+    try {
+      const newSpace = await spacesAPI.create(spaceData);
+      if (newSpace.success) {
+        setSpaces(prevSpaces => [newSpace.data, ...prevSpaces]);
+        return newSpace.data;
+      } else {
+        throw new Error(newSpace.message || 'Failed to create space');
+      }
+    } catch (error) {
+      console.error('useSpaces: Error creating space:', error);
+      throw error;
+    }
+  };
+
+  const updateSpace = async (id, spaceData) => {
+    try {
+      const updatedSpace = await spacesAPI.update(id, spaceData);
+      if (updatedSpace.success) {
+        setSpaces(prevSpaces =>
+          prevSpaces.map(s => (s.id === id ? updatedSpace.data : s))
+        );
+        return updatedSpace.data;
+      } else {
+        throw new Error(updatedSpace.message || 'Failed to update space');
+      }
+    } catch (error) {
+      console.error('useSpaces: Error updating space:', error);
+      throw error;
+    }
+  };
+
+  const deleteSpace = async (id) => {
+    try {
+      const response = await spacesAPI.delete(id);
+      if (response.success) {
+        setSpaces(prevSpaces => prevSpaces.filter(s => s.id !== id));
+      } else {
+        throw new Error(response.message || 'Failed to delete space');
+      }
+    } catch (error) {
+      console.error('useSpaces: Error deleting space:', error);
+      throw error;
+    }
+  };
+
   return {
     spaces,
     loading,
     error,
-    refreshSpaces: fetchSpaces
+    refreshSpaces: fetchSpaces,
+    createSpace,
+    updateSpace,
+    deleteSpace,
   };
 }
 

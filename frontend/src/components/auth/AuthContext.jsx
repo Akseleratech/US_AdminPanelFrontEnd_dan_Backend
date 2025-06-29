@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  signOut, 
+  signOut as firebaseSignOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
   updateProfile
@@ -19,8 +19,17 @@ export const useAuth = () => {
   return context;
 };
 
+// DEVELOPMENT FLAG: Set to true to bypass login and use a mock user
+const BYPASS_AUTH_FOR_DEVELOPMENT = true;
+
+const mockUser = {
+  uid: 'dev-user-123',
+  email: 'dev@unionspace.com',
+  displayName: 'Dev User',
+};
+
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const signup = async (email, password, displayName) => {
@@ -44,10 +53,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    if (BYPASS_AUTH_FOR_DEVELOPMENT) {
+      // In dev mode, "logout" will just reload to the "logged-in" state
+      setUser(null); 
+      window.location.reload();
+      return;
+    }
     try {
-      return await signOut(auth);
+      await firebaseSignOut(auth);
+      // User state will be updated by onAuthStateChanged listener
     } catch (error) {
-      throw error;
+      console.error("Logout failed:", error);
     }
   };
 
@@ -60,16 +76,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
+    if (BYPASS_AUTH_FOR_DEVELOPMENT) {
+      setUser(mockUser);
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
 
   const value = {
-    currentUser,
+    user,
+    loading,
     signup,
     login,
     logout,

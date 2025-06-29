@@ -10,7 +10,10 @@ const Spaces = () => {
     spaces,
     loading,
     error,
-    refreshSpaces
+    refreshSpaces,
+    createSpace,
+    updateSpace,
+    deleteSpace,
   } = useSpaces();
 
   const {

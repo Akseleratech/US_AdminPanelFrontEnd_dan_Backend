@@ -42,12 +42,8 @@ const amenities = onRequest(async (req, res) => {
 const getAllAmenities = async (req, res) => {
   try {
     const db = getDb();
-    const { search, category, status, limit } = req.query;
+    const { search, status, limit } = req.query;
     let amenitiesRef = db.collection('amenities');
-
-    if (category) {
-      amenitiesRef = amenitiesRef.where('category', '==', category);
-    }
 
     if (status === 'active') {
       amenitiesRef = amenitiesRef.where('isActive', '==', true);
@@ -103,14 +99,13 @@ const getAmenityById = async (amenityId, req, res) => {
 const createAmenity = async (req, res) => {
   try {
     const db = getDb();
-    const { name, description, category, icon } = req.body;
+    const { name, description, icon } = req.body;
 
     validateRequired(req.body, ['name']);
 
     const amenityData = {
       name: sanitizeString(name),
       description: sanitizeString(description || ''),
-      category: sanitizeString(category || 'general'),
       icon: sanitizeString(icon || ''),
       isActive: true,
       createdAt: new Date(),

@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext.jsx';
+import { Navigate } from 'react-router-dom';
 
-const Login = ({ onSuccess }) => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,7 +20,7 @@ const Login = ({ onSuccess }) => {
       setError('');
       setLoading(true);
       await login(email, password);
-      if (onSuccess) onSuccess();
+      // Navigation will be handled by the PrivateRoutes component after state update
     } catch (error) {
       setError('Failed to login: ' + error.message);
     } finally {

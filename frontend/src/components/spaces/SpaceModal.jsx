@@ -32,15 +32,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
   // Custom amenities states
   const [editingAmenity, setEditingAmenity] = useState(null);
   const [editAmenityValue, setEditAmenityValue] = useState('');
-  const [showAmenityModal, setShowAmenityModal] = useState(false);
   const [deletingAmenity, setDeletingAmenity] = useState(null);
-  const [amenityFormData, setAmenityFormData] = useState({
-    name: '',
-    description: '',
-    category: 'general',
-    type: 'common',
-    icon: ''
-  });
 
   // Fallback layanan if no services available
   const fallbackLayanan = [
@@ -302,31 +294,21 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     setEditAmenityValue('');
   };
 
-  const handleCreateAmenity = async () => {
-    try {
-      const response = await amenitiesAPI.create(amenityFormData);
-      if (response.success) {
-        // Refresh available amenities
-        const amenitiesResponse = await amenitiesAPI.getActive();
-        if (amenitiesResponse.success) {
-          setAvailableAmenities(amenitiesResponse.data || []);
-        }
+  const handleDeleteAmenity = async (amenityId, amenityName) => {
+    if (window.confirm(`Are you sure you want to delete the amenity "${amenityName}"? This cannot be undone.`)) {
+      try {
+        await amenitiesAPI.delete(amenityId);
+        fetchData(); // Refresh the list of amenities
         
-        // Add to current selection
-        handleAmenityToggle(amenityFormData.name);
-        
-        // Reset form and close modal
-        setAmenityFormData({
-          name: '',
-          description: '',
-          category: 'general',
-          type: 'common',
-          icon: ''
-        });
-        setShowAmenityModal(false);
+        // Also remove from the form's selected amenities if it's there
+        setFormData(prev => ({
+          ...prev,
+          amenities: prev.amenities.filter(a => a !== amenityName)
+        }));
+      } catch (error) {
+        console.error('Failed to delete amenity:', error);
+        setError(error.message || 'Failed to delete amenity.');
       }
-    } catch (error) {
-      console.error('Error creating amenity:', error);
     }
   };
 
@@ -600,14 +582,6 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium text-gray-900">Amenities</h3>
-              <button
-                type="button"
-                onClick={() => setShowAmenityModal(true)}
-                className="flex items-center px-3 py-1 bg-gradient-primary text-white text-sm rounded-md hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add New
-              </button>
             </div>
             
             {/* Available Amenities */}
@@ -616,15 +590,25 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Available Amenities:</h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {availableAmenities.map((amenity) => (
-                    <label key={amenity.id} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.amenities.includes(amenity.name)}
-                        onChange={() => handleAmenityToggle(amenity.name)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">{amenity.name}</span>
-                    </label>
+                    <div key={amenity.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
+                      <label className="flex items-center flex-grow cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.amenities.includes(amenity.name)}
+                          onChange={() => handleAmenityToggle(amenity.name)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">{amenity.name}</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAmenity(amenity.id, amenity.name)}
+                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors"
+                        title={`Delete ${amenity.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -737,114 +721,6 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           </div>
         </form>
       </div>
-
-      {/* Create Amenity Modal */}
-      {showAmenityModal && (
-        <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-60 animate-in fade-in duration-200">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md m-4 animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-gray-50/50 z-10">
-              <h3 className="text-lg font-medium text-gray-900">Create New Amenity</h3>
-              <button
-                onClick={() => setShowAmenityModal(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={amenityFormData.name}
-                  onChange={(e) => setAmenityFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
-                  placeholder="Enter amenity name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={amenityFormData.description}
-                  onChange={(e) => setAmenityFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
-                  placeholder="Enter description"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
-                <select
-                  value={amenityFormData.category}
-                  onChange={(e) => setAmenityFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
-                >
-                  {amenityCategories.map(category => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Type
-                </label>
-                <select
-                  value={amenityFormData.type}
-                  onChange={(e) => setAmenityFormData(prev => ({ ...prev, type: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
-                >
-                  {amenityTypes.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Icon
-                </label>
-                <input
-                  type="text"
-                  value={amenityFormData.icon}
-                  onChange={(e) => setAmenityFormData(prev => ({ ...prev, icon: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
-                  placeholder="Enter icon name or emoji"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 bg-gray-50/50 -mx-6 px-6 pb-6 mt-6">
-              <button
-                onClick={() => setShowAmenityModal(false)}
-                className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 ring-primary transition-all duration-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateAmenity}
-                disabled={!amenityFormData.name.trim()}
-                className="px-6 py-2.5 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover focus:outline-none focus:ring-2 ring-primary shadow-primary transition-all duration-200 disabled:opacity-50"
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
