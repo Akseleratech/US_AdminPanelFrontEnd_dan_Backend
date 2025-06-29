@@ -29,6 +29,12 @@ const apiCall = async (endpoint, options = {}) => {
       headers.Authorization = `Bearer ${token}`;
     }
 
+    console.log(`API Request to ${endpoint}:`, {
+      method: options.method || 'GET',
+      headers,
+      body: options.body ? JSON.parse(options.body) : undefined
+    });
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
@@ -38,7 +44,11 @@ const apiCall = async (endpoint, options = {}) => {
       let errorMessage = `HTTP error! status: ${response.status}`;
       try {
         const errorData = await response.json();
-        console.error('API Error Response:', errorData);
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: errorData
+        });
         
         if (errorData.message) {
           errorMessage = errorData.message;
@@ -52,9 +62,15 @@ const apiCall = async (endpoint, options = {}) => {
       throw new Error(errorMessage);
     }
 
-    return await response.json();
+    const responseData = await response.json();
+    console.log(`API Response from ${endpoint}:`, responseData);
+    return responseData;
   } catch (error) {
-    console.error('API call failed:', error);
+    console.error('API call failed:', {
+      endpoint,
+      error: error.message,
+      stack: error.stack
+    });
     throw error;
   }
 };
@@ -120,17 +136,15 @@ export const citiesAPI = {
 export const layananAPI = {
   getAll: () => apiCall('/services'),
   getById: (id) => apiCall(`/services/${id}`),
-  create: (data) => fetch(`${API_BASE_URL}/services`, {
+  create: (data) => apiCall('/services', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   }),
-  update: (id, data) => fetch(`${API_BASE_URL}/services/${id}`, {
+  update: (id, data) => apiCall(`/services/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   }),
-  delete: (id) => fetch(`${API_BASE_URL}/services/${id}`, { method: 'DELETE' })
+  delete: (id) => apiCall(`/services/${id}`, { method: 'DELETE' })
 };
 
 // Buildings API

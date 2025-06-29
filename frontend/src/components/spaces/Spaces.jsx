@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye } from 'lucide-react';
 import useSpaces from '../../hooks/useSpaces';
+import useLayanan from '../../hooks/useLayanan';
 import SpaceModal from './SpaceModal';
 import LoadingSpinner from '../common/LoadingSpinner';
 
@@ -9,18 +10,42 @@ const Spaces = () => {
     spaces,
     loading,
     error,
-    searchTerm,
-    setSearchTerm,
-    createSpace,
-    updateSpace,
-    deleteSpace,
-    refresh
+    refreshSpaces
   } = useSpaces();
 
+  const {
+    layananList,
+    loading: layananLoading
+  } = useLayanan();
+
+  // Create a map of layanan IDs to names
+  const layananMap = {};
+  if (Array.isArray(layananList)) {
+    layananList.forEach(layanan => {
+      if (layanan && layanan.id) {
+        layananMap[layanan.id] = layanan.name;
+      }
+    });
+  }
+
+  console.log('Spaces component: Received spaces:', JSON.stringify(spaces, null, 2));
+  console.log('Spaces component: Layanan list:', layananList);
+  console.log('Spaces component: Layanan map:', layananMap);
+
+  const [searchTerm, setSearchTerm] = useState('');
   const [notification, setNotification] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState(null);
   const [modalMode, setModalMode] = useState('create'); // 'create', 'edit', 'view'
+
+  // Filter spaces based on search term
+  const filteredSpaces = spaces.filter(space =>
+    space.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    layananMap[space.category]?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    space.buildingId?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  console.log('Spaces component: Filtered spaces:', JSON.stringify(filteredSpaces, null, 2));
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -81,7 +106,7 @@ const Spaces = () => {
   };
 
   const getTypeIcon = (category) => {
-    switch (category) {
+    switch (category?.toLowerCase()) {
       case 'meeting-room': return <Users className="w-4 h-4" />;
       case 'co-working': return <LayoutGrid className="w-4 h-4" />;
       case 'private-office': return <MapPin className="w-4 h-4" />;
@@ -91,23 +116,16 @@ const Spaces = () => {
     }
   };
 
-  const getCategoryDisplayName = (category) => {
-    switch (category) {
-      case 'meeting-room': return 'Meeting Room';
-      case 'co-working': return 'Co-working Space';
-      case 'private-office': return 'Private Office';
-      case 'event-space': return 'Event Space';
-      case 'phone-booth': return 'Phone Booth';
-      default: return category || 'Unknown';
-    }
+  const getCategoryDisplayName = (categoryId) => {
+    return layananMap[categoryId] || categoryId || 'Unknown';
   };
 
   // Statistics calculations
-  const activeSpaces = spaces.filter(s => s.isActive);
-  const inactiveSpaces = spaces.filter(s => !s.isActive);
-  const totalCapacity = spaces.reduce((total, space) => total + (parseInt(space.capacity) || 0), 0);
+  const activeSpaces = filteredSpaces.filter(s => s.isActive);
+  const inactiveSpaces = filteredSpaces.filter(s => !s.isActive);
+  const totalCapacity = filteredSpaces.reduce((total, space) => total + (parseInt(space.capacity) || 0), 0);
 
-  if (loading) {
+  if (loading || layananLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <LoadingSpinner />
@@ -153,7 +171,7 @@ const Spaces = () => {
           <p className="font-medium">Error loading spaces:</p>
           <p className="text-sm">{error}</p>
           <button 
-            onClick={refresh}
+            onClick={refreshSpaces}
             className="mt-2 text-sm bg-red-200 hover:bg-red-300 px-3 py-1 rounded"
           >
             Retry
@@ -167,7 +185,7 @@ const Spaces = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Spaces</p>
-              <p className="text-2xl font-bold text-gray-900">{spaces.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{filteredSpaces.length}</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
               <LayoutGrid className="w-6 h-6 text-blue-600" />
@@ -246,13 +264,13 @@ const Spaces = () => {
                   Space
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Layanan
+                  Category
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Capacity
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Location
+                  Building ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -266,80 +284,86 @@ const Spaces = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {spaces.map((space) => (
-                <tr key={space.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-lg bg-primary-light flex items-center justify-center">
-                          {getTypeIcon(space.category)}
+              {console.log('Spaces component: Rendering table with spaces:', filteredSpaces.length)}
+              {filteredSpaces.map((space) => {
+                console.log('Spaces component: Rendering space:', space);
+                return (
+                  <tr key={space.id || space.spaceId} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-lg bg-primary-light flex items-center justify-center">
+                            {getTypeIcon(space.category)}
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{space.name}</div>
+                          <div className="text-sm text-gray-500">{space.description}</div>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{space.name}</div>
-                        <div className="text-sm text-gray-500">{space.description}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{getCategoryDisplayName(space.category)}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{space.capacity} people</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{space.buildingId}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(space.isActive)}`}>
+                        {getStatusText(space.isActive)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-wrap gap-1">
+                        {space.amenities && space.amenities.slice(0, 3).map((amenity, index) => (
+                          <span 
+                            key={`${space.id}-amenity-${index}-${typeof amenity === 'string' ? amenity : amenity.id}`} 
+                            className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
+                          >
+                            {typeof amenity === 'string' ? amenity : amenity.name}
+                          </span>
+                        ))}
+                        {space.amenities && space.amenities.length > 3 && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+                            +{space.amenities.length - 3} more
+                          </span>
+                        )}
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{getCategoryDisplayName(space.category)}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{space.capacity} people</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{space.location?.city}</div>
-                    <div className="text-sm text-gray-500">{space.location?.address}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(space.isActive)}`}>
-                      {getStatusText(space.isActive)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex flex-wrap gap-1">
-                      {space.amenities && space.amenities.slice(0, 3).map((amenity, index) => (
-                        <span key={index} className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                          {typeof amenity === 'string' ? amenity : amenity.name}
-                        </span>
-                      ))}
-                      {space.amenities && space.amenities.length > 3 && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                          +{space.amenities.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button 
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                      onClick={() => handleViewSpace(space)}
-                      title="View"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button 
-                      className="text-primary hover:text-primary-dark mr-3"
-                      onClick={() => handleEditSpace(space)}
-                      title="Edit"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button 
-                      className="text-red-600 hover:text-red-900"
-                      onClick={() => handleDeleteSpace(space)}
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button 
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                        onClick={() => handleViewSpace(space)}
+                        title="View"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button 
+                        className="text-primary hover:text-primary-dark mr-3"
+                        onClick={() => handleEditSpace(space)}
+                        title="Edit"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button 
+                        className="text-red-600 hover:text-red-900"
+                        onClick={() => handleDeleteSpace(space)}
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
-        {spaces.length === 0 && !loading && (
+        {filteredSpaces.length === 0 && !loading && (
           <div className="text-center py-12">
             <LayoutGrid className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No spaces found</h3>

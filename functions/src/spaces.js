@@ -59,36 +59,26 @@ const validateSpaceData = (data, isUpdate = false) => {
   
   // Basic required fields validation
   if (!isUpdate && !data.name) errors.push('Name is required');
-  if (!isUpdate && !data.brand) errors.push('Brand is required');
-  if (!isUpdate && !data.location) errors.push('Location is required');
+  if (!isUpdate && !data.buildingId) errors.push('Building ID is required');
+  if (!isUpdate && !data.category) errors.push('Category is required');
+  if (!isUpdate && !data.capacity) errors.push('Capacity is required');
   
   // Name validation
   if (data.name && (data.name.length < 2 || data.name.length > 100)) {
     errors.push('Name must be between 2 and 100 characters');
   }
   
-  // Brand validation
-  if (data.brand && !['NextSpace', 'UnionSpace', 'CoSpace'].includes(data.brand)) {
-    errors.push('Brand must be one of: NextSpace, UnionSpace, CoSpace');
+  // Capacity validation
+  if (data.capacity && (isNaN(data.capacity) || data.capacity < 1)) {
+    errors.push('Capacity must be a positive number');
   }
-  
-  // Location validation
-  if (data.location) {
-    if (!data.location.address || data.location.address.length < 5) {
-      errors.push('Address must be at least 5 characters');
-    }
-    if (!data.location.city || data.location.city.length < 2) {
-      errors.push('City must be at least 2 characters');
-    }
-    if (!data.location.province || data.location.province.length < 2) {
-      errors.push('Province must be at least 2 characters');
-    }
-    if (data.location.latitude && (data.location.latitude < -90 || data.location.latitude > 90)) {
-      errors.push('Latitude must be between -90 and 90');
-    }
-    if (data.location.longitude && (data.location.longitude < -180 || data.location.longitude > 180)) {
-      errors.push('Longitude must be between -180 and 180');
-    }
+
+  // Pricing validation if provided
+  if (data.pricing) {
+    const { hourly, daily, monthly } = data.pricing;
+    if (hourly && (isNaN(hourly) || hourly < 0)) errors.push('Hourly rate must be a non-negative number');
+    if (daily && (isNaN(daily) || daily < 0)) errors.push('Daily rate must be a non-negative number');
+    if (monthly && (isNaN(monthly) || monthly < 0)) errors.push('Monthly rate must be a non-negative number');
   }
   
   console.log('🔍 validateSpaceData returning errors:', errors);
@@ -102,34 +92,29 @@ const sanitizeSpaceData = (data) => {
   // Sanitize strings
   if (data.name) sanitized.name = sanitizeString(data.name);
   if (data.description) sanitized.description = sanitizeString(data.description);
-  if (data.brand) sanitized.brand = sanitizeString(data.brand);
+  if (data.category) sanitized.category = sanitizeString(data.category);
+  if (data.buildingId) sanitized.buildingId = sanitizeString(data.buildingId);
   
-  // Sanitize location
-  if (data.location) {
-    sanitized.location = {
-      address: data.location.address ? sanitizeString(data.location.address) : '',
-      city: data.location.city ? sanitizeString(data.location.city) : '',
-      province: data.location.province ? sanitizeString(data.location.province) : '',
-      postalCode: data.location.postalCode ? sanitizeString(data.location.postalCode) : '',
-      country: data.location.country ? sanitizeString(data.location.country) : 'Indonesia',
-      coordinates: data.location.coordinates || null,
-      latitude: data.location.latitude ? parseFloat(data.location.latitude) : null,
-      longitude: data.location.longitude ? parseFloat(data.location.longitude) : null
+  // Sanitize numbers
+  if (data.capacity) sanitized.capacity = parseInt(data.capacity);
+  
+  // Sanitize pricing
+  if (data.pricing) {
+    sanitized.pricing = {
+      hourly: data.pricing.hourly ? parseFloat(data.pricing.hourly) : null,
+      daily: data.pricing.daily ? parseFloat(data.pricing.daily) : null,
+      monthly: data.pricing.monthly ? parseFloat(data.pricing.monthly) : null,
+      currency: data.pricing.currency || 'IDR'
     };
   }
   
-  if (data.images) {
-    sanitized.images = Array.isArray(data.images) ? data.images : [];
+  if (data.amenities) {
+    sanitized.amenities = Array.isArray(data.amenities) ? data.amenities : [];
   }
   
   // Boolean values
   if (data.isActive !== undefined) {
     sanitized.isActive = Boolean(data.isActive);
-  }
-  
-  // Operating hours
-  if (data.operatingHours) {
-    sanitized.operatingHours = data.operatingHours;
   }
   
   return sanitized;
@@ -199,27 +184,48 @@ const findOrCreateCity = async (locationData) => {
   }
 };
 
-// Generate search keywords
+// Generate search keywords for space
 const generateSearchKeywords = (spaceData) => {
   const keywords = new Set();
   
+  // Add name words
   if (spaceData.name) {
-    keywords.add(spaceData.name.toLowerCase());
-    spaceData.name.split(' ').forEach(word => keywords.add(word.toLowerCase()));
+    spaceData.name.toLowerCase().split(/\s+/).forEach(word => keywords.add(word));
   }
   
-  if (spaceData.brand) {
-    keywords.add(spaceData.brand.toLowerCase());
+  // Add category
+  if (spaceData.category) {
+    keywords.add(spaceData.category.toLowerCase());
   }
-  
+
+  // Add building ID
+  if (spaceData.buildingId) {
+    keywords.add(spaceData.buildingId.toLowerCase());
+  }
+
+  // Add capacity
+  if (spaceData.capacity) {
+    keywords.add(spaceData.capacity.toString());
+  }
+
+  // Add amenities
+  if (Array.isArray(spaceData.amenities)) {
+    spaceData.amenities.forEach(amenity => {
+      if (typeof amenity === 'string') {
+        keywords.add(amenity.toLowerCase());
+      }
+    });
+  }
+
+  // Add location info from building if available
   if (spaceData.location) {
     if (spaceData.location.city) keywords.add(spaceData.location.city.toLowerCase());
     if (spaceData.location.province) keywords.add(spaceData.location.province.toLowerCase());
     if (spaceData.location.address) {
-      spaceData.location.address.split(' ').forEach(word => keywords.add(word.toLowerCase()));
+      spaceData.location.address.toLowerCase().split(/\s+/).forEach(word => keywords.add(word));
     }
   }
-  
+
   return Array.from(keywords);
 };
 
@@ -260,9 +266,7 @@ const getAllSpaces = async (req, res) => {
       const data = doc.data();
       spaces.push({
         id: doc.id,
-        ...data,
-        // Frontend-compatible fields
-        status: data.isActive ? 'active' : 'inactive'
+        ...data
       });
     });
 
@@ -272,9 +276,7 @@ const getAllSpaces = async (req, res) => {
       spaces = spaces.filter(space =>
         space.name.toLowerCase().includes(searchLower) ||
         space.description?.toLowerCase().includes(searchLower) ||
-        space.location?.city?.toLowerCase().includes(searchLower) ||
-        space.location?.address?.toLowerCase().includes(searchLower) ||
-        space.brand?.toLowerCase().includes(searchLower)
+        space.category?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -284,8 +286,9 @@ const getAllSpaces = async (req, res) => {
     }
 
     handleResponse(res, {
-      spaces,
-      total: spaces.length
+      data: spaces,
+      total: spaces.length,
+      success: true
     });
   } catch (error) {
     console.error('Error fetching spaces:', error);
@@ -335,32 +338,36 @@ const createSpace = async (req, res) => {
     // Sanitize data
     const sanitizedData = sanitizeSpaceData(req.body);
     
-    // Find or create city
-    const cityDocId = await findOrCreateCity(sanitizedData.location);
+    // Get building data for location info
+    const buildingDoc = await db.collection('buildings').doc(sanitizedData.buildingId).get();
+    if (!buildingDoc.exists) {
+      return handleResponse(res, { message: 'Building not found' }, 404);
+    }
+    const buildingData = buildingDoc.data();
     
     // Generate space ID
     const spaceId = await generateSequentialId('spaces', 'SPC', 3);
     
     // Generate search keywords
-    const searchKeywords = generateSearchKeywords(sanitizedData);
+    const searchKeywords = generateSearchKeywords({
+      ...sanitizedData,
+      location: buildingData.location // Use building location for search
+    });
 
     const spaceData = {
       spaceId,
       name: sanitizedData.name,
       description: sanitizedData.description || '',
-      brand: sanitizedData.brand,
-      location: sanitizedData.location,
-      images: sanitizedData.images || [],
-      category: req.body.category || 'General',
-      operatingHours: sanitizedData.operatingHours || {
-        monday: '09:00-18:00',
-        tuesday: '09:00-18:00',
-        wednesday: '09:00-18:00',
-        thursday: '09:00-18:00',
-        friday: '09:00-18:00',
-        saturday: '09:00-17:00',
-        sunday: 'Closed'
+      category: sanitizedData.category,
+      buildingId: sanitizedData.buildingId,
+      capacity: sanitizedData.capacity,
+      pricing: sanitizedData.pricing || {
+        hourly: null,
+        daily: null,
+        monthly: null,
+        currency: 'IDR'
       },
+      amenities: sanitizedData.amenities || [],
       search: {
         keywords: searchKeywords
       },
@@ -370,15 +377,16 @@ const createSpace = async (req, res) => {
       updatedAt: new Date()
     };
 
-    const docRef = await db.collection('spaces').add(spaceData);
+    // Use spaceId as document ID
+    await db.collection('spaces').doc(spaceId).set(spaceData);
     
-    // Update city statistics
-    await updateCityStatistics(sanitizedData.location.city);
+    // Update building statistics if needed
+    // TODO: Implement building statistics update
 
-    console.log(`✅ Space created: ${docRef.id} - ${sanitizedData.name}`);
+    console.log(`✅ Space created: ${spaceId} - ${sanitizedData.name}`);
 
     handleResponse(res, {
-      id: docRef.id,
+      id: spaceId,
       ...spaceData
     }, 201);
   } catch (error) {

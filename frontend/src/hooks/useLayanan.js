@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import layananAPI from '../services/layananApi.jsx';
+import { layananAPI } from '../services/api';
 import { useGlobalRefresh } from '../contexts/GlobalRefreshContext.jsx';
 
 const useLayanan = () => {
   const [layananList, setLayananList] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({});
@@ -13,23 +13,27 @@ const useLayanan = () => {
   const { refreshTriggers, refreshServices } = useGlobalRefresh();
 
   // Fetch all layanan
-  const fetchLayanan = useCallback(async (params = {}) => {
-    setLoading(true);
-    setError(null);
+  const fetchLayanan = useCallback(async () => {
     try {
-      const response = await layananAPI.getLayanan(params);
-      if (response.success) {
-        const services = response.data.services || [];
-        console.log('useLayanan: Fetched services:', services);
+      setLoading(true);
+      const response = await layananAPI.getAll();
+      console.log('useLayanan: fetchLayanan response:', response);
+      
+      if (response?.success) {
+        // Ensure we always set an array, even if response.data is null/undefined
+        const services = Array.isArray(response.data) ? response.data : 
+                        (response.data?.services || response.data?.data || []);
+        console.log('useLayanan: Processed services data:', services);
         setLayananList(services);
       } else {
-        throw new Error(response.message || 'Failed to fetch layanan');
+        console.error('useLayanan: Failed response:', response);
+        throw new Error(response?.message || 'Failed to fetch layanan');
       }
     } catch (err) {
-      setError(err.message);
       console.error('Error fetching layanan:', err);
-      // Don't clear the existing list on error - preserve current state
-      console.log('useLayanan: Preserving existing layanan list due to error');
+      setError(err.message);
+      // Set empty array on error to prevent forEach errors
+      setLayananList([]);
     } finally {
       setLoading(false);
     }
@@ -44,7 +48,7 @@ const useLayanan = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await layananAPI.searchLayanan(term, { ...filters, ...additionalFilters });
+      const response = await layananAPI.search(term, { ...filters, ...additionalFilters });
       if (response.success) {
         const services = response.data.services || [];
         console.log('useLayanan: Search results:', services);
@@ -69,7 +73,7 @@ const useLayanan = () => {
     setError(null);
     try {
       console.log('useLayanan: Calling layananAPI.createLayanan...');
-      const response = await layananAPI.createLayanan(layananData);
+      const response = await layananAPI.create(layananData);
       console.log('useLayanan: layananAPI response:', response);
       
       if (response.success) {
@@ -106,7 +110,7 @@ const useLayanan = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await layananAPI.updateLayanan(id, layananData);
+      const response = await layananAPI.update(id, layananData);
       if (response.success) {
         // Extract the actual layanan data from response.data
         const updatedLayanan = response.data;
@@ -140,7 +144,7 @@ const useLayanan = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await layananAPI.deleteLayanan(id);
+      const response = await layananAPI.delete(id);
       if (response.success) {
         // Remove the layanan from the list
         setLayananList(prev => prev.filter(layanan => layanan.id !== id));
@@ -166,7 +170,7 @@ const useLayanan = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await layananAPI.getLayananById(id);
+      const response = await layananAPI.getById(id);
       if (response.success) {
         return response.data;
       } else {

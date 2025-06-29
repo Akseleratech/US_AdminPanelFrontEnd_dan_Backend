@@ -358,25 +358,33 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     setError('');
 
     try {
-      // Prepare data for submission - convert layanan to category for backend compatibility
+      // Log the raw form data
+      console.log('Raw form data:', formData);
+
+      // Prepare data for submission
       const submitData = {
-        ...formData,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
         category: formData.layanan, // Backend expects 'category' field
+        buildingId: formData.buildingId,
         capacity: parseInt(formData.capacity),
         pricing: {
-          ...formData.pricing,
           hourly: formData.pricing.hourly ? parseFloat(formData.pricing.hourly) : null,
           daily: formData.pricing.daily ? parseFloat(formData.pricing.daily) : null,
-          monthly: formData.pricing.monthly ? parseFloat(formData.pricing.monthly) : null
-        }
+          monthly: formData.pricing.monthly ? parseFloat(formData.pricing.monthly) : null,
+          currency: formData.pricing.currency
+        },
+        amenities: formData.amenities,
+        isActive: formData.isActive
       };
 
-      // Remove layanan field from submitData since we're using category
-      delete submitData.layanan;
+      // Log the prepared data
+      console.log('Prepared submit data:', submitData);
 
       await onSave(submitData);
       onClose();
     } catch (error) {
+      console.error('Error in handleSubmit:', error);
       setError(error.message || 'An error occurred while saving');
     } finally {
       setLoading(false);
