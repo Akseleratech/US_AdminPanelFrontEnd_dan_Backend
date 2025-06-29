@@ -192,6 +192,10 @@ const cities = onRequest(async (req, res) => {
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter(part => part);
 
+      // Enhanced logging for debugging routing issues
+      console.log(`[CITIES ROUTER] Received request: ${method} ${url}`);
+      console.log(`[CITIES ROUTER] Parsed path parts:`, pathParts);
+
       // Route handling
       if (method === 'GET') {
         if (pathParts.length === 0) {
@@ -218,6 +222,7 @@ const cities = onRequest(async (req, res) => {
       }
 
       // 404 for unknown routes
+      console.log(`[CITIES ROUTER] No route matched for ${method} ${url}. Sending 404.`);
       handleResponse(res, { message: 'City route not found' }, 404);
     } catch (error) {
       handleError(res, error);

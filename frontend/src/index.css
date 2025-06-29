@@ -13,6 +13,96 @@
   --primary-900: #253026;
 }
 
+/* Custom Scrollbar Styling */
+/* General vertical (width) remains thin, horizontal (height) slightly larger for visibility */
+::-webkit-scrollbar {
+  width: 2px;      /* Vertical thickness */
+  height: 6px;     /* Horizontal thickness */
+}
+
+/* Explicit horizontal rule for older browsers */
+::-webkit-scrollbar:horizontal {
+  height: 6px;
+}
+
+/* Explicit vertical rule (optional clarity) */
+::-webkit-scrollbar:vertical {
+  width: 2px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: var(--primary-50);
+  border-radius: 100vh;
+  margin: 1px;
+}
+
+/* Thumb */
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, var(--primary-200), var(--primary-300));
+  border-radius: 100vh;
+  border: 0.5px solid var(--primary-50);
+  transition: all 0.2s ease-in-out;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, var(--primary-300), var(--primary-400));
+  border: 0.5px solid var(--primary-50);
+}
+
+/* Corner */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin; /* Firefox uses 'thin' ~6px */
+  scrollbar-color: var(--primary-300) var(--primary-50);
+}
+
+/* Table-specific: same vertical thinness but horizontal 6px */
+.table-green-theme ::-webkit-scrollbar {
+  width: 2px;
+  height: 6px;
+}
+
+.table-green-theme ::-webkit-scrollbar-track {
+  background: var(--primary-50);
+  border-radius: 100vh;
+  margin: 1px;
+}
+
+.table-green-theme ::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, var(--primary-200), var(--primary-300));
+  border-radius: 100vh;
+  border: 0.5px solid var(--primary-50);
+}
+
+.table-green-theme ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, var(--primary-300), var(--primary-400));
+}
+
+/* Sidebar scrollbar */
+.sidebar ::-webkit-scrollbar {
+  width: 1px;
+  height: 4px;
+}
+
+.sidebar ::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0.5px;
+}
+
+.sidebar ::-webkit-scrollbar-thumb {
+  background: var(--primary-300);
+  border-radius: 100vh;
+}
+
+.sidebar ::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-400);
+}
+
 /* Custom Gradient Utilities */
 .bg-gradient-primary {
   background: linear-gradient(135deg, #5a7a5e 0%, #445d48 100%);

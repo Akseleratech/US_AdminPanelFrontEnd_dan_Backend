@@ -28,35 +28,29 @@ class CityAPI {
   // CREATE new city
   async createCity(cityData) {
     try {
-      console.log('🏙️ CityAPI: Creating city with data:', {
-        ...cityData,
-        thumbnail: cityData.thumbnail ? 'FILE_OBJECT' : null
-      });
-      
-      const formData = this.createFormData(cityData);
-      
-      // Debug FormData contents
-      console.log('📤 CityAPI: FormData contents:');
-      for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`  ${key}: FILE (${value.name}, ${value.size} bytes, ${value.type})`);
-        } else {
-          console.log(`  ${key}: ${value}`);
-        }
+      const payload = { ...cityData };
+      let thumbnailFile = null;
+      if (payload.thumbnail instanceof File) {
+        thumbnailFile = payload.thumbnail;
+        delete payload.thumbnail; // send JSON without file
       }
-      
-      console.log('🚀 CityAPI: Sending POST request to', API_BASE_URL);
-      const response = await axios.post(API_BASE_URL, formData, {
+
+      const response = await axios.post(API_BASE_URL, payload, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'application/json'
         }
       });
-      
-      console.log('✅ CityAPI: City created successfully:', response.data);
-      return response.data;
+
+      const createdCity = response.data;
+
+      // If there is a thumbnail file, upload it separately
+      if (thumbnailFile) {
+        await this.uploadCityImage(createdCity.id, thumbnailFile);
+      }
+
+      return createdCity;
     } catch (error) {
       console.error('💥 CityAPI: Error creating city:', error);
-      console.error('💥 CityAPI: Error response:', error.response?.data);
       throw new Error(error.response?.data?.message || 'Failed to create city');
     }
   }
@@ -64,35 +58,29 @@ class CityAPI {
   // UPDATE existing city
   async updateCity(id, cityData) {
     try {
-      console.log('🏙️ CityAPI: Updating city', id, 'with data:', {
-        ...cityData,
-        thumbnail: cityData.thumbnail ? 'FILE_OBJECT' : null
-      });
-      
-      const formData = this.createFormData(cityData);
-      
-      // Debug FormData contents
-      console.log('📤 CityAPI: FormData contents for update:');
-      for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`  ${key}: FILE (${value.name}, ${value.size} bytes, ${value.type})`);
-        } else {
-          console.log(`  ${key}: ${value}`);
-        }
+      const payload = { ...cityData };
+      let thumbnailFile = null;
+      if (payload.thumbnail instanceof File) {
+        thumbnailFile = payload.thumbnail;
+        delete payload.thumbnail;
       }
-      
-      console.log('🚀 CityAPI: Sending PUT request to', `${API_BASE_URL}/${id}`);
-      const response = await axios.put(`${API_BASE_URL}/${id}`, formData, {
+
+      const response = await axios.put(`${API_BASE_URL}/${id}`, payload, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'application/json'
         }
       });
-      
-      console.log('✅ CityAPI: City updated successfully:', response.data);
-      return response.data;
+
+      const updatedCity = response.data;
+
+      // If thumbnail file provided, upload via separate endpoint
+      if (thumbnailFile) {
+        await this.uploadCityImage(id, thumbnailFile);
+      }
+
+      return updatedCity;
     } catch (error) {
       console.error('💥 CityAPI: Error updating city:', error);
-      console.error('💥 CityAPI: Error response:', error.response?.data);
       throw new Error(error.response?.data?.message || 'Failed to update city');
     }
   }
