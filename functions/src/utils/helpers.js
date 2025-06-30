@@ -156,6 +156,134 @@ const parseQueryParams = (query = {}) => {
   };
 };
 
+// Auth helpers
+const verifyAuthToken = (req) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  return authHeader.split('Bearer ')[1];
+};
+
+const getUserFromToken = async (token) => {
+  try {
+    if (!admin.apps.length) {
+      admin.initializeApp();
+    }
+    
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    return {
+      uid: decodedToken.uid,
+      email: decodedToken.email,
+      displayName: decodedToken.name || decodedToken.email
+    };
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    return null;
+  }
+};
+
+// Helper function to get service type code
+const getServiceTypeCode = (serviceName) => {
+  if (!serviceName) return 'GEN';
+  
+  const name = serviceName.toLowerCase();
+  
+  if (name.includes('meeting') || name.includes('rapat')) return 'MTG';
+  if (name.includes('workspace') || name.includes('kerja') || name.includes('coworking')) return 'WRK';
+  if (name.includes('event') || name.includes('acara')) return 'EVT';
+  if (name.includes('conference') || name.includes('konferensi')) return 'CFR';
+  if (name.includes('training') || name.includes('pelatihan')) return 'TRN';
+  if (name.includes('seminar')) return 'SEM';
+  if (name.includes('workshop')) return 'WSP';
+  
+  return 'GEN'; // General/Umum as default
+};
+
+// Helper function to convert service type codes to readable labels
+const getServiceTypeLabel = (serviceType) => {
+  const labels = {
+    'MTG': 'Meeting/Rapat',
+    'WRK': 'Workspace/Kerja',
+    'EVT': 'Event/Acara',
+    'CFR': 'Conference/Konferensi',
+    'TRN': 'Training/Pelatihan',
+    'SEM': 'Seminar',
+    'WSP': 'Workshop',
+    'GEN': 'General/Umum'
+  };
+  return labels[serviceType] || serviceType;
+};
+
+// Generate structured OrderID: ORD-YYYYMMDD-SVC-SRC-XXXX
+const generateStructuredOrderId = async (serviceName, source = 'manual') => {
+  const db = getDb();
+  const now = new Date();
+  
+  // Format date as YYYYMMDD
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const dateStr = `${year}${month}${day}`;
+  
+  // Get service type code
+  const serviceCode = getServiceTypeCode(serviceName);
+  
+  // Get source code
+  const sourceCode = source === 'mobile' || source === 'app' ? 'APP' : 'MAN';
+  
+  // Generate sequence number (reset monthly)
+  const counterName = `orders_${year}_${month}`;
+  const counterRef = db.collection('counters').doc(counterName);
+  
+  return await db.runTransaction(async (transaction) => {
+    const counterDoc = await transaction.get(counterRef);
+    
+    let sequence = 1;
+    if (counterDoc.exists) {
+      sequence = (counterDoc.data().lastSequence || 0) + 1;
+    }
+    
+    const sequenceStr = String(sequence).padStart(4, '0');
+    const orderId = `ORD-${dateStr}-${serviceCode}-${sourceCode}-${sequenceStr}`;
+    
+    // Update counter
+    transaction.set(counterRef, {
+      lastSequence: sequence,
+      updatedAt: new Date(),
+      year: year,
+      month: month
+    });
+    
+    return orderId;
+  });
+};
+
+// Parse structured OrderID components
+const parseOrderId = (orderId) => {
+  if (!orderId || !orderId.startsWith('ORD-')) {
+    return null;
+  }
+  
+  const parts = orderId.split('-');
+  if (parts.length !== 5) {
+    return null;
+  }
+  
+  const [prefix, date, serviceType, source, sequence] = parts;
+  
+  return {
+    prefix,
+    date,
+    serviceType,
+    serviceTypeLabel: getServiceTypeLabel(serviceType),
+    source,
+    sourceLabel: source === 'APP' ? 'Mobile App' : 'Manual/CRM',
+    sequence,
+    full: orderId
+  };
+};
+
 module.exports = {
   getDb,
   handleResponse,
@@ -169,5 +297,11 @@ module.exports = {
   generateId,
   generateSequentialId,
   createPaginatedQuery,
-  parseQueryParams
+  parseQueryParams,
+  verifyAuthToken,
+  getUserFromToken,
+  getServiceTypeCode,
+  getServiceTypeLabel,
+  generateStructuredOrderId,
+  parseOrderId
 }; 

@@ -1,5 +1,6 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const cors = require("cors")({ origin: true });
+const admin = require("firebase-admin");
 const { 
   getDb, 
   handleResponse, 
@@ -10,6 +11,28 @@ const {
   generateSequentialId 
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
+
+// Middleware to get user info from auth token
+const getUserFromToken = async (req) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return null;
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    
+    return {
+      uid: decodedToken.uid,
+      email: decodedToken.email,
+      displayName: decodedToken.name || decodedToken.email
+    };
+  } catch (error) {
+    console.warn('Failed to verify auth token:', error.message);
+    return null;
+  }
+};
 
 // Enhanced validation function for customers
 function validateCustomerData(data, isUpdate = false) {
@@ -319,6 +342,10 @@ const createCustomer = async (req, res) => {
     console.log('[POST /customers] Creating new customer');
     console.log('Request body:', req.body);
     
+    // Get user info from auth token
+    const user = await getUserFromToken(req);
+    console.log('Authenticated user:', user);
+    
     // Validate required fields
     const validationErrors = validateCustomerData(req.body);
     if (validationErrors.length > 0) {
@@ -340,13 +367,23 @@ const createCustomer = async (req, res) => {
     // Generate search keywords
     const searchKeywords = generateCustomerSearchKeywords(sanitizedData);
     
-    // Prepare customer document
+    // Prepare customer document with user tracking
     const customerData = {
       ...sanitizedData,
       customerId,
       joinDate: new Date().toISOString(),
       createdAt: new Date(),
       updatedAt: new Date(),
+      createdBy: user ? {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName
+      } : null,
+      updatedBy: user ? {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName
+      } : null,
       search: {
         keywords: searchKeywords,
         slug: sanitizedData.name.toLowerCase().replace(/\s+/g, '-'),
@@ -368,7 +405,7 @@ const createCustomer = async (req, res) => {
       updatedAt: createdDoc.data().updatedAt?.toDate?.()?.toISOString() || createdDoc.data().updatedAt
     };
     
-    console.log(`✅ Created customer: ${result.name} (${result.customerId})`);
+    console.log(`✅ Created customer: ${result.name} (${result.customerId}) by ${user?.displayName || 'Unknown'}`);
     return handleResponse(res, result, 201);
     
   } catch (error) {
@@ -382,6 +419,10 @@ const updateCustomer = async (customerId, req, res) => {
   try {
     console.log(`[PUT /customers/${customerId}] Updating customer`);
     console.log('Request body:', req.body);
+    
+    // Get user info from auth token
+    const user = await getUserFromToken(req);
+    console.log('Authenticated user:', user);
     
     const db = getDb();
     
@@ -413,10 +454,15 @@ const updateCustomer = async (customerId, req, res) => {
     const mergedData = { ...existingData, ...sanitizedData };
     const searchKeywords = generateCustomerSearchKeywords(mergedData);
     
-    // Prepare update data
+    // Prepare update data with user tracking
     const updateData = {
       ...sanitizedData,
       updatedAt: new Date(),
+      updatedBy: user ? {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName
+      } : null,
       search: {
         keywords: searchKeywords,
         slug: mergedData.name.toLowerCase().replace(/\s+/g, '-'),
@@ -438,7 +484,7 @@ const updateCustomer = async (customerId, req, res) => {
       joinDate: updatedDoc.data().joinDate?.toDate?.()?.toISOString() || updatedDoc.data().joinDate,
     };
     
-    console.log(`✅ Customer ${customerId} updated successfully.`);
+    console.log(`✅ Customer ${customerId} updated successfully by ${user?.displayName || 'Unknown'}.`);
     return handleResponse(res, { data: responseData, message: 'Customer updated successfully' }, 200);
     
   } catch (error) {
@@ -452,6 +498,10 @@ const deleteCustomer = async (customerId, req, res) => {
   try {
     console.log(`[DELETE /customers/${customerId}] Deleting customer`);
     
+    // Get user info from auth token
+    const user = await getUserFromToken(req);
+    console.log('Authenticated user:', user);
+    
     const db = getDb();
     
     // Check if customer exists and get data first
@@ -461,12 +511,12 @@ const deleteCustomer = async (customerId, req, res) => {
     }
     
     const customerData = customerDoc.data();
-    console.log(`🗑️ Deleting customer: ${customerData.name}`);
+    console.log(`🗑️ Deleting customer: ${customerData.name} by ${user?.displayName || 'Unknown'}`);
     
     // Delete the customer document
     await db.collection('customers').doc(customerId).delete();
     
-    console.log(`✅ Customer deleted: ${customerData.name} (${customerId})`);
+    console.log(`✅ Customer deleted: ${customerData.name} (${customerId}) by ${user?.displayName || 'Unknown'}`);
     return handleResponse(res, { id: customerId }, 'Customer deleted successfully');
     
   } catch (error) {

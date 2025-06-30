@@ -47,4 +47,73 @@ export const getStatusIcon = (status) => {
     default: 
       return <AlertCircle className="w-4 h-4" />;
   }
+};
+
+// Helper function to convert service type codes to readable labels
+export const getServiceTypeLabel = (serviceType) => {
+  const labels = {
+    'MTG': 'Meeting/Rapat',
+    'WRK': 'Workspace/Kerja',
+    'EVT': 'Event/Acara',
+    'CFR': 'Conference/Konferensi',
+    'TRN': 'Training/Pelatihan',
+    'SEM': 'Seminar',
+    'WSP': 'Workshop',
+    'GEN': 'General/Umum'
+  };
+  return labels[serviceType] || serviceType;
+};
+
+// Parse structured OrderID components
+export const parseOrderId = (orderId) => {
+  if (!orderId || !orderId.startsWith('ORD-')) {
+    return null;
+  }
+  
+  const parts = orderId.split('-');
+  if (parts.length !== 5) {
+    return null;
+  }
+  
+  const [prefix, date, serviceType, source, sequence] = parts;
+  
+  // Format date for display
+  const year = date.substring(0, 4);
+  const month = date.substring(4, 6);
+  const day = date.substring(6, 8);
+  const formattedDate = `${day}/${month}/${year}`;
+  
+  return {
+    prefix,
+    date,
+    formattedDate,
+    serviceType,
+    serviceTypeLabel: getServiceTypeLabel(serviceType),
+    source,
+    sourceLabel: source === 'APP' ? 'Mobile App' : 'Manual/CRM',
+    sequence,
+    full: orderId
+  };
+};
+
+// Get color classes for service type badges
+export const getServiceTypeColor = (serviceType) => {
+  const colors = {
+    'MTG': 'bg-blue-100 text-blue-800',
+    'WRK': 'bg-green-100 text-green-800', 
+    'EVT': 'bg-purple-100 text-purple-800',
+    'CFR': 'bg-indigo-100 text-indigo-800',
+    'TRN': 'bg-orange-100 text-orange-800',
+    'SEM': 'bg-yellow-100 text-yellow-800',
+    'WSP': 'bg-pink-100 text-pink-800',
+    'GEN': 'bg-gray-100 text-gray-800'
+  };
+  return colors[serviceType] || 'bg-gray-100 text-gray-800';
+};
+
+// Get color classes for source badges
+export const getSourceColor = (source) => {
+  return source === 'APP' 
+    ? 'bg-emerald-100 text-emerald-800' 
+    : 'bg-amber-100 text-amber-800';
 }; 

@@ -41,6 +41,7 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, loading })
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
               <th scope="col" className="relative px-6 py-3">
                 <span className="sr-only">Actions</span>
               </th>
@@ -84,6 +85,16 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, loading })
                     }`}>
                       {customer.isActive ? 'Active' : 'Inactive'}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {customer.createdBy ? (
+                      <div>
+                        <div className="text-sm text-gray-900">{customer.createdBy.displayName}</div>
+                        <div className="text-xs text-gray-500">{customer.createdBy.email}</div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">Unknown</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button onClick={() => onEdit(customer)} className="text-indigo-600 hover:text-indigo-900 mr-4">

@@ -6,7 +6,10 @@ const {
   handleError, 
   validateRequired, 
   sanitizeString,
-  generateSequentialId 
+  generateSequentialId,
+  generateStructuredOrderId,
+  verifyAuthToken,
+  getUserFromToken 
 } = require("./utils/helpers");
 
 // Main orders function
@@ -99,23 +102,50 @@ const getOrderById = async (orderId, req, res) => {
 const createOrder = async (req, res) => {
   try {
     const db = getDb();
-    const { customerName, customerEmail, spaceId, spaceName, amount, duration } = req.body;
+    const { 
+      customerId,
+      customerName, 
+      customerEmail, 
+      serviceId,
+      serviceName,
+      spaceId, 
+      spaceName, 
+      amount, 
+      startDate,
+      endDate,
+      status = 'pending',
+      notes = '',
+      source = 'manual'
+    } = req.body;
 
-    validateRequired(req.body, ['customerName', 'customerEmail', 'spaceId', 'amount']);
+    validateRequired(req.body, ['customerId', 'customerName', 'serviceId', 'serviceName', 'spaceId', 'amount', 'startDate', 'endDate']);
 
-    const orderId = await generateSequentialId('orders', 'ORD', 4);
+    // Generate structured OrderID
+    const orderId = await generateStructuredOrderId(serviceName, source);
+
+    // Get user info from auth token if available
+    const token = verifyAuthToken(req);
+    const user = token ? await getUserFromToken(token) : null;
 
     const orderData = {
-      orderId,
+      id: orderId,
+      customerId: sanitizeString(customerId),
       customerName: sanitizeString(customerName),
       customerEmail: sanitizeString(customerEmail),
+      serviceId: sanitizeString(serviceId),
+      serviceName: sanitizeString(serviceName),
       spaceId: sanitizeString(spaceId),
       spaceName: sanitizeString(spaceName || ''),
       amount: parseFloat(amount),
-      duration: duration || 1,
-      status: 'pending',
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      status: sanitizeString(status),
+      notes: sanitizeString(notes),
+      source: sanitizeString(source),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      createdBy: user ? user.uid : 'system',
+      createdByEmail: user ? user.email : 'system'
     };
 
     const docRef = await db.collection('orders').add(orderData);
@@ -136,9 +166,17 @@ const updateOrder = async (orderId, req, res) => {
       return handleResponse(res, { message: 'Order not found' }, 404);
     }
 
+    // Get user info from auth token if available
+    const token = verifyAuthToken(req);
+    const user = token ? await getUserFromToken(token) : null;
+
     const updateData = { ...req.body };
     delete updateData.id;
+    
+    // Add update tracking
     updateData.updatedAt = new Date();
+    updateData.updatedBy = user ? user.uid : 'system';
+    updateData.updatedByEmail = user ? user.email : 'system';
 
     await db.collection('orders').doc(orderId).update(updateData);
 

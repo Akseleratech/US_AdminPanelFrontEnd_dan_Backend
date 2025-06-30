@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, Plus, RefreshCw, AlertCircle, CheckCircle, Trash2, X, ChevronDown } from 'lucide-react';
 import CustomersTable from './CustomersTable.jsx';
 import CustomerModal from './CustomerModal.jsx';
-import useCustomers from '../../hooks/useCustomers.js';
+import useCustomers from '../../hooks/useCustomers';
+import { useAuth } from '../auth/AuthContext';
 import customerApi from '../../services/customerApi';
 
 const Customers = () => {
@@ -15,17 +16,32 @@ const Customers = () => {
     filters,
     setFilters,
     pagination,
+    currentPage,
     setCurrentPage,
     addCustomer,
     updateCustomer,
     deleteCustomer,
-    uploadCustomerImage,
-    refresh
+    refresh,
+    selectedCustomer,
+    setSelectedCustomer,
+    isModalOpen,
+    setIsModalOpen,
+    statistics,
+    
+    // CRUD operations
+    fetchCustomers,
+    searchCustomers,
+    filterByStatus,
+    clearFilters,
+    
+    // Utility functions
+    getCustomerStats
   } = useCustomers();
+
+  const { user } = useAuth();
 
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [notification, setNotification] = useState(null);
@@ -35,7 +51,6 @@ const Customers = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [filterSearch, setFilterSearch] = useState('');
   const [selectedStatuses, setSelectedStatuses] = useState(new Set());
-  const [selectedCompanies, setSelectedCompanies] = useState(new Set());
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -54,14 +69,9 @@ const Customers = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (type, customerId) => {
-    if (type === 'customer') {
-      const customer = customers.find(c => c.id === customerId);
-      if (customer) {
-        setCustomerToDelete(customer);
-        setShowDeleteConfirm(true);
-      }
-    }
+  const handleDelete = (customer) => {
+    setCustomerToDelete(customer);
+    setShowDeleteConfirm(true);
   };
 
   const confirmDelete = async () => {
@@ -95,12 +105,6 @@ const Customers = () => {
     }
   };
 
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchFilter(value);
-    setSearchTerm(value);
-  };
-
   const handleRefresh = () => {
     refresh();
     showNotification('Customer data successfully updated', 'success');
@@ -108,61 +112,45 @@ const Customers = () => {
 
   // Get unique values for filters
   const filterOptions = useMemo(() => {
-    const companiesSet = new Set();
     const statusesSet = new Set(['Active', 'Inactive']);
 
-    customers.forEach(customer => {
-      if (customer.company) companiesSet.add(customer.company);
-    });
-
     return {
-      companies: Array.from(companiesSet).sort(),
       statuses: Array.from(statusesSet)
     };
-  }, [customers]);
+  }, []);
 
   // Filter helper functions
   const handleFilterToggle = (type, value) => {
-    const setters = {
-      status: setSelectedStatuses,
-      company: setSelectedCompanies
-    };
-    
-    const getter = {
-      status: selectedStatuses,
-      company: selectedCompanies
-    }[type];
-
-    const newSet = new Set(getter);
-    if (newSet.has(value)) {
-      newSet.delete(value);
-    } else {
-      newSet.add(value);
+    if (type === 'status') {
+      const newSet = new Set(selectedStatuses);
+      if (newSet.has(value)) {
+        newSet.delete(value);
+      } else {
+        newSet.add(value);
+      }
+      setSelectedStatuses(newSet);
     }
-    setters[type](newSet);
   };
 
   const clearAllFilters = () => {
     setSelectedStatuses(new Set());
-    setSelectedCompanies(new Set());
     setFilterSearch('');
     setSearchFilter('');
   };
 
   const getActiveFilterCount = () => {
-    return selectedStatuses.size + selectedCompanies.size;
+    return selectedStatuses.size;
   };
 
   // Filter data based on search and checkboxes
-  const filteredCustomers = customers.filter(customer => {
+  const filteredCustomers = (customers || []).filter(customer => {
     // Text search filter
     if (searchFilter) {
       const searchLower = searchFilter.toLowerCase();
       const matchesSearch = 
         customer.name?.toLowerCase().includes(searchLower) ||
         customer.email?.toLowerCase().includes(searchLower) ||
-        customer.phone?.toLowerCase().includes(searchLower) ||
-        customer.company?.toLowerCase().includes(searchLower);
+        customer.phone?.toLowerCase().includes(searchLower);
       
       if (!matchesSearch) return false;
     }
@@ -173,20 +161,8 @@ const Customers = () => {
       if (!selectedStatuses.has(status)) return false;
     }
 
-    // Company filter
-    if (selectedCompanies.size > 0 && !selectedCompanies.has(customer.company)) return false;
-
     return true;
   });
-
-  const handleUploadImage = async (customerId, imageFile) => {
-    try {
-      await uploadCustomerImage(customerId, imageFile);
-      showNotification('Photo successfully uploaded', 'success');
-    } catch (error) {
-      showNotification(`Failed to upload photo: ${error.message}`, 'error');
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -207,18 +183,31 @@ const Customers = () => {
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customer Management</h1>
-          <p className="text-gray-600">Manage all customers and their information in the system</p>
+      <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center space-x-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
+              <p className="text-sm text-gray-500">Manage your customer database</p>
+            </div>
+            {user && (
+              <div className="hidden sm:block pl-4 border-l border-gray-200">
+                <p className="text-xs text-gray-500">Logged in as</p>
+                <p className="text-sm font-medium text-gray-900">{user.displayName || user.email}</p>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-4 sm:mt-0 flex items-center space-x-3">
+            <button
+              onClick={handleRefresh}
+              className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
-        <button
-          onClick={handleRefresh}
-          className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-        >
-          <RefreshCw className="w-4 h-4" />
-          <span>Refresh</span>
-        </button>
       </div>
 
       {/* Search and Filter Bar */}
@@ -229,9 +218,12 @@ const Customers = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search customers by name, email, phone, or company..."
+              placeholder="Search customers by name, email, or phone..."
               value={searchFilter}
-              onChange={handleSearchChange}
+              onChange={(e) => {
+                setSearchFilter(e.target.value);
+                setSearchTerm(e.target.value);
+              }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
             />
           </div>
@@ -288,26 +280,6 @@ const Customers = () => {
                     ))}
                   </div>
                 </div>
-
-                {/* Company Filter */}
-                {filterOptions.companies.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-xs font-medium text-gray-700 mb-2">Company</h4>
-                    <div className="max-h-40 overflow-y-auto space-y-2">
-                      {filterOptions.companies.map(company => (
-                        <label key={company} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedCompanies.has(company)}
-                            onChange={() => handleFilterToggle('company', company)}
-                            className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                          />
-                          <span className="ml-2 text-sm text-gray-700 truncate">{company}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -340,7 +312,7 @@ const Customers = () => {
 
       {/* Results Summary */}
       <div className="text-sm text-gray-600">
-        Showing {filteredCustomers.length} of {customers.length} customers
+        Showing {filteredCustomers.length} of {(customers || []).length} customers
       </div>
 
       {/* Table */}
@@ -348,7 +320,6 @@ const Customers = () => {
         customers={filteredCustomers}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onUploadImage={handleUploadImage}
         loading={loading}
       />
 

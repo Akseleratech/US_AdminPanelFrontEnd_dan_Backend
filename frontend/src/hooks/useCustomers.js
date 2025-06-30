@@ -1,40 +1,49 @@
 import { useState, useEffect, useCallback } from 'react';
 import customerAPI from '../services/customerApi';
 import { useGlobalRefresh } from '../contexts/GlobalRefreshContext.jsx';
+import { useAuth } from '../components/auth/AuthContext';
 
 const useCustomers = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState({});
+  const [pagination, setPagination] = useState({
+    limit: 10,
+    offset: 0,
+    hasMore: true
+  });
+  const [statistics, setStatistics] = useState(null);
   
   // Global refresh context
   const { refreshTriggers, globalRefresh, triggerRefresh } = useGlobalRefresh();
+  const { user } = useAuth();
 
   // Fetch all customers
   const fetchCustomers = useCallback(async (params = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const { customers: fetchedCustomers, pagination: newPagination } = await customerAPI.getCustomers({ 
-        page: currentPage, 
-        limit: 10,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
-        ...filters 
-      });
-      setCustomers(fetchedCustomers);
-      setPagination(newPagination);
+      const response = await customerAPI.getAllCustomers(params);
+      // Extract customers from nested response structure
+      const customersData = response.data?.customers || response.customers || [];
+      setCustomers(customersData);
+      if (response.data?.pagination) {
+        setPagination(response.data.pagination);
+      } else if (response.pagination) {
+        setPagination(response.pagination);
+      }
     } catch (err) {
       setError(err.message);
-      console.error("Error fetching customers:", err);
+      console.error('Error fetching customers:', err);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filters, globalRefresh]);
+  }, []);
 
   // Search customers
   const searchCustomers = useCallback(async (term, additionalFilters = {}) => {
@@ -46,10 +55,13 @@ const useCustomers = () => {
     setError(null);
     try {
       const response = await customerAPI.searchCustomers(term, { ...filters, ...additionalFilters });
-      if (response.success) {
-        setCustomers(response.data.customers || []);
-      } else {
-        throw new Error(response.message || 'Failed to search customers');
+      // Extract customers from nested response structure
+      const customersData = response.data?.customers || response.customers || [];
+      setCustomers(customersData);
+      if (response.data?.pagination) {
+        setPagination(response.data.pagination);
+      } else if (response.pagination) {
+        setPagination(response.pagination);
       }
     } catch (err) {
       setError(err.message);
@@ -59,87 +71,68 @@ const useCustomers = () => {
     }
   }, [filters, fetchCustomers]);
 
-  // Add a new customer
-  const addCustomer = async (customerData) => {
-    setLoading(true);
-    setError(null);
+  // Get single customer
+  const getCustomer = useCallback(async (id) => {
     try {
-      const newCustomer = await customerAPI.createCustomer(customerData);
+      const response = await customerAPI.getCustomerById(id);
+      return response;
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching customer:', err);
+      throw err;
+    }
+  }, []);
+
+  // Add new customer
+  const addCustomer = useCallback(async (customerData) => {
+    try {
+      const response = await customerAPI.createCustomer(customerData);
+      // Extract customer data from nested response structure
+      const newCustomer = response.data || response;
       setCustomers(prev => [newCustomer, ...prev]);
-      triggerRefresh('customers');
-    } catch (error) {
-      setError(error.message);
-      console.error('Error creating customer:', error);
-      throw error;
-    } finally {
-      setLoading(false);
+      triggerRefresh();
+      return newCustomer;
+    } catch (err) {
+      setError(err.message);
+      console.error('Error adding customer:', err);
+      throw err;
     }
-  };
+  }, [triggerRefresh]);
 
-  // Update an existing customer
-  const updateCustomer = async (id, customerData) => {
-    setLoading(true);
-    setError(null);
+  // Update customer
+  const updateCustomer = useCallback(async (id, customerData) => {
     try {
-      const updatedCustomer = await customerAPI.updateCustomer(id, customerData);
-      setCustomers(prev => 
-        prev.map(customer => 
-          customer.id === id ? updatedCustomer : customer
-        )
-      );
-      triggerRefresh('customers');
-    } catch (error) {
-      setError(error.message);
-      console.error('Error updating customer:', error);
-      throw error;
-    } finally {
-      setLoading(false);
+      const response = await customerAPI.updateCustomer(id, customerData);
+      // Extract customer data from nested response structure
+      const updatedCustomer = response.data?.data || response.data || response;
+      setCustomers(prev => prev.map(customer => 
+        customer.id === id ? updatedCustomer : customer
+      ));
+      triggerRefresh();
+      return response;
+    } catch (err) {
+      setError(err.message);
+      console.error('Error updating customer:', err);
+      throw err;
     }
-  };
+  }, [triggerRefresh]);
 
-  // Delete a customer
-  const deleteCustomer = async (id) => {
-    setLoading(true);
-    setError(null);
+  // Delete customer
+  const deleteCustomer = useCallback(async (id) => {
     try {
       await customerAPI.deleteCustomer(id);
       setCustomers(prev => prev.filter(customer => customer.id !== id));
-      triggerRefresh('customers');
-    } catch (error) {
-      setError(error.message);
-      console.error('Error deleting customer:', error);
-      throw error;
-    } finally {
-      setLoading(false);
+      triggerRefresh();
+    } catch (err) {
+      setError(err.message);
+      console.error('Error deleting customer:', err);
+      throw err;
     }
-  };
-
-  // Get a single customer by ID
-  const getCustomer = async (id) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const customer = await customerAPI.getCustomer(id);
-      return customer;
-    } catch (error) {
-      setError(error.message);
-      console.error('Error fetching customer:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [triggerRefresh]);
 
   // Filter customers by status
   const filterByStatus = useCallback(async (status) => {
     const newFilters = { ...filters, status };
-    setFilters(newFilters);
-    await searchCustomers(searchTerm, newFilters);
-  }, [filters, searchTerm, searchCustomers]);
-
-  // Filter customers by company
-  const filterByCompany = useCallback(async (company) => {
-    const newFilters = { ...filters, company };
     setFilters(newFilters);
     await searchCustomers(searchTerm, newFilters);
   }, [filters, searchTerm, searchCustomers]);
@@ -165,14 +158,11 @@ const useCustomers = () => {
     const totalCustomers = customers.length;
     const activeCustomers = customers.filter(c => c.isActive).length;
     const inactiveCustomers = totalCustomers - activeCustomers;
-    const companiesSet = new Set(customers.filter(c => c.company).map(c => c.company));
-    const totalCompanies = companiesSet.size;
 
     return {
       total: totalCustomers,
       active: activeCustomers,
-      inactive: inactiveCustomers,
-      companies: totalCompanies
+      inactive: inactiveCustomers
     };
   }, [customers]);
 
@@ -205,6 +195,10 @@ const useCustomers = () => {
     customers,
     loading,
     error,
+    selectedCustomer,
+    setSelectedCustomer,
+    isModalOpen,
+    setIsModalOpen,
     searchTerm,
     setSearchTerm,
     filters,
@@ -212,6 +206,7 @@ const useCustomers = () => {
     currentPage,
     setCurrentPage,
     pagination,
+    statistics,
     
     // CRUD operations
     fetchCustomers,
@@ -223,7 +218,6 @@ const useCustomers = () => {
     
     // Filter operations
     filterByStatus,
-    filterByCompany,
     clearFilters,
     
     // Utility functions
