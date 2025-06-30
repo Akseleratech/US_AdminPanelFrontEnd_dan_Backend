@@ -136,7 +136,7 @@ const createPaginatedQuery = (baseQuery, limit = 20, startAfter = null) => {
 };
 
 // Parse query parameters
-const parseQueryParams = (req) => {
+const parseQueryParams = (query = {}) => {
   const {
     limit = 20,
     page = 1,
@@ -144,7 +144,7 @@ const parseQueryParams = (req) => {
     sortOrder = 'desc',
     search = '',
     filter = {}
-  } = req.query;
+  } = query;
 
   return {
     limit: Math.min(parseInt(limit) || 20, 100), // Max 100 items per page

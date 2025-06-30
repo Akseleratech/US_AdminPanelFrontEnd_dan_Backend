@@ -15,7 +15,7 @@ const Cities = React.lazy(() => import('./components/cities/Cities.jsx'));
 const Layanan = React.lazy(() => import('./components/layanan/Layanan.jsx'));
 const Amenities = React.lazy(() => import('./components/amenities/Amenities.jsx'));
 const Promo = React.lazy(() => import('./components/promo/Promo.jsx'));
-const Users = React.lazy(() => import('./components/users/Users.jsx'));
+const Customers = React.lazy(() => import('./components/customers/Customers.jsx'));
 const Login = React.lazy(() => import('./components/auth/Login.jsx'));
 
 // Contexts
@@ -54,7 +54,7 @@ const PrivateRoutes = () => {
           <Route path="/layanan" element={<Layanan />} />
           <Route path="/amenities" element={<Amenities />} />
           <Route path="/promo" element={<Promo />} />
-          <Route path="/users" element={<Users />} />
+          <Route path="/customers" element={<Customers />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>

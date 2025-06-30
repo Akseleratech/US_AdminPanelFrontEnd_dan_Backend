@@ -9,7 +9,7 @@ export default defineConfig({
     port: 3001,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5001/demo-unionspace-crm/asia-southeast1',
+        target: 'http://127.0.0.1:5555/demo-unionspace-crm/asia-southeast1',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),

@@ -61,8 +61,8 @@ const Sidebar = () => {
       icon: Ticket
     },
     {
-      name: 'Users',
-      path: '/users',
+      name: 'Customers',
+      path: '/customers',
       icon: Users
     }
   ];

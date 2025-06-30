@@ -56,6 +56,10 @@
         "function": "amenities"
       },
       {
+        "source": "/api/customers/**",
+        "function": "customers"
+      },
+      {
         "source": "/api/health",
         "function": "health"
       },
@@ -96,19 +100,20 @@
       "port": 9099
     },
     "functions": {
-      "port": 5001
+      "port": 5555
     },
     "firestore": {
-      "port": 8088
+      "port": 8888
     },
     "hosting": {
       "port": 5000
     },
     "storage": {
-      "port": 9199
+      "port": 9999
     },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "port": 4444
     },
     "singleProjectMode": true
   }

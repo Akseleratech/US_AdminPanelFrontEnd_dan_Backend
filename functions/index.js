@@ -25,8 +25,9 @@ if (!admin.apps.length) {
     if (process.env.FIREBASE_STORAGE_EMULATOR_HOST) {
       console.log(`📦 Storage Emulator Host: ${process.env.FIREBASE_STORAGE_EMULATOR_HOST}`);
     } else {
-      process.env.FIREBASE_STORAGE_EMULATOR_HOST = "127.0.0.1:9199";
-      console.log('📦 Set Storage Emulator Host: 127.0.0.1:9199');
+      const storagePort = 9999; // Should match firebase.json
+      process.env.FIREBASE_STORAGE_EMULATOR_HOST = `127.0.0.1:${storagePort}`;
+      console.log(`📦 Fallback: Set Storage Emulator Host to 127.0.0.1:${storagePort}`);
     }
   } else {
     console.log('🌐 Firebase Functions running in PRODUCTION mode');
@@ -52,6 +53,7 @@ const ordersFunctions = require("./src/orders");
 const dashboardFunctions = require("./src/dashboard");
 const databaseFunctions = require("./src/database");
 const amenitiesFunctions = require("./src/amenities");
+const customersFunctions = require("./src/customers");
 
 // Export all functions
 exports.cities = citiesFunctions.cities;
@@ -62,6 +64,7 @@ exports.orders = ordersFunctions.orders;
 exports.dashboard = dashboardFunctions.dashboard;
 exports.database = databaseFunctions.database;
 exports.amenities = amenitiesFunctions.amenities;
+exports.customers = customersFunctions.customers;
 
 // Health check endpoint
 exports.health = onRequest((req, res) => {
