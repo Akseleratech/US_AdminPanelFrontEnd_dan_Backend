@@ -246,6 +246,8 @@ const customers = onRequest(async (req, res) => {
           const customerId = pathParts[0];
           return await deleteCustomer(customerId, req, res);
         }
+      } else if (method === 'POST' && pathParts.length === 1 && pathParts[0] === 'migrate') {
+        return await migrateCustomers(req, res);
       }
 
       // If no route matches
@@ -391,14 +393,14 @@ const createCustomer = async (req, res) => {
       }
     };
     
-    // Save to database
+    // Save to database using customerId as document ID
     const db = getDb();
-    const docRef = await db.collection('customers').add(customerData);
+    await db.collection('customers').doc(customerId).set(customerData);
     
     // Get the created document
-    const createdDoc = await docRef.get();
+    const createdDoc = await db.collection('customers').doc(customerId).get();
     const result = {
-      id: docRef.id,
+      id: customerId,  // Use customerId as document ID
       ...createdDoc.data(),
       createdAt: createdDoc.data().createdAt?.toDate?.()?.toISOString() || createdDoc.data().createdAt,
       updatedAt: createdDoc.data().updatedAt?.toDate?.()?.toISOString() || createdDoc.data().updatedAt
@@ -659,7 +661,82 @@ const getCustomerStatistics = async (req, res) => {
     
   } catch (error) {
     console.error('Error in getCustomerStatistics:', error);
-    return handleError(res, `Failed to retrieve customer statistics: ${error.message}`, 500);
+    return handleError(res, `Failed to get customer statistics: ${error.message}`, 500);
+  }
+};
+
+// POST /customers/migrate - Migrate existing customers to new structure
+const migrateCustomers = async (req, res) => {
+  try {
+    const db = getDb();
+    console.log('🔄 Starting customers migration...');
+    
+    // Get all existing customers
+    const customersSnapshot = await db.collection('customers').get();
+    
+    if (customersSnapshot.empty) {
+      return handleResponse(res, { 
+        message: 'No customers found to migrate.',
+        migratedCount: 0 
+      });
+    }
+
+    console.log(`📊 Found ${customersSnapshot.size} customers to migrate.`);
+    
+    const batch = db.batch();
+    const migrationResults = [];
+    
+    customersSnapshot.forEach((doc) => {
+      const data = doc.data();
+      const oldDocId = doc.id;
+      const customerId = data.customerId; // Internal customer ID like "CUS250001"
+      
+      // Check if migration is needed (document ID != customerId)
+      if (customerId && oldDocId !== customerId) {
+        // Create new document with customerId as document ID
+        const newDocRef = db.collection('customers').doc(customerId);
+        
+        // Add to batch: create new document with same data
+        batch.set(newDocRef, data);
+        
+        // Add to batch: delete old document
+        batch.delete(doc.ref);
+        
+        migrationResults.push({
+          oldDocId,
+          newDocId: customerId,
+          customerId: customerId,
+          customerName: data.name
+        });
+        
+        console.log(`📝 Migrating customer: ${oldDocId} -> ${customerId} (${data.name})`);
+      } else if (!customerId) {
+        console.log(`⚠️  Customer ${oldDocId} missing customerId, skipping migration.`);
+      } else {
+        console.log(`⚠️  Customer ${oldDocId} already has correct structure, skipping.`);
+      }
+    });
+    
+    if (migrationResults.length > 0) {
+      // Execute batch operation
+      await batch.commit();
+      console.log(`✅ Successfully migrated ${migrationResults.length} customers.`);
+      
+      return handleResponse(res, {
+        message: `Successfully migrated ${migrationResults.length} customers.`,
+        migratedCount: migrationResults.length,
+        results: migrationResults
+      });
+    } else {
+      return handleResponse(res, {
+        message: 'All customers already have correct structure.',
+        migratedCount: 0
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Customer migration failed:', error);
+    return handleError(res, `Customer migration failed: ${error.message}`, 500);
   }
 };
 

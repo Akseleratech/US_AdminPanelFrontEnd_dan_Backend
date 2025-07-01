@@ -1,20 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, User, MapPin, Package, DollarSign } from 'lucide-react';
+import { X, Calendar, User, MapPin, DollarSign } from 'lucide-react';
 import useCustomers from '../../hooks/useCustomers';
 import useSpaces from '../../hooks/useSpaces';
-import useLayanan from '../../hooks/useLayanan';
 
 const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
   const { customers, loading: customersLoading } = useCustomers();
   const { spaces, loading: spacesLoading } = useSpaces();
-  const { layananList, loading: layananLoading } = useLayanan();
 
   const [formData, setFormData] = useState({
     customerId: '',
     customerName: '',
     customerEmail: '',
-    serviceId: '',
-    serviceName: '',
     spaceId: '',
     spaceName: '',
     amount: '',
@@ -31,17 +27,28 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
   useEffect(() => {
     if (isOpen) {
       if (editingOrder) {
+        // Helper function to safely format date
+        const formatDateForInput = (dateValue) => {
+          if (!dateValue) return '';
+          try {
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return '';
+            return date.toISOString().split('T')[0];
+          } catch (error) {
+            console.warn('Invalid date value:', dateValue);
+            return '';
+          }
+        };
+
         setFormData({
           customerId: editingOrder.customerId || '',
           customerName: editingOrder.customerName || editingOrder.customer || '',
           customerEmail: editingOrder.customerEmail || '',
-          serviceId: editingOrder.serviceId || '',
-          serviceName: editingOrder.serviceName || editingOrder.service || '',
           spaceId: editingOrder.spaceId || '',
           spaceName: editingOrder.spaceName || '',
           amount: editingOrder.amount || '',
-          startDate: editingOrder.startDate ? new Date(editingOrder.startDate).toISOString().split('T')[0] : '',
-          endDate: editingOrder.endDate ? new Date(editingOrder.endDate).toISOString().split('T')[0] : '',
+          startDate: formatDateForInput(editingOrder.startDate),
+          endDate: formatDateForInput(editingOrder.endDate),
           status: editingOrder.status || 'pending',
           notes: editingOrder.notes || ''
         });
@@ -50,8 +57,6 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           customerId: '',
           customerName: '',
           customerEmail: '',
-          serviceId: '',
-          serviceName: '',
           spaceId: '',
           spaceName: '',
           amount: '',
@@ -93,18 +98,6 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     }));
   };
 
-  const handleServiceChange = (e) => {
-    const serviceId = e.target.value;
-    const selectedService = layananList.find(s => s.id === serviceId);
-    
-    setFormData(prev => ({
-      ...prev,
-      serviceId,
-      serviceName: selectedService ? selectedService.name : '',
-      amount: selectedService ? selectedService.price || '' : ''
-    }));
-  };
-
   const handleSpaceChange = (e) => {
     const spaceId = e.target.value;
     const selectedSpace = spaces.find(s => s.id === spaceId);
@@ -120,7 +113,6 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     const newErrors = {};
 
     if (!formData.customerId) newErrors.customerId = 'Customer is required';
-    if (!formData.serviceId) newErrors.serviceId = 'Service is required';
     if (!formData.spaceId) newErrors.spaceId = 'Space is required';
     if (!formData.amount) newErrors.amount = 'Amount is required';
     if (!formData.startDate) newErrors.startDate = 'Start date is required';
@@ -206,31 +198,6 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
               ))}
             </select>
             {errors.customerId && <p className="text-red-500 text-xs mt-1">{errors.customerId}</p>}
-          </div>
-
-          {/* Service Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Package className="w-4 h-4 inline mr-1" />
-              Service *
-            </label>
-            <select
-              name="serviceId"
-              value={formData.serviceId}
-              onChange={handleServiceChange}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                errors.serviceId ? 'border-red-500' : 'border-gray-300'
-              }`}
-              disabled={layananLoading}
-            >
-              <option value="">Select Service</option>
-              {layananList?.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.name} - Rp {service.price?.toLocaleString()}
-                </option>
-              ))}
-            </select>
-            {errors.serviceId && <p className="text-red-500 text-xs mt-1">{errors.serviceId}</p>}
           </div>
 
           {/* Space Selection */}

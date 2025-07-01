@@ -91,7 +91,7 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
                 <tr key={order.id} className="hover:bg-primary-50 transition-colors duration-150">
                   {/* Order ID */}
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    <StructuredOrderId orderId={order.id} />
+                    <StructuredOrderId orderId={order.orderId || order.id} />
                   </td>
 
                   {/* Customer */}

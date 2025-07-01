@@ -32,6 +32,8 @@ const orders = onRequest(async (req, res) => {
         return await updateOrder(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         return await deleteOrder(pathParts[0], req, res);
+      } else if (method === 'POST' && pathParts.length === 1 && pathParts[0] === 'migrate') {
+        return await migrateOrders(req, res);
       }
 
       handleResponse(res, { message: 'Order route not found' }, 404);
@@ -58,9 +60,10 @@ const getAllOrders = async (req, res) => {
     let orders = [];
 
     snapshot.forEach(doc => {
+      const data = doc.data();
       orders.push({
-        id: doc.id,
-        ...doc.data()
+        id: doc.id,  // This will now be the orderId (e.g., ORD-20250701-GEN-MAN-0001)
+        ...data
       });
     });
 
@@ -92,7 +95,11 @@ const getOrderById = async (orderId, req, res) => {
       return handleResponse(res, { message: 'Order not found' }, 404);
     }
 
-    handleResponse(res, { id: doc.id, ...doc.data() });
+    const data = doc.data();
+    handleResponse(res, { 
+      id: doc.id,  // This will now be the orderId (e.g., ORD-20250701-GEN-MAN-0001)
+      ...data 
+    });
   } catch (error) {
     handleError(res, error);
   }
@@ -128,8 +135,8 @@ const createOrder = async (req, res) => {
     const user = token ? await getUserFromToken(token) : null;
 
     const orderData = {
-      id: orderId,
-      customerId: sanitizeString(customerId),
+      orderId: orderId,  // Structured order ID like "ORD-20250701-GEN-MAN-0001"
+      customerId: sanitizeString(customerId), // Real customer ID from form
       customerName: sanitizeString(customerName),
       customerEmail: sanitizeString(customerEmail),
       serviceId: sanitizeString(serviceId),
@@ -148,9 +155,14 @@ const createOrder = async (req, res) => {
       createdByEmail: user ? user.email : 'system'
     };
 
-    const docRef = await db.collection('orders').add(orderData);
+    // Use orderId as document name instead of auto-generated ID
+    await db.collection('orders').doc(orderId).set(orderData);
 
-    handleResponse(res, { id: docRef.id, ...orderData }, 201);
+    // Return response with orderId as the main ID
+    handleResponse(res, { 
+      id: orderId,
+      ...orderData 
+    }, 201);
   } catch (error) {
     handleError(res, error);
   }
@@ -181,7 +193,11 @@ const updateOrder = async (orderId, req, res) => {
     await db.collection('orders').doc(orderId).update(updateData);
 
     const updatedDoc = await db.collection('orders').doc(orderId).get();
-    handleResponse(res, { id: orderId, ...updatedDoc.data() });
+    const data = updatedDoc.data();
+    handleResponse(res, { 
+      id: orderId,  // This will now be the orderId (e.g., ORD-20250701-GEN-MAN-0001)
+      ...data 
+    });
   } catch (error) {
     handleError(res, error);
   }
@@ -200,6 +216,107 @@ const deleteOrder = async (orderId, req, res) => {
     await db.collection('orders').doc(orderId).delete();
     handleResponse(res, { message: 'Order deleted successfully' });
   } catch (error) {
+    handleError(res, error);
+  }
+};
+
+// POST /orders/migrate - Migrate existing orders to new structure
+const migrateOrders = async (req, res) => {
+  try {
+    const db = getDb();
+    console.log('🔄 Starting orders migration...');
+    
+    // Get all existing orders
+    const ordersSnapshot = await db.collection('orders').get();
+    
+    if (ordersSnapshot.empty) {
+      return handleResponse(res, { 
+        message: 'No orders found to migrate.',
+        migratedCount: 0 
+      });
+    }
+
+    console.log(`📊 Found ${ordersSnapshot.size} orders to migrate.`);
+    
+    const batch = db.batch();
+    const migrationResults = [];
+    
+    ordersSnapshot.forEach((doc) => {
+      const data = doc.data();
+      const oldDocId = doc.id;
+      
+              // Check if this order needs migration (missing 'orderId' field or has old 'id' field)
+        if (data.id || !data.orderId) {
+          const orderId = data.id || oldDocId; // Use data.id if exists, otherwise use document ID
+          
+          // Prepare new data structure
+          const newData = {
+            ...data,
+            orderId: orderId, // Add orderId field
+            // Keep original customerId, don't overwrite it
+          };
+          
+          // Remove the old 'id' field if it exists
+          if (newData.id) {
+            delete newData.id;
+          }
+          
+          // If orderId is different from document ID, create new document
+          if (oldDocId !== orderId) {
+            // Create new document with orderId as document name
+            const newDocRef = db.collection('orders').doc(orderId);
+            batch.set(newDocRef, newData);
+            
+            // Delete old document
+            batch.delete(doc.ref);
+            
+            migrationResults.push({
+              oldDocId,
+              newDocId: orderId,
+              orderId: orderId,
+              customerId: data.customerId,
+              action: 'moved_document'
+            });
+            
+            console.log(`📝 Moving document: ${oldDocId} -> ${orderId}`);
+          } else {
+            // Just update the existing document with orderId field
+            batch.update(doc.ref, { orderId: orderId });
+            
+            migrationResults.push({
+              oldDocId,
+              newDocId: oldDocId,
+              orderId: orderId,
+              customerId: data.customerId,
+              action: 'added_orderId'
+            });
+            
+            console.log(`📝 Adding orderId to existing document: ${oldDocId}`);
+          }
+      } else {
+        console.log(`⚠️  Order ${oldDocId} already has correct structure, skipping.`);
+      }
+    });
+    
+    if (migrationResults.length > 0) {
+      // Execute batch operation
+      await batch.commit();
+      console.log(`✅ Successfully migrated ${migrationResults.length} orders.`);
+      
+      handleResponse(res, {
+        message: `Successfully migrated ${migrationResults.length} orders.`,
+        migratedCount: migrationResults.length,
+        results: migrationResults
+      });
+    } else {
+      handleResponse(res, {
+        message: 'All orders already have correct structure.',
+        migratedCount: 0
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
     handleError(res, error);
   }
 };
