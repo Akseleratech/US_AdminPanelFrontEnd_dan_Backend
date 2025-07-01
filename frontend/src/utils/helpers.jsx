@@ -69,31 +69,50 @@ export const parseOrderId = (orderId) => {
   if (!orderId || !orderId.startsWith('ORD-')) {
     return null;
   }
-  
+
   const parts = orderId.split('-');
-  if (parts.length !== 5) {
-    return null;
-  }
-  
-  const [prefix, date, serviceType, source, sequence] = parts;
-  
-  // Format date for display
-  const year = date.substring(0, 4);
-  const month = date.substring(4, 6);
-  const day = date.substring(6, 8);
-  const formattedDate = `${day}/${month}/${year}`;
-  
-  return {
-    prefix,
-    date,
-    formattedDate,
-    serviceType,
-    serviceTypeLabel: getServiceTypeLabel(serviceType),
-    source,
-    sourceLabel: source === 'APP' ? 'Mobile App' : 'Manual/CRM',
-    sequence,
-    full: orderId
+
+  // Format date helper
+  const formatDate = (dateStr) => {
+    const year = dateStr.substring(0, 4);
+    const month = dateStr.substring(4, 6);
+    const day = dateStr.substring(6, 8);
+    return `${day}/${month}/${year}`;
   };
+
+  // Old format (5 parts with service type)
+  if (parts.length === 5) {
+    const [prefix, date, serviceType, source, sequence] = parts;
+    return {
+      prefix,
+      date,
+      formattedDate: formatDate(date),
+      serviceType,
+      serviceTypeLabel: getServiceTypeLabel(serviceType),
+      source,
+      sourceLabel: source === 'APP' ? 'Mobile App' : 'Manual/CRM',
+      sequence,
+      full: orderId
+    };
+  }
+
+  // New format (4 parts without service type)
+  if (parts.length === 4) {
+    const [prefix, date, source, sequence] = parts;
+    return {
+      prefix,
+      date,
+      formattedDate: formatDate(date),
+      serviceType: null,
+      serviceTypeLabel: null,
+      source,
+      sourceLabel: source === 'APP' ? 'Mobile App' : 'Manual/CRM',
+      sequence,
+      full: orderId
+    };
+  }
+
+  return null;
 };
 
 // Get color classes for service type badges

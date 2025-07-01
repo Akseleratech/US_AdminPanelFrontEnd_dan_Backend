@@ -113,8 +113,6 @@ const createOrder = async (req, res) => {
       customerId,
       customerName, 
       customerEmail, 
-      serviceId,
-      serviceName,
       spaceId, 
       spaceName, 
       amount, 
@@ -125,10 +123,11 @@ const createOrder = async (req, res) => {
       source = 'manual'
     } = req.body;
 
-    validateRequired(req.body, ['customerId', 'customerName', 'serviceId', 'serviceName', 'spaceId', 'amount', 'startDate', 'endDate']);
+    // Validate required fields (service fields are now optional)
+    validateRequired(req.body, ['customerId', 'customerName', 'spaceId', 'amount', 'startDate', 'endDate']);
 
-    // Generate structured OrderID
-    const orderId = await generateStructuredOrderId(serviceName, source);
+    // Generate structured OrderID (service type removed)
+    const orderId = await generateStructuredOrderId(source);
 
     // Get user info from auth token if available
     const token = verifyAuthToken(req);
@@ -139,8 +138,6 @@ const createOrder = async (req, res) => {
       customerId: sanitizeString(customerId), // Real customer ID from form
       customerName: sanitizeString(customerName),
       customerEmail: sanitizeString(customerEmail),
-      serviceId: sanitizeString(serviceId),
-      serviceName: sanitizeString(serviceName),
       spaceId: sanitizeString(spaceId),
       spaceName: sanitizeString(spaceName || ''),
       amount: parseFloat(amount),

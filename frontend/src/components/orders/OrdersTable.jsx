@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Edit, Trash2, Calendar, MapPin } from 'lucide-react';
+import { Edit, Trash2, Calendar, MapPin } from 'lucide-react';
 import { 
   getStatusColor, 
   getStatusIcon, 
@@ -36,7 +36,11 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
       <div className="space-y-1">
         {/* Main ID Display */}
         <div className="font-mono text-sm font-medium text-gray-900" title={parsed.full}>
-          {parsed.prefix}-{parsed.date}-{parsed.serviceType}-{parsed.source}-{parsed.sequence}
+          {parsed.serviceType ? (
+            `${parsed.prefix}-${parsed.date}-${parsed.serviceType}-${parsed.source}-${parsed.sequence}`
+          ) : (
+            `${parsed.prefix}-${parsed.date}-${parsed.source}-${parsed.sequence}`
+          )}
         </div>
         
         {/* Badges */}
@@ -49,13 +53,15 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
             {parsed.formattedDate}
           </span>
           
-          {/* Service Type Badge */}
-          <span 
-            className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${getServiceTypeColor(parsed.serviceType)}`}
-            title={`Tipe Layanan: ${parsed.serviceTypeLabel}`}
-          >
-            {parsed.serviceType}
-          </span>
+          {/* Service Type Badge (show only if present) */}
+          {parsed.serviceType && (
+            <span 
+              className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${getServiceTypeColor(parsed.serviceType)}`}
+              title={`Tipe Layanan: ${parsed.serviceTypeLabel}`}
+            >
+              {parsed.serviceType}
+            </span>
+          )}
           
           {/* Source Badge */}
           <span 
@@ -77,7 +83,6 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[200px]">Order ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[180px]">Customer</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[150px]">Service</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[180px]">Space</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Amount</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Status</th>
@@ -103,13 +108,6 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
                       <div className="text-xs text-gray-500 truncate" title={order.customerEmail}>
                         {order.customerEmail}
                       </div>
-                    </div>
-                  </td>
-
-                  {/* Service */}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="truncate max-w-[130px]" title={order.serviceName || order.service}>
-                      {order.serviceName || order.service}
                     </div>
                   </td>
 
@@ -178,7 +176,7 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan="7" className="px-6 py-8 text-center text-sm text-gray-500">
                   <div className="flex flex-col items-center justify-center">
                     <div className="text-gray-400 text-lg mb-2">📦</div>
                     <p className="text-gray-500 font-medium">No orders found</p>

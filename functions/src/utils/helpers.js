@@ -215,8 +215,8 @@ const getServiceTypeLabel = (serviceType) => {
   return labels[serviceType] || serviceType;
 };
 
-// Generate structured OrderID: ORD-YYYYMMDD-SVC-SRC-XXXX
-const generateStructuredOrderId = async (serviceName, source = 'manual') => {
+// Generate structured OrderID: ORD-YYYYMMDD-SRC-XXXX (service type removed)
+const generateStructuredOrderId = async (source = 'manual') => {
   const db = getDb();
   const now = new Date();
   
@@ -225,9 +225,6 @@ const generateStructuredOrderId = async (serviceName, source = 'manual') => {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   const dateStr = `${year}${month}${day}`;
-  
-  // Get service type code
-  const serviceCode = getServiceTypeCode(serviceName);
   
   // Get source code
   const sourceCode = source === 'mobile' || source === 'app' ? 'APP' : 'MAN';
@@ -245,7 +242,7 @@ const generateStructuredOrderId = async (serviceName, source = 'manual') => {
     }
     
     const sequenceStr = String(sequence).padStart(4, '0');
-    const orderId = `ORD-${dateStr}-${serviceCode}-${sourceCode}-${sequenceStr}`;
+    const orderId = `ORD-${dateStr}-${sourceCode}-${sequenceStr}`;
     
     // Update counter
     transaction.set(counterRef, {
@@ -259,29 +256,45 @@ const generateStructuredOrderId = async (serviceName, source = 'manual') => {
   });
 };
 
-// Parse structured OrderID components
+// Parse structured OrderID components (supports old 5-part and new 4-part format)
 const parseOrderId = (orderId) => {
   if (!orderId || !orderId.startsWith('ORD-')) {
     return null;
   }
-  
+
   const parts = orderId.split('-');
-  if (parts.length !== 5) {
-    return null;
+
+  // Old format: ORD-YYYYMMDD-SVC-SRC-XXXX (5 parts)
+  if (parts.length === 5) {
+    const [prefix, date, serviceType, source, sequence] = parts;
+    return {
+      prefix,
+      date,
+      serviceType,
+      serviceTypeLabel: getServiceTypeLabel(serviceType),
+      source,
+      sourceLabel: source === 'APP' ? 'Mobile App' : 'Manual/CRM',
+      sequence,
+      full: orderId
+    };
   }
-  
-  const [prefix, date, serviceType, source, sequence] = parts;
-  
-  return {
-    prefix,
-    date,
-    serviceType,
-    serviceTypeLabel: getServiceTypeLabel(serviceType),
-    source,
-    sourceLabel: source === 'APP' ? 'Mobile App' : 'Manual/CRM',
-    sequence,
-    full: orderId
-  };
+
+  // New format: ORD-YYYYMMDD-SRC-XXXX (4 parts)
+  if (parts.length === 4) {
+    const [prefix, date, source, sequence] = parts;
+    return {
+      prefix,
+      date,
+      serviceType: null,
+      serviceTypeLabel: null,
+      source,
+      sourceLabel: source === 'APP' ? 'Mobile App' : 'Manual/CRM',
+      sequence,
+      full: orderId
+    };
+  }
+
+  return null;
 };
 
 module.exports = {
