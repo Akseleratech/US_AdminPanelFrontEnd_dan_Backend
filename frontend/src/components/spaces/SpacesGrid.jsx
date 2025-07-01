@@ -66,6 +66,16 @@ const SpacesGrid = ({
   };
 
   const getEffectiveStatus = (space) => {
+    // If space is booked by an active order
+    if (space.isBooked) {
+      return {
+        text: 'Booked',
+        className: 'bg-blue-100 text-blue-800',
+        icon: '📅',
+        priority: 'booking'
+      };
+    }
+
     // If space is manually deactivated by admin
     if (!space.isActive) {
       return {

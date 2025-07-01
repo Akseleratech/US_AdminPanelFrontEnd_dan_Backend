@@ -7,8 +7,28 @@ import {
   getServiceTypeColor, 
   getSourceColor 
 } from '../../utils/helpers.jsx';
+import useSpaces from '../../hooks/useSpaces';
+import useLayanan from '../../hooks/useLayanan';
 
 const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
+  const { spaces, loading: spacesLoading } = useSpaces();
+  const { layananList } = useLayanan();
+
+  const layananMap = {};
+  if (Array.isArray(layananList)) {
+    layananList.forEach((lay) => {
+      if (lay && lay.id) {
+        layananMap[lay.id] = lay.name;
+      }
+    });
+  }
+
+  const getLayananName = (spaceId) => {
+    const space = spaces?.find((s) => s.id === spaceId);
+    if (!space) return '-';
+    return layananMap[space.category] || space.category || '-';
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('id-ID');
@@ -84,6 +104,7 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[200px]">Order ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[180px]">Customer</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[180px]">Space</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[140px]">Layanan</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Amount</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[200px]">Date Range</th>
@@ -121,6 +142,11 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
                         </span>
                       </div>
                     </div>
+                  </td>
+
+                  {/* Layanan */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {spacesLoading ? '-' : getLayananName(order.spaceId)}
                   </td>
 
                   {/* Amount */}
@@ -176,7 +202,7 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
               ))
             ) : (
               <tr>
-                <td colSpan="7" className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan="8" className="px-6 py-8 text-center text-sm text-gray-500">
                   <div className="flex flex-col items-center justify-center">
                     <div className="text-gray-400 text-lg mb-2">📦</div>
                     <p className="text-gray-500 font-medium">No orders found</p>

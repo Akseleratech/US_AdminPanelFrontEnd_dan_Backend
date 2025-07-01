@@ -213,39 +213,39 @@ const Spaces = () => {
     return 'active';
   };
 
-  // Statistics calculations based on effective status
-  const effectivelyActiveSpaces = filteredSpaces.filter(s => getEffectiveStatus(s) === 'active');
-  const effectivelyInactiveSpaces = filteredSpaces.filter(s => getEffectiveStatus(s) === 'inactive');
-  const totalCapacity = filteredSpaces.reduce((total, space) => total + (parseInt(space.capacity) || 0), 0);
+  // Calculate booked spaces and active orders once
+  // Only confirmed and active orders should make spaces booked
+  const bookedStatuses = ['confirmed', 'active'];
+  const activeOrders = orders.filter(order => bookedStatuses.includes(order.status?.toLowerCase()));
+
+  const orderBookedSpaceIds = [...new Set(activeOrders.map(order => order.spaceId))];
+
+  // Also include spaces explicitly marked as isBooked (failsafe)
+  const flagBookedSpaceIds = filteredSpaces.filter(s => s.isBooked).map(s => s.id || s.spaceId);
+
+  const bookedSpaceIds = [...new Set([...orderBookedSpaceIds, ...flagBookedSpaceIds])];
+
+  const bookedSpacesCount = filteredSpaces.filter(space =>
+    bookedSpaceIds.includes(space.id) || bookedSpaceIds.includes(space.spaceId)
+  ).length;
+
+  const bookedSpacesInfo = {
+    bookedSpaceIds,
+    count: bookedSpacesCount,
+    totalActiveOrders: activeOrders.length
+  };
+
+  // Statistics calculations based on effective status (exclude booked)
+  const effectivelyActiveSpaces = filteredSpaces.filter(s => 
+    getEffectiveStatus(s) === 'active' && 
+    !bookedSpaceIds.includes(s.id) && !bookedSpaceIds.includes(s.spaceId)
+  );
 
   // More detailed breakdown
   const manuallyDeactivatedSpaces = filteredSpaces.filter(s => !s.isActive);
   const outsideOperationalHours = filteredSpaces.filter(s => 
     s.isActive && s.operationalStatus && !s.operationalStatus.isOperational
   );
-
-  // Calculate booked spaces from orders
-  const getBookedSpaces = () => {
-    const activeStatuses = ['confirmed', 'ongoing', 'active', 'in-progress', 'pending'];
-    const activeOrders = orders.filter(order => 
-      activeStatuses.includes(order.status?.toLowerCase())
-    );
-    
-    // Get unique space IDs that are currently booked
-    const bookedSpaceIds = [...new Set(activeOrders.map(order => order.spaceId))];
-    
-    // Count how many of our filtered spaces are currently booked
-    const bookedSpacesCount = filteredSpaces.filter(space => 
-      bookedSpaceIds.includes(space.id) || bookedSpaceIds.includes(space.spaceId)
-    ).length;
-    
-    return {
-      count: bookedSpacesCount,
-      totalActiveOrders: activeOrders.length
-    };
-  };
-
-  const bookedSpacesInfo = getBookedSpaces();
 
   if (loading || layananLoading || buildingsLoading || ordersLoading) {
     return (

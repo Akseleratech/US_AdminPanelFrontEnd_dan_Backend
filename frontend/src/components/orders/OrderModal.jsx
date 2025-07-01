@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, User, MapPin, DollarSign } from 'lucide-react';
+import { X, Calendar, User, MapPin } from 'lucide-react';
 import useCustomers from '../../hooks/useCustomers';
 import useSpaces from '../../hooks/useSpaces';
 
@@ -13,7 +13,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     customerEmail: '',
     spaceId: '',
     spaceName: '',
-    amount: '',
+    amount: 0,
     startDate: '',
     endDate: '',
     status: 'pending',
@@ -46,7 +46,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           customerEmail: editingOrder.customerEmail || '',
           spaceId: editingOrder.spaceId || '',
           spaceName: editingOrder.spaceName || '',
-          amount: editingOrder.amount || '',
+          amount: editingOrder.amount || 0,
           startDate: formatDateForInput(editingOrder.startDate),
           endDate: formatDateForInput(editingOrder.endDate),
           status: editingOrder.status || 'pending',
@@ -59,7 +59,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           customerEmail: '',
           spaceId: '',
           spaceName: '',
-          amount: '',
+          amount: 0,
           startDate: '',
           endDate: '',
           status: 'pending',
@@ -100,21 +100,50 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
 
   const handleSpaceChange = (e) => {
     const spaceId = e.target.value;
-    const selectedSpace = spaces.find(s => s.id === spaceId);
-    
-    setFormData(prev => ({
+    const selectedSpace = spaces.find((s) => s.id === spaceId);
+
+    setFormData((prev) => ({
       ...prev,
       spaceId,
       spaceName: selectedSpace ? selectedSpace.name : ''
     }));
   };
 
+  // Helper to calculate total amount based on daily rate & date range
+  const calculateTotalAmount = (spaceId, startDate, endDate) => {
+    if (!spaceId) return 0;
+    const space = spaces.find((s) => s.id === spaceId);
+    if (!space) return 0;
+
+    const dailyRate = space.pricing?.daily ?? 0;
+    if (!dailyRate) return 0;
+
+    // If date range incomplete, return daily rate (as placeholder)
+    if (!startDate || !endDate) return dailyRate;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return dailyRate;
+
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+    const diffDays = Math.floor((end - start) / MS_PER_DAY) + 1; // inclusive count
+    return diffDays * dailyRate;
+  };
+
+  // Recalculate amount whenever space or dates change
+  useEffect(() => {
+    const newAmount = calculateTotalAmount(formData.spaceId, formData.startDate, formData.endDate);
+    setFormData((prev) => {
+      if (prev.amount === newAmount) return prev;
+      return { ...prev, amount: newAmount };
+    });
+  }, [formData.spaceId, formData.startDate, formData.endDate, spaces]);
+
   const validateForm = () => {
     const newErrors = {};
 
     if (!formData.customerId) newErrors.customerId = 'Customer is required';
     if (!formData.spaceId) newErrors.spaceId = 'Space is required';
-    if (!formData.amount) newErrors.amount = 'Amount is required';
     if (!formData.startDate) newErrors.startDate = 'Start date is required';
     if (!formData.endDate) newErrors.endDate = 'End date is required';
     
@@ -122,10 +151,6 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       if (new Date(formData.startDate) >= new Date(formData.endDate)) {
         newErrors.endDate = 'End date must be after start date';
       }
-    }
-
-    if (formData.amount && isNaN(formData.amount)) {
-      newErrors.amount = 'Amount must be a number';
     }
 
     setErrors(newErrors);
@@ -141,7 +166,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     try {
       const orderData = {
         ...formData,
-        amount: parseFloat(formData.amount),
+        amount: parseFloat(formData.amount || 0),
         startDate: new Date(formData.startDate).toISOString(),
         endDate: new Date(formData.endDate).toISOString(),
         source: 'manual' // Menandakan bahwa order ini dibuat manual
@@ -260,25 +285,6 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
               />
               {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
             </div>
-          </div>
-
-          {/* Amount */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              <DollarSign className="w-4 h-4 inline mr-1" />
-              Amount (Rp) *
-            </label>
-            <input
-              type="number"
-              name="amount"
-              value={formData.amount}
-              onChange={handleInputChange}
-              placeholder="0"
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                errors.amount ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-            {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
           </div>
 
           {/* Status */}

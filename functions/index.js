@@ -100,4 +100,50 @@ exports.updateSpacesOperationalStatus = onSchedule({
     console.error('❌ Scheduled update failed:', error);
     throw error;
   }
+});
+
+// Scheduled function to update order statuses based on dates every 15 minutes
+exports.updateOrderStatuses = onSchedule({
+  schedule: "*/15 * * * *", // Every 15 minutes
+  timeZone: "Asia/Jakarta",
+  memory: "256MiB",
+  timeoutSeconds: 300
+}, async (event) => {
+  console.log('🕐 Scheduled update of order statuses started');
+  
+  try {
+    // Import the function from orders.js
+    const { updateOrderStatuses } = require("./src/orders");
+    
+    const updatedCount = await updateOrderStatuses();
+    console.log(`✅ Scheduled order status update completed: ${updatedCount.active} orders set to active, ${updatedCount.completed} orders completed`);
+    
+    return { success: true, updatedCount };
+  } catch (error) {
+    console.error('❌ Scheduled order status update failed:', error);
+    throw error;
+  }
+});
+
+// Scheduled function to fix spaces booking status daily
+exports.fixSpacesBookingStatus = onSchedule({
+  schedule: "0 0 * * *", // Every day at midnight
+  timeZone: "Asia/Jakarta",
+  memory: "256MiB",
+  timeoutSeconds: 300
+}, async (event) => {
+  console.log('🕐 Scheduled fix of spaces booking status started');
+  
+  try {
+    // Import the function from orders.js
+    const { fixSpacesBookingStatus } = require("./src/orders");
+    
+    const result = await fixSpacesBookingStatus();
+    console.log(`✅ Scheduled spaces booking status fix completed: ${result.fixed} spaces fixed`);
+    
+    return { success: true, fixed: result.fixed };
+  } catch (error) {
+    console.error('❌ Scheduled spaces booking status fix failed:', error);
+    throw error;
+  }
 }); 
