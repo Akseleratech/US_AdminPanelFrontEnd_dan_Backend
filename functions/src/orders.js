@@ -61,9 +61,16 @@ const getAllOrders = async (req, res) => {
 
     snapshot.forEach(doc => {
       const data = doc.data();
+      
+      // Ensure date fields are serialized as ISO strings
+      const startDate = data.startDate && data.startDate.toDate ? data.startDate.toDate().toISOString() : data.startDate;
+      const endDate = data.endDate && data.endDate.toDate ? data.endDate.toDate().toISOString() : data.endDate;
+
       orders.push({
         id: doc.id,  // This will now be the orderId (e.g., ORD-20250701-GEN-MAN-0001)
-        ...data
+        ...data,
+        startDate,
+        endDate
       });
     });
 
@@ -96,9 +103,14 @@ const getOrderById = async (orderId, req, res) => {
     }
 
     const data = doc.data();
+    
+    const startDate = data.startDate && data.startDate.toDate ? data.startDate.toDate().toISOString() : data.startDate;
+    const endDate = data.endDate && data.endDate.toDate ? data.endDate.toDate().toISOString() : data.endDate;
     handleResponse(res, { 
       id: doc.id,  // This will now be the orderId (e.g., ORD-20250701-GEN-MAN-0001)
-      ...data 
+      ...data,
+      startDate,
+      endDate
     });
   } catch (error) {
     handleError(res, error);
