@@ -88,7 +88,6 @@ function sanitizeCustomerData(data) {
 
   // Optional fields
   if (data.phone) sanitized.phone = sanitizeString(data.phone);
-  if (data.address) sanitized.address = sanitizeString(data.address);
   if (data.dateOfBirth) sanitized.dateOfBirth = data.dateOfBirth;
   if (data.notes) sanitized.notes = sanitizeString(data.notes);
   if (data.tags && Array.isArray(data.tags)) sanitized.tags = data.tags;

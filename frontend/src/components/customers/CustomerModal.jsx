@@ -7,7 +7,6 @@ const CustomerModal = ({ isOpen, onClose, onSave, customer, mode = 'add' }) => {
     email: '',
     phone: '',
     company: '',
-    address: '',
     dateOfBirth: '',
     photo: null,
     isActive: true
@@ -24,7 +23,6 @@ const CustomerModal = ({ isOpen, onClose, onSave, customer, mode = 'add' }) => {
         email: customer.email || '',
         phone: customer.phone || '',
         company: customer.company || '',
-        address: customer.address || '',
         dateOfBirth: customer.dateOfBirth || '',
         photo: null,
         isActive: customer.isActive !== undefined ? customer.isActive : true
@@ -36,7 +34,6 @@ const CustomerModal = ({ isOpen, onClose, onSave, customer, mode = 'add' }) => {
         email: '',
         phone: '',
         company: '',
-        address: '',
         dateOfBirth: '',
         photo: null,
         isActive: true
@@ -271,22 +268,6 @@ const CustomerModal = ({ isOpen, onClose, onSave, customer, mode = 'add' }) => {
             {/* Additional Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-gray-900">Informasi Tambahan</h3>
-
-              {/* Address */}
-              <div>
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                  Alamat
-                </label>
-                <textarea
-                  id="address"
-                  name="address"
-                  rows={3}
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Alamat lengkap customer"
-                />
-              </div>
 
               {/* Date of Birth */}
               <div>
