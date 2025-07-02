@@ -86,8 +86,9 @@ const validateSpaceData = (data, isUpdate = false) => {
 
   // Pricing validation if provided
   if (data.pricing) {
-    const { hourly, daily, monthly } = data.pricing;
+    const { hourly, halfday, daily, monthly } = data.pricing;
     if (hourly && (isNaN(hourly) || hourly < 0)) errors.push('Hourly rate must be a non-negative number');
+    if (halfday && (isNaN(halfday) || halfday < 0)) errors.push('Half-day rate must be a non-negative number');
     if (daily && (isNaN(daily) || daily < 0)) errors.push('Daily rate must be a non-negative number');
     if (monthly && (isNaN(monthly) || monthly < 0)) errors.push('Monthly rate must be a non-negative number');
   }
@@ -149,6 +150,7 @@ const sanitizeSpaceData = (data) => {
   if (data.pricing) {
     sanitized.pricing = {
       hourly: data.pricing.hourly ? parseFloat(data.pricing.hourly) : null,
+      halfday: data.pricing.halfday ? parseFloat(data.pricing.halfday) : null,
       daily: data.pricing.daily ? parseFloat(data.pricing.daily) : null,
       monthly: data.pricing.monthly ? parseFloat(data.pricing.monthly) : null,
       currency: data.pricing.currency || 'IDR'
@@ -440,6 +442,7 @@ const createSpace = async (req, res) => {
       },
       pricing: sanitizedData.pricing || {
         hourly: null,
+        halfday: null,
         daily: null,
         monthly: null,
         currency: 'IDR'

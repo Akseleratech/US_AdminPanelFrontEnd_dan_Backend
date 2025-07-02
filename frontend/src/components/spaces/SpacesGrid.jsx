@@ -66,37 +66,27 @@ const SpacesGrid = ({
   };
 
   const getEffectiveStatus = (space) => {
-    // If space is booked by an active order
-    if (space.isBooked) {
-      return {
-        text: 'Booked',
-        className: 'bg-blue-100 text-blue-800',
-        icon: '📅',
-        priority: 'booking'
-      };
-    }
-
-    // If space is manually deactivated by admin
+    // 1) Nonaktif manual (manual inactive)
     if (!space.isActive) {
       return {
-        text: 'Inactive',
+        text: 'Nonaktif Manual',
         className: 'bg-red-100 text-red-800',
         icon: '🔴',
         priority: 'manual'
       };
     }
 
-    // If space is active but outside operational hours
+    // 2) Tutup sementara (outside operational hours)
     if (space.operationalStatus && !space.operationalStatus.isOperational) {
       return {
-        text: 'Tutup',
+        text: 'Tutup Sementara',
         className: 'bg-orange-100 text-orange-800',
         icon: '🟠',
         priority: 'operational'
       };
     }
 
-    // If space is active and within operational hours
+    // 3) Beroperasi (operational). If the space is booked, it still remains in this status
     return {
       text: 'Beroperasi',
       className: 'bg-green-100 text-green-800',
@@ -169,12 +159,16 @@ const SpacesGrid = ({
             )}
 
             {/* Pricing */}
-            <div className="grid grid-cols-3 gap-2 py-2 border-y border-primary-50">
+            <div className="grid grid-cols-4 gap-2 py-2 border-y border-primary-50">
               <div className="text-center">
                 <p className="text-xs text-primary-600 mb-1">Per Jam</p>
                 <p className="text-sm font-medium text-primary-800">{formatPrice(space.pricing?.hourly)}</p>
               </div>
               <div className="text-center border-x border-primary-50">
+                <p className="text-xs text-primary-600 mb-1">Per 1/2&nbsp;Hari</p>
+                <p className="text-sm font-medium text-primary-800">{formatPrice(space.pricing?.halfday)}</p>
+              </div>
+              <div className="text-center border-r border-primary-50">
                 <p className="text-xs text-primary-600 mb-1">Per Hari</p>
                 <p className="text-sm font-medium text-primary-800">{formatPrice(space.pricing?.daily)}</p>
               </div>

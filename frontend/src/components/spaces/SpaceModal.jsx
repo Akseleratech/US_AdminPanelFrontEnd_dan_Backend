@@ -24,6 +24,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     },
     pricing: {
       hourly: '',
+      halfday: '',
       daily: '',
       monthly: '',
       currency: 'IDR'
@@ -229,6 +230,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           },
           pricing: {
             hourly: space.pricing?.hourly || '',
+            halfday: space.pricing?.halfday || '',
             daily: space.pricing?.daily || '',
             monthly: space.pricing?.monthly || '',
             currency: space.pricing?.currency || 'IDR'
@@ -257,6 +259,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           },
           pricing: {
             hourly: '',
+            halfday: '',
             daily: '',
             monthly: '',
             currency: 'IDR'
@@ -362,6 +365,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
         },
         pricing: {
           hourly: formData.pricing.hourly ? parseFloat(formData.pricing.hourly) : null,
+          halfday: formData.pricing.halfday ? parseFloat(formData.pricing.halfday) : null,
           daily: formData.pricing.daily ? parseFloat(formData.pricing.daily) : null,
           monthly: formData.pricing.monthly ? parseFloat(formData.pricing.monthly) : null,
           currency: formData.pricing.currency
@@ -624,7 +628,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Pricing</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Currency
@@ -649,6 +653,22 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                   type="number"
                   name="pricing.hourly"
                   value={formData.pricing.hourly}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Halfday Rate
+                </label>
+                <input
+                  type="number"
+                  name="pricing.halfday"
+                  value={formData.pricing.halfday}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                   placeholder="0.00"
