@@ -3,6 +3,7 @@ import { Search, Filter, Plus, RefreshCw } from 'lucide-react';
 import OrdersTable from './OrdersTable';
 import OrderModal from './OrderModal';
 import { ordersAPI } from '../../services/api.jsx';
+import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -11,6 +12,9 @@ const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
+
+  // Global refresh context
+  const { triggerRefresh } = useGlobalRefresh();
 
   // Fetch orders
   const fetchOrders = async () => {
@@ -56,6 +60,7 @@ const Orders = () => {
         await ordersAPI.create(orderData);
       }
       fetchOrders(); // Refresh data
+      triggerRefresh('orders'); // Notify other components about orders change
     } catch (error) {
       throw error; // Let modal handle the error
     }
@@ -66,6 +71,7 @@ const Orders = () => {
       try {
         await ordersAPI.delete(orderId);
         fetchOrders(); // Refresh data
+        triggerRefresh('orders'); // Notify other components about orders change
       } catch (error) {
         console.error('Error deleting order:', error);
         alert('Failed to delete order');

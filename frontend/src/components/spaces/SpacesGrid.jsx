@@ -1,10 +1,11 @@
 import React from 'react';
-import { Edit, Trash2, LayoutGrid, Building, Users, Tag, CheckSquare, DollarSign, Clock, Power } from 'lucide-react';
+import { Edit, Trash2, LayoutGrid, Building, Users, Tag, CheckSquare, DollarSign, Clock, Power, Calendar, User } from 'lucide-react';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 const SpacesGrid = ({ 
   spaces, 
   loading, 
+  orders = [],
   onEdit, 
   onDelete, 
   onToggleActive,
@@ -95,10 +96,76 @@ const SpacesGrid = ({
     };
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Helper function to get booking information for a space
+  const getSpaceBookings = (spaceId) => {
+    if (!orders || !Array.isArray(orders)) {
+      console.log('🔍 [Debug] No orders data or not array:', { orders, spaceId });
+      return [];
+    }
+    
+    console.log('🔍 [Debug] getSpaceBookings called for space:', spaceId);
+    console.log('🔍 [Debug] Total orders available:', orders.length);
+    console.log('🔍 [Debug] All orders:', orders);
+    
+    // Filter orders for this space with confirmed or active status
+    const bookedStatuses = ['confirmed', 'active'];
+    
+    // First, find orders for this space (regardless of status)
+    const ordersForSpace = orders.filter(order => {
+      const isMatch = order.spaceId === spaceId;
+      console.log('🔍 [Debug] Checking order:', {
+        orderId: order.id || order.orderId,
+        orderSpaceId: order.spaceId,
+        targetSpaceId: spaceId,
+        isMatch,
+        status: order.status
+      });
+      return isMatch;
+    });
+    
+    console.log('🔍 [Debug] Orders for space', spaceId, ':', ordersForSpace);
+    
+    // Then filter by status
+    const validBookings = ordersForSpace.filter(order => {
+      const statusMatch = bookedStatuses.includes(order.status?.toLowerCase());
+      console.log('🔍 [Debug] Status check:', {
+        orderId: order.id || order.orderId,
+        status: order.status,
+        statusLower: order.status?.toLowerCase(),
+        bookedStatuses,
+        statusMatch
+      });
+      return statusMatch;
+    });
+    
+    console.log('🔍 [Debug] Valid bookings for space', spaceId, ':', validBookings);
+    
+    return validBookings.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)); // Sort by start date
+  };
+
+  // Debug logging for spaces and orders
+  console.log('🔍 [Debug] SpacesGrid render - spaces:', spaces);
+  console.log('🔍 [Debug] SpacesGrid render - orders:', orders);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {spaces.map((space) => (
-        <div key={space.id} className="bg-white border border-primary-100 hover:shadow-lg transition-all duration-300">
+      {spaces.map((space) => {
+        console.log('🔍 [Debug] Rendering space:', {
+          id: space.id,
+          name: space.name,
+          spaceId: space.spaceId // in case it uses different field
+        });
+        return (
+          <div key={space.id} className="bg-white border border-primary-100 hover:shadow-lg transition-all duration-300">
           {/* Header */}
           <div className="border-b border-primary-100">
             <div className="p-4">
@@ -196,6 +263,65 @@ const SpacesGrid = ({
                 )}
               </div>
             </div>
+
+            {/* Booking Information */}
+            {(() => {
+              const bookings = getSpaceBookings(space.id);
+              if (bookings.length === 0) {
+                return (
+                  <div className="pt-3 border-t border-primary-100">
+                    <p className="text-xs text-primary-600 mb-2">Status Booking:</p>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <Calendar className="w-4 h-4 mr-1.5" />
+                      <span>Tidak ada booking aktif</span>
+                    </div>
+                    {/* Debug info when no bookings */}
+                    <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                      <div>🔍 Debug: Space ID = {space.id}</div>
+                      <div>🔍 Total orders = {orders?.length || 0}</div>
+                      <div>🔍 Orders for this space = {orders?.filter(o => o.spaceId === space.id)?.length || 0}</div>
+                      {orders?.filter(o => o.spaceId === space.id)?.map(o => (
+                        <div key={o.id}>🔍 Order {o.id}: status="{o.status}"</div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="pt-3 border-t border-primary-100">
+                  <p className="text-xs text-primary-600 mb-2">Booking Aktif ({bookings.length}):</p>
+                  <div className="space-y-2 max-h-24 overflow-y-auto">
+                    {bookings.map((booking, index) => (
+                      <div key={index} className="p-2 bg-blue-50 rounded text-xs">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center text-blue-700">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            <span className="font-medium">
+                              {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
+                            </span>
+                          </div>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                            booking.status === 'confirmed' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                          }`}>
+                            {booking.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center text-blue-600">
+                          <User className="w-3 h-3 mr-1" />
+                          <span>{booking.customerName || 'Unknown Customer'}</span>
+                        </div>
+                        {booking.orderId && (
+                          <div className="text-gray-500 mt-1">
+                            Order: {booking.orderId}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Actions */}
@@ -232,7 +358,8 @@ const SpacesGrid = ({
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

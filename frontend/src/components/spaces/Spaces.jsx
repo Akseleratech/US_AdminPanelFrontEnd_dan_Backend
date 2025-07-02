@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye, Calendar } from 'lucide-react';
+import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye, Calendar, RefreshCw } from 'lucide-react';
 import useSpaces from '../../hooks/useSpaces';
 import useLayanan from '../../hooks/useLayanan';
 import useBuildings from '../../hooks/useBuildings';
@@ -8,6 +8,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers';
 import { ordersAPI } from '../../services/api.jsx';
 import SpacesGrid from './SpacesGrid';
+import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext';
 
 const Spaces = () => {
   const {
@@ -29,6 +30,9 @@ const Spaces = () => {
     buildings,
     loading: buildingsLoading
   } = useBuildings();
+
+  // Global refresh context for listening to orders changes
+  const { refreshTriggers } = useGlobalRefresh();
 
   // Create a map of layanan IDs to names
   const layananMap = {};
@@ -72,15 +76,35 @@ const Spaces = () => {
   const fetchOrders = async () => {
     try {
       setOrdersLoading(true);
+      console.log('🔄 [Debug] Fetching orders...');
+      console.log('🔄 [Debug] Using ordersAPI.getAll()');
+      
       const response = await ordersAPI.getAll();
       
-      if (response?.orders) {
-        setOrders(response.orders);
-      } else {
-        setOrders([]);
+      console.log('🔍 [Debug] Full API response:', response);
+      console.log('🔍 [Debug] Response type:', typeof response);
+      console.log('🔍 [Debug] Response keys:', Object.keys(response || {}));
+      
+      // Use EXACT same extraction as Orders component
+      const ordersData = response.data?.orders || response.orders || [];
+      console.log('🔍 [Debug] Using Orders component extraction pattern');
+      console.log('🔍 [Debug] response.data?.orders:', response.data?.orders);
+      console.log('🔍 [Debug] response.orders:', response.orders);
+      console.log('🔍 [Debug] Final extracted orders:', ordersData);
+      console.log('🔍 [Debug] Orders count:', ordersData?.length || 0);
+      
+      if (ordersData.length > 0) {
+        console.log('✅ [Debug] Sample order:', ordersData[0]);
       }
+      
+      setOrders(ordersData);
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('❌ [Error] Error fetching orders:', error);
+      console.error('❌ [Error] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response
+      });
       setOrders([]);
     } finally {
       setOrdersLoading(false);
@@ -90,6 +114,14 @@ const Spaces = () => {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  // Listen to global refresh triggers for orders
+  useEffect(() => {
+    if (refreshTriggers.orders) {
+      console.log('🔄 Orders data changed, refreshing booking information...');
+      fetchOrders();
+    }
+  }, [refreshTriggers.orders]);
 
   // Filter spaces based on search term and filters
   const filteredSpaces = spaces.filter(space => {
@@ -285,6 +317,42 @@ const Spaces = () => {
           <h1 className="text-2xl font-bold text-gray-900">Spaces Management</h1>
           <p className="text-gray-600">Kelola ruang kerja dan fasilitas dalam gedung</p>
         </div>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchOrders}
+            disabled={ordersLoading}
+            className="flex items-center px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 transition-colors"
+            title="Refresh booking data"
+          >
+            <RefreshCw className={`w-4 h-4 mr-1 ${ordersLoading ? 'animate-spin' : ''}`} />
+            Refresh Booking
+          </button>
+          <button
+            onClick={async () => {
+              console.log('🔧 [Debug Test] Testing API call...');
+              try {
+                // Test the same call as Orders component
+                const response = await ordersAPI.getAll();
+                console.log('🔧 [Debug Test] Raw response:', response);
+                
+                // Test the same extraction as Orders component  
+                const ordersData = response.data?.orders || response.orders || [];
+                console.log('🔧 [Debug Test] Extracted like Orders component:', ordersData);
+                console.log('🔧 [Debug Test] Count:', ordersData.length);
+                
+                // Also test direct navigation to orders tab
+                alert(`Debug: Found ${ordersData.length} orders. Check console for details.`);
+              } catch (error) {
+                console.error('🔧 [Debug Test] Error:', error);
+                alert(`Debug Error: ${error.message}`);
+              }
+            }}
+            className="flex items-center px-3 py-2 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+            title="Debug API call"
+          >
+            🔧 Debug API
+          </button>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -443,6 +511,7 @@ const Spaces = () => {
       <SpacesGrid
         spaces={filteredSpaces}
         loading={loading || layananLoading}
+        orders={orders}
         onEdit={handleEditSpace}
         onDelete={handleDeleteSpace}
         onToggleActive={handleToggleActive}
