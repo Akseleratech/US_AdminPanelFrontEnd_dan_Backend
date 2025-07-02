@@ -134,6 +134,17 @@ const SpacesGrid = ({
       {spaces.map((space) => {
         return (
           <div key={space.id} className="bg-white border border-primary-100 hover:shadow-lg transition-all duration-300">
+          {/* Space Image */}
+          {space.images && space.images.length > 0 && (
+            <div className="h-48 w-full overflow-hidden">
+              <img
+                src={space.images[0]}
+                alt={space.name}
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+              />
+            </div>
+          )}
+          
           {/* Header */}
           <div className="border-b border-primary-100">
             <div className="p-4">

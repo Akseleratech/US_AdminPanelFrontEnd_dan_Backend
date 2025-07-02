@@ -125,7 +125,47 @@ export const spacesAPI = {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
-  delete: (id) => apiCall(`/spaces/${id}`, { method: 'DELETE' })
+  delete: (id) => apiCall(`/spaces/${id}`, { method: 'DELETE' }),
+  uploadImages: async (spaceId, imageFiles) => {
+    try {
+      console.log('🖼️ SpacesAPI: Uploading images for space:', spaceId);
+      
+      // Convert all files to base64
+      const imagePromises = imageFiles.map(async (file, index) => {
+        const base64 = await fileToBase64(file);
+        return {
+          data: base64,
+          name: file.name || `space_${spaceId}_${index}`
+        };
+      });
+      
+      const images = await Promise.all(imagePromises);
+      
+      const payload = { images };
+      
+      console.log('📤 SpacesAPI: Sending multiple image upload request');
+      const response = await apiCall(`/spaces/${spaceId}/upload-images`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      console.log('✅ SpacesAPI: Images uploaded successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('💥 SpacesAPI: Error uploading space images:', error);
+      throw new Error(error.message || 'Failed to upload images');
+    }
+  }
+};
+
+// Helper function to convert file to base64 (used by spacesAPI)
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 };
 
 // Cities API

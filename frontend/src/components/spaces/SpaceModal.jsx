@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Edit3 } from 'lucide-react';
-import { layananAPI, amenitiesAPI, buildingsAPI } from '../../services/api.jsx';
+import { X, Plus, Trash2, Edit3, Upload, Image } from 'lucide-react';
+import { layananAPI, amenitiesAPI, buildingsAPI, spacesAPI } from '../../services/api.jsx';
 import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext.jsx';
 
 const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
@@ -43,6 +43,12 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
   const { refreshTriggers } = useGlobalRefresh();
   
   const [amenitySearchTerm, setAmenitySearchTerm] = useState('');
+
+  // Image upload states
+  const [imageFiles, setImageFiles] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imageError, setImageError] = useState('');
 
   // Fallback layanan if no services available
   const fallbackLayanan = [
@@ -238,6 +244,13 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           amenities: space.amenities || [],
           isActive: space.isActive !== undefined ? space.isActive : true
         });
+        
+        // Set existing images if available
+        if (space.images && Array.isArray(space.images) && space.images.length > 0) {
+          setImagePreviews(space.images);
+        } else {
+          setImagePreviews([]);
+        }
       } else {
         setFormData({
           name: '',
@@ -267,8 +280,13 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           amenities: [],
           isActive: true
         });
+        
+        // Reset image states for new space
+        setImagePreviews([]);
+        setImageFiles([]);
       }
       setError('');
+      setImageError('');
     }
   }, [isOpen, space, mode]);
 
@@ -319,6 +337,76 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
         ? prev.amenities.filter(a => a !== amenityName)
         : [...prev.amenities, amenityName]
     }));
+  };
+
+  // Handle multiple image uploads
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    console.log('🖼️ SpaceModal: Image upload started', {
+      fileCount: files.length,
+      files: files.map(f => ({ name: f.name, size: f.size, type: f.type }))
+    });
+
+    // Validate files
+    const validFiles = [];
+    const errors = [];
+
+    for (let file of files) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        errors.push(`${file.name}: File harus berupa gambar (JPG, PNG, WebP, GIF)`);
+        continue;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        errors.push(`${file.name}: Ukuran file maksimal 5MB`);
+        continue;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (errors.length > 0) {
+      setImageError(errors.join(', '));
+      return;
+    }
+
+    try {
+      setUploadingImages(true);
+      setImageError('');
+
+      // Create previews for valid files
+      const newPreviews = [];
+      for (let file of validFiles) {
+        const preview = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        newPreviews.push(preview);
+      }
+
+      // Add new files and previews to existing ones
+      setImageFiles(prev => [...prev, ...validFiles]);
+      setImagePreviews(prev => [...prev, ...newPreviews]);
+
+      console.log('✅ SpaceModal: Images processed successfully');
+    } catch (error) {
+      console.error('❌ SpaceModal: Error processing images:', error);
+      setImageError('Gagal memproses gambar');
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  // Remove image
+  const removeImage = (index) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
@@ -377,7 +465,22 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
       // Log the prepared data
       console.log('Prepared submit data:', submitData);
 
-      await onSave(submitData);
+      const savedSpace = await onSave(submitData);
+      
+      // Upload images if there are new ones
+      if (imageFiles.length > 0 && (savedSpace?.id || (mode === 'edit' && space?.id))) {
+        try {
+          const spaceId = savedSpace?.id || space?.id;
+          console.log('📤 SpaceModal: Uploading images for space:', spaceId);
+          const result = await spacesAPI.uploadImages(spaceId, imageFiles);
+          console.log('✅ SpaceModal: Images uploaded successfully:', result);
+        } catch (imageError) {
+          console.error('❌ SpaceModal: Error uploading images:', imageError);
+          setError(`Space berhasil disimpan, tetapi gagal mengupload gambar: ${imageError.message}`);
+          return; // Don't close modal so user can see the error
+        }
+      }
+      
       onClose();
     } catch (error) {
       console.error('Error in handleSubmit:', error);
@@ -526,6 +629,84 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Space Images */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">Space Images</h3>
+            
+            {/* Image Upload Area */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-center w-full">
+                <label
+                  htmlFor="space-images-upload"
+                  className={`flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors ${uploadingImages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Upload className="w-8 h-8 mb-4 text-gray-500" />
+                    <p className="mb-2 text-sm text-gray-500">
+                      <span className="font-semibold">Click to upload</span> multiple space images
+                    </p>
+                    <p className="text-xs text-gray-500">PNG, JPG, WebP up to 5MB each</p>
+                  </div>
+                  <input
+                    id="space-images-upload"
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    disabled={uploadingImages}
+                  />
+                </label>
+              </div>
+
+              {/* Image Error */}
+              {imageError && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
+                  {imageError}
+                </div>
+              )}
+
+              {/* Upload Progress */}
+              {uploadingImages && (
+                <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-md p-2">
+                  Processing images...
+                </div>
+              )}
+
+              {/* Image Previews Grid */}
+              {imagePreviews.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Uploaded Images ({imagePreviews.length})
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <div className="aspect-square w-full border-2 border-gray-200 rounded-lg overflow-hidden">
+                          <img
+                            src={preview}
+                            alt={`Space image ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                          {index + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Operational Hours */}

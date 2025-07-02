@@ -168,17 +168,20 @@ const Spaces = () => {
 
   const handleModalSave = async (spaceData) => {
     try {
+      let result;
       if (modalMode === 'create') {
-        await createSpace(spaceData);
+        result = await createSpace(spaceData);
         showNotification('Space created successfully!', 'success');
       } else if (modalMode === 'edit') {
-        await updateSpace(selectedSpace.id, spaceData);
+        result = await updateSpace(selectedSpace.id, spaceData);
         showNotification('Space updated successfully!', 'success');
       }
       setIsModalOpen(false);
       setSelectedSpace(null);
+      return result; // Return the saved space data for image upload
     } catch (error) {
       showNotification('Failed to save space: ' + error.message, 'error');
+      throw error; // Let the modal handle the error display
     }
   };
 
