@@ -221,35 +221,9 @@ const Spaces = () => {
     return 'active';
   };
 
-  // Calculate booked spaces and active orders once
-  // Only confirmed and active orders should make spaces booked
-  const bookedStatuses = ['confirmed', 'active'];
-  const activeOrders = orders.filter(order => bookedStatuses.includes(order.status?.toLowerCase()));
+  // Statistics calculations based on effective status (no booked filter)
+  const effectivelyActiveSpaces = filteredSpaces.filter(s => getEffectiveStatus(s) === 'active');
 
-  const orderBookedSpaceIds = [...new Set(activeOrders.map(order => order.spaceId))];
-
-  // Also include spaces explicitly marked as isBooked (failsafe)
-  const flagBookedSpaceIds = filteredSpaces.filter(s => s.isBooked).map(s => s.id || s.spaceId);
-
-  const bookedSpaceIds = [...new Set([...orderBookedSpaceIds, ...flagBookedSpaceIds])];
-
-  const bookedSpacesCount = filteredSpaces.filter(space =>
-    bookedSpaceIds.includes(space.id) || bookedSpaceIds.includes(space.spaceId)
-  ).length;
-
-  const bookedSpacesInfo = {
-    bookedSpaceIds,
-    count: bookedSpacesCount,
-    totalActiveOrders: activeOrders.length
-  };
-
-  // Statistics calculations based on effective status (exclude booked)
-  const effectivelyActiveSpaces = filteredSpaces.filter(s => 
-    getEffectiveStatus(s) === 'active' && 
-    !bookedSpaceIds.includes(s.id) && !bookedSpaceIds.includes(s.spaceId)
-  );
-
-  // More detailed breakdown
   const manuallyDeactivatedSpaces = filteredSpaces.filter(s => !s.isActive);
   const outsideOperationalHours = filteredSpaces.filter(s => 
     s.isActive && s.operationalStatus && !s.operationalStatus.isOperational
@@ -321,7 +295,7 @@ const Spaces = () => {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -343,19 +317,6 @@ const Spaces = () => {
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <Users className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Sedang Digunakan</p>
-              <p className="text-2xl font-bold text-blue-600">{bookedSpacesInfo.count}</p>
-              <p className="text-xs text-gray-500 mt-1">{bookedSpacesInfo.totalActiveOrders} booking aktif</p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <Calendar className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
