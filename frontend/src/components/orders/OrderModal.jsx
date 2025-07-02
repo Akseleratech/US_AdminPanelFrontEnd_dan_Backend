@@ -14,6 +14,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     spaceId: '',
     spaceName: '',
     amount: 0,
+    pricingType: 'daily', // hourly, halfday, daily, monthly
     startDate: '',
     endDate: '',
     status: 'pending',
@@ -28,18 +29,26 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     if (isOpen) {
       if (editingOrder) {
         // Helper function to safely format date
-        const formatDateForInput = (dateValue) => {
+        const formatDateForInput = (dateValue, pricingType = 'daily') => {
           if (!dateValue) return '';
           try {
             const date = new Date(dateValue);
             if (isNaN(date.getTime())) return '';
-            return date.toISOString().split('T')[0];
+            
+            if (pricingType === 'hourly') {
+              // For datetime-local input format: YYYY-MM-DDTHH:MM
+              return date.toISOString().slice(0, 16);
+            } else {
+              // For date input format: YYYY-MM-DD
+              return date.toISOString().split('T')[0];
+            }
           } catch (error) {
             console.warn('Invalid date value:', dateValue);
             return '';
           }
         };
 
+        const pricingType = editingOrder.pricingType || 'daily';
         setFormData({
           customerId: editingOrder.customerId || '',
           customerName: editingOrder.customerName || editingOrder.customer || '',
@@ -47,8 +56,9 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           spaceId: editingOrder.spaceId || '',
           spaceName: editingOrder.spaceName || '',
           amount: editingOrder.amount || 0,
-          startDate: formatDateForInput(editingOrder.startDate),
-          endDate: formatDateForInput(editingOrder.endDate),
+          pricingType: pricingType,
+          startDate: formatDateForInput(editingOrder.startDate, pricingType),
+          endDate: formatDateForInput(editingOrder.endDate, pricingType),
           status: editingOrder.status || 'pending',
           notes: editingOrder.notes || ''
         });
@@ -60,6 +70,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           spaceId: '',
           spaceName: '',
           amount: 0,
+          pricingType: 'daily',
           startDate: '',
           endDate: '',
           status: 'pending',
@@ -72,10 +83,34 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Special handling for pricing type changes
+    if (name === 'pricingType') {
+      const currentPricingType = formData.pricingType;
+      const newPricingType = value;
+      
+      // Reset dates when switching between hourly and non-hourly to avoid format issues
+      if ((currentPricingType === 'hourly' && newPricingType !== 'hourly') ||
+          (currentPricingType !== 'hourly' && newPricingType === 'hourly')) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          startDate: '',
+          endDate: '',
+          amount: 0
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
     
     // Clear error when user starts typing
     if (errors[name]) {
@@ -105,39 +140,85 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     setFormData((prev) => ({
       ...prev,
       spaceId,
-      spaceName: selectedSpace ? selectedSpace.name : ''
+      spaceName: selectedSpace ? selectedSpace.name : '',
+      // Reset dates when changing space to avoid confusion
+      startDate: '',
+      endDate: '',
+      amount: 0
     }));
   };
 
-  // Helper to calculate total amount based on daily rate & date range
-  const calculateTotalAmount = (spaceId, startDate, endDate) => {
+  // Helper to calculate total amount based on pricing type & date range
+  const calculateTotalAmount = (spaceId, startDate, endDate, pricingType) => {
     if (!spaceId) return 0;
     const space = spaces.find((s) => s.id === spaceId);
     if (!space) return 0;
 
-    const dailyRate = space.pricing?.daily ?? 0;
-    if (!dailyRate) return 0;
+    const rate = space.pricing?.[pricingType] ?? 0;
+    if (!rate) return 0;
 
-    // If date range incomplete, return daily rate (as placeholder)
-    if (!startDate || !endDate) return dailyRate;
+    // For hourly pricing, we need both start and end date/time
+    if (pricingType === 'hourly') {
+      if (!startDate || !endDate) return rate;
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return rate;
+      
+      const diffHours = Math.ceil((end - start) / (1000 * 60 * 60)); // hours
+      return diffHours * rate;
+    }
+    
+    // For halfday pricing, calculate based on half-day periods
+    if (pricingType === 'halfday') {
+      if (!startDate || !endDate) return rate;
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return rate;
+      
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+      const diffDays = Math.floor((end - start) / MS_PER_DAY) + 1;
+      const halfDayPeriods = diffDays * 2; // 2 half-days per day
+      return halfDayPeriods * rate;
+    }
+    
+    // For daily pricing
+    if (pricingType === 'daily') {
+      if (!startDate || !endDate) return rate;
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return dailyRate;
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return rate;
 
-    const MS_PER_DAY = 24 * 60 * 60 * 1000;
-    const diffDays = Math.floor((end - start) / MS_PER_DAY) + 1; // inclusive count
-    return diffDays * dailyRate;
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+      const diffDays = Math.floor((end - start) / MS_PER_DAY) + 1; // inclusive count
+      return diffDays * rate;
+    }
+    
+    // For monthly pricing
+    if (pricingType === 'monthly') {
+      if (!startDate || !endDate) return rate;
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return rate;
+      
+      const diffMonths = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 30)); // approximate months
+      return diffMonths * rate;
+    }
+    
+    return rate;
   };
 
   // Recalculate amount whenever space or dates change
   useEffect(() => {
-    const newAmount = calculateTotalAmount(formData.spaceId, formData.startDate, formData.endDate);
+    const newAmount = calculateTotalAmount(formData.spaceId, formData.startDate, formData.endDate, formData.pricingType);
     setFormData((prev) => {
       if (prev.amount === newAmount) return prev;
       return { ...prev, amount: newAmount };
     });
-  }, [formData.spaceId, formData.startDate, formData.endDate, spaces]);
+  }, [formData.spaceId, formData.startDate, formData.endDate, formData.pricingType, spaces]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -148,9 +229,29 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     if (!formData.endDate) newErrors.endDate = 'End date is required';
     
     if (formData.startDate && formData.endDate) {
-      if (new Date(formData.startDate) >= new Date(formData.endDate)) {
-        newErrors.endDate = 'End date must be after start date';
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      
+      if (startDate >= endDate) {
+        newErrors.endDate = formData.pricingType === 'hourly' 
+          ? 'End time must be after start time' 
+          : 'End date must be after start date';
       }
+      
+      // Additional validation for hourly pricing
+      if (formData.pricingType === 'hourly') {
+        const diffHours = (endDate - startDate) / (1000 * 60 * 60);
+        if (diffHours > 24) {
+          newErrors.endDate = 'Untuk pricing per jam, durasi maksimal 24 jam';
+        }
+        if (diffHours < 1) {
+          newErrors.endDate = 'Durasi minimal 1 jam';
+        }
+      }
+    }
+    
+    if (!formData.amount || formData.amount <= 0) {
+      newErrors.amount = 'Amount must be greater than 0';
     }
 
     setErrors(newErrors);
@@ -167,8 +268,9 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       const orderData = {
         ...formData,
         amount: parseFloat(formData.amount || 0),
-        startDate: new Date(formData.startDate).toISOString(),
-        endDate: new Date(formData.endDate).toISOString(),
+        pricingType: formData.pricingType,
+        startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
+        endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
         source: 'manual' // Menandakan bahwa order ini dibuat manual
       };
 
@@ -250,15 +352,104 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
             {errors.spaceId && <p className="text-red-500 text-xs mt-1">{errors.spaceId}</p>}
           </div>
 
+          {/* Pricing Type Selection */}
+          {formData.spaceId && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Jenis Pricing *
+              </label>
+              <select
+                name="pricingType"
+                value={formData.pricingType}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="hourly">Per Jam</option>
+                <option value="halfday">Per 1/2 Hari</option>
+                <option value="daily">Per Hari</option>
+                <option value="monthly">Per Bulan</option>
+              </select>
+            </div>
+          )}
+
+          {/* Pricing Information Display */}
+          {formData.spaceId && (() => {
+            const selectedSpace = spaces.find(s => s.id === formData.spaceId);
+            if (!selectedSpace || !selectedSpace.pricing) return null;
+            
+            const formatCurrency = (amount) => {
+              if (!amount) return 'Tidak tersedia';
+              return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              }).format(amount);
+            };
+            
+            return (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Informasi Pricing:</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div className={`text-center p-2 rounded ${formData.pricingType === 'hourly' ? 'bg-blue-100 border border-blue-300' : 'bg-white'}`}>
+                    <p className="text-gray-600">Per Jam</p>
+                    <p className="font-medium">{formatCurrency(selectedSpace.pricing.hourly)}</p>
+                  </div>
+                  <div className={`text-center p-2 rounded ${formData.pricingType === 'halfday' ? 'bg-blue-100 border border-blue-300' : 'bg-white'}`}>
+                    <p className="text-gray-600">Per 1/2 Hari</p>
+                    <p className="font-medium">{formatCurrency(selectedSpace.pricing.halfday)}</p>
+                  </div>
+                  <div className={`text-center p-2 rounded ${formData.pricingType === 'daily' ? 'bg-blue-100 border border-blue-300' : 'bg-white'}`}>
+                    <p className="text-gray-600">Per Hari</p>
+                    <p className="font-medium">{formatCurrency(selectedSpace.pricing.daily)}</p>
+                  </div>
+                  <div className={`text-center p-2 rounded ${formData.pricingType === 'monthly' ? 'bg-blue-100 border border-blue-300' : 'bg-white'}`}>
+                    <p className="text-gray-600">Per Bulan</p>
+                    <p className="font-medium">{formatCurrency(selectedSpace.pricing.monthly)}</p>
+                  </div>
+                </div>
+                
+                {/* Current calculation info */}
+                {formData.startDate && formData.endDate && (
+                  <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
+                    <p className="text-sm text-blue-700">
+                      <strong>Total Estimasi:</strong> {formatCurrency(formData.amount)}
+                      {formData.pricingType === 'hourly' && formData.startDate && formData.endDate && (
+                        <span className="text-xs block">
+                          ({Math.ceil((new Date(formData.endDate) - new Date(formData.startDate)) / (1000 * 60 * 60))} jam × {formatCurrency(selectedSpace.pricing.hourly)})
+                        </span>
+                      )}
+                      {formData.pricingType === 'halfday' && formData.startDate && formData.endDate && (
+                        <span className="text-xs block">
+                          ({Math.floor(((new Date(formData.endDate) - new Date(formData.startDate)) / (24 * 60 * 60 * 1000)) + 1) * 2} setengah hari × {formatCurrency(selectedSpace.pricing.halfday)})
+                        </span>
+                      )}
+                      {formData.pricingType === 'daily' && formData.startDate && formData.endDate && (
+                        <span className="text-xs block">
+                          ({Math.floor(((new Date(formData.endDate) - new Date(formData.startDate)) / (24 * 60 * 60 * 1000)) + 1)} hari × {formatCurrency(selectedSpace.pricing.daily)})
+                        </span>
+                      )}
+                      {formData.pricingType === 'monthly' && formData.startDate && formData.endDate && (
+                        <span className="text-xs block">
+                          ({Math.ceil((new Date(formData.endDate) - new Date(formData.startDate)) / (1000 * 60 * 60 * 24 * 30))} bulan × {formatCurrency(selectedSpace.pricing.monthly)})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Date Range */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <Calendar className="w-4 h-4 inline mr-1" />
-                Start Date *
+                {formData.pricingType === 'hourly' ? 'Start Date & Time *' : 'Start Date *'}
               </label>
               <input
-                type="date"
+                type={formData.pricingType === 'hourly' ? 'datetime-local' : 'date'}
                 name="startDate"
                 value={formData.startDate}
                 onChange={handleInputChange}
@@ -272,10 +463,10 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <Calendar className="w-4 h-4 inline mr-1" />
-                End Date *
+                {formData.pricingType === 'hourly' ? 'End Date & Time *' : 'End Date *'}
               </label>
               <input
-                type="date"
+                type={formData.pricingType === 'hourly' ? 'datetime-local' : 'date'}
                 name="endDate"
                 value={formData.endDate}
                 onChange={handleInputChange}
@@ -286,6 +477,41 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
               {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
             </div>
           </div>
+
+          {/* Duration Info for Hourly */}
+          {formData.pricingType === 'hourly' && formData.startDate && formData.endDate && (
+            <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
+              <p className="text-sm text-yellow-700">
+                <strong>Info:</strong> Untuk pricing per jam, pastikan waktu mulai dan selesai sudah benar. 
+                Durasi akan dihitung berdasarkan selisih jam antara waktu mulai dan selesai.
+              </p>
+            </div>
+          )}
+
+          {/* Manual Amount Override */}
+          {formData.spaceId && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Total Amount (IDR) *
+              </label>
+              <input
+                type="number"
+                name="amount"
+                value={formData.amount}
+                onChange={handleInputChange}
+                min="0"
+                step="1000"
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                  errors.amount ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Total amount in IDR"
+              />
+              {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+              <p className="text-xs text-gray-500 mt-1">
+                Amount dihitung otomatis berdasarkan pricing type dan durasi. Anda bisa mengedit manual jika diperlukan.
+              </p>
+            </div>
+          )}
 
           {/* Status */}
           <div>
