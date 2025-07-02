@@ -108,13 +108,8 @@ const SpacesGrid = ({
   // Helper function to get booking information for a space
   const getSpaceBookings = (spaceId) => {
     if (!orders || !Array.isArray(orders)) {
-      console.log('🔍 [Debug] No orders data or not array:', { orders, spaceId });
       return [];
     }
-    
-    console.log('🔍 [Debug] getSpaceBookings called for space:', spaceId);
-    console.log('🔍 [Debug] Total orders available:', orders.length);
-    console.log('🔍 [Debug] All orders:', orders);
     
     // Filter orders for this space with confirmed or active status
     const bookedStatuses = ['confirmed', 'active'];
@@ -122,48 +117,21 @@ const SpacesGrid = ({
     // First, find orders for this space (regardless of status)
     const ordersForSpace = orders.filter(order => {
       const isMatch = order.spaceId === spaceId;
-      console.log('🔍 [Debug] Checking order:', {
-        orderId: order.id || order.orderId,
-        orderSpaceId: order.spaceId,
-        targetSpaceId: spaceId,
-        isMatch,
-        status: order.status
-      });
       return isMatch;
     });
-    
-    console.log('🔍 [Debug] Orders for space', spaceId, ':', ordersForSpace);
     
     // Then filter by status
     const validBookings = ordersForSpace.filter(order => {
       const statusMatch = bookedStatuses.includes(order.status?.toLowerCase());
-      console.log('🔍 [Debug] Status check:', {
-        orderId: order.id || order.orderId,
-        status: order.status,
-        statusLower: order.status?.toLowerCase(),
-        bookedStatuses,
-        statusMatch
-      });
       return statusMatch;
     });
-    
-    console.log('🔍 [Debug] Valid bookings for space', spaceId, ':', validBookings);
     
     return validBookings.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)); // Sort by start date
   };
 
-  // Debug logging for spaces and orders
-  console.log('🔍 [Debug] SpacesGrid render - spaces:', spaces);
-  console.log('🔍 [Debug] SpacesGrid render - orders:', orders);
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {spaces.map((space) => {
-        console.log('🔍 [Debug] Rendering space:', {
-          id: space.id,
-          name: space.name,
-          spaceId: space.spaceId // in case it uses different field
-        });
         return (
           <div key={space.id} className="bg-white border border-primary-100 hover:shadow-lg transition-all duration-300">
           {/* Header */}
@@ -274,15 +242,6 @@ const SpacesGrid = ({
                     <div className="flex items-center text-sm text-gray-500">
                       <Calendar className="w-4 h-4 mr-1.5" />
                       <span>Tidak ada booking aktif</span>
-                    </div>
-                    {/* Debug info when no bookings */}
-                    <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
-                      <div>🔍 Debug: Space ID = {space.id}</div>
-                      <div>🔍 Total orders = {orders?.length || 0}</div>
-                      <div>🔍 Orders for this space = {orders?.filter(o => o.spaceId === space.id)?.length || 0}</div>
-                      {orders?.filter(o => o.spaceId === space.id)?.map(o => (
-                        <div key={o.id}>🔍 Order {o.id}: status="{o.status}"</div>
-                      ))}
                     </div>
                   </div>
                 );

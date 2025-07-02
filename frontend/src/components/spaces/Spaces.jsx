@@ -76,35 +76,11 @@ const Spaces = () => {
   const fetchOrders = async () => {
     try {
       setOrdersLoading(true);
-      console.log('🔄 [Debug] Fetching orders...');
-      console.log('🔄 [Debug] Using ordersAPI.getAll()');
-      
       const response = await ordersAPI.getAll();
-      
-      console.log('🔍 [Debug] Full API response:', response);
-      console.log('🔍 [Debug] Response type:', typeof response);
-      console.log('🔍 [Debug] Response keys:', Object.keys(response || {}));
-      
-      // Use EXACT same extraction as Orders component
-      const ordersData = response.data?.orders || response.orders || [];
-      console.log('🔍 [Debug] Using Orders component extraction pattern');
-      console.log('🔍 [Debug] response.data?.orders:', response.data?.orders);
-      console.log('🔍 [Debug] response.orders:', response.orders);
-      console.log('🔍 [Debug] Final extracted orders:', ordersData);
-      console.log('🔍 [Debug] Orders count:', ordersData?.length || 0);
-      
-      if (ordersData.length > 0) {
-        console.log('✅ [Debug] Sample order:', ordersData[0]);
-      }
-      
+      const ordersData = response?.orders || response?.data?.orders || [];
       setOrders(ordersData);
     } catch (error) {
-      console.error('❌ [Error] Error fetching orders:', error);
-      console.error('❌ [Error] Error details:', {
-        message: error.message,
-        stack: error.stack,
-        response: error.response
-      });
+      console.error('Error fetching orders:', error);
       setOrders([]);
     } finally {
       setOrdersLoading(false);
@@ -326,31 +302,6 @@ const Spaces = () => {
           >
             <RefreshCw className={`w-4 h-4 mr-1 ${ordersLoading ? 'animate-spin' : ''}`} />
             Refresh Booking
-          </button>
-          <button
-            onClick={async () => {
-              console.log('🔧 [Debug Test] Testing API call...');
-              try {
-                // Test the same call as Orders component
-                const response = await ordersAPI.getAll();
-                console.log('🔧 [Debug Test] Raw response:', response);
-                
-                // Test the same extraction as Orders component  
-                const ordersData = response.data?.orders || response.orders || [];
-                console.log('🔧 [Debug Test] Extracted like Orders component:', ordersData);
-                console.log('🔧 [Debug Test] Count:', ordersData.length);
-                
-                // Also test direct navigation to orders tab
-                alert(`Debug: Found ${ordersData.length} orders. Check console for details.`);
-              } catch (error) {
-                console.error('🔧 [Debug Test] Error:', error);
-                alert(`Debug Error: ${error.message}`);
-              }
-            }}
-            className="flex items-center px-3 py-2 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-            title="Debug API call"
-          >
-            🔧 Debug API
           </button>
         </div>
       </div>
