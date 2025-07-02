@@ -284,10 +284,27 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     }
   };
 
+  const handlePricingTypeSelect = (pricingType) => {
+    setFormData(prev => {
+      if (prev.pricingType === pricingType) return prev; // no change
+
+      const requiresReset = (prev.pricingType === 'hourly' && pricingType !== 'hourly') ||
+                            (prev.pricingType !== 'hourly' && pricingType === 'hourly');
+
+      return {
+        ...prev,
+        pricingType,
+        startDate: requiresReset ? '' : prev.startDate,
+        endDate: requiresReset ? '' : prev.endDate,
+        amount: 0
+      };
+    });
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
@@ -352,27 +369,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
             {errors.spaceId && <p className="text-red-500 text-xs mt-1">{errors.spaceId}</p>}
           </div>
 
-          {/* Pricing Type Selection */}
-          {formData.spaceId && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Jenis Pricing *
-              </label>
-              <select
-                name="pricingType"
-                value={formData.pricingType}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              >
-                <option value="hourly">Per Jam</option>
-                <option value="halfday">Per 1/2 Hari</option>
-                <option value="daily">Per Hari</option>
-                <option value="monthly">Per Bulan</option>
-              </select>
-            </div>
-          )}
-
-          {/* Pricing Information Display */}
+          {/* Pricing Type Cards */}
           {formData.spaceId && (() => {
             const selectedSpace = spaces.find(s => s.id === formData.spaceId);
             if (!selectedSpace || !selectedSpace.pricing) return null;
@@ -391,22 +388,22 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Informasi Pricing:</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <div className={`text-center p-2 rounded ${formData.pricingType === 'hourly' ? 'bg-blue-100 border border-blue-300' : 'bg-white'}`}>
+                  <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('hourly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'hourly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
                     <p className="text-gray-600">Per Jam</p>
                     <p className="font-medium">{formatCurrency(selectedSpace.pricing.hourly)}</p>
-                  </div>
-                  <div className={`text-center p-2 rounded ${formData.pricingType === 'halfday' ? 'bg-blue-100 border border-blue-300' : 'bg-white'}`}>
+                  </button>
+                  <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('halfday')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'halfday' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
                     <p className="text-gray-600">Per 1/2 Hari</p>
                     <p className="font-medium">{formatCurrency(selectedSpace.pricing.halfday)}</p>
-                  </div>
-                  <div className={`text-center p-2 rounded ${formData.pricingType === 'daily' ? 'bg-blue-100 border border-blue-300' : 'bg-white'}`}>
+                  </button>
+                  <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('daily')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'daily' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
                     <p className="text-gray-600">Per Hari</p>
                     <p className="font-medium">{formatCurrency(selectedSpace.pricing.daily)}</p>
-                  </div>
-                  <div className={`text-center p-2 rounded ${formData.pricingType === 'monthly' ? 'bg-blue-100 border border-blue-300' : 'bg-white'}`}>
+                  </button>
+                  <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('monthly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'monthly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
                     <p className="text-gray-600">Per Bulan</p>
                     <p className="font-medium">{formatCurrency(selectedSpace.pricing.monthly)}</p>
-                  </div>
+                  </button>
                 </div>
                 
                 {/* Current calculation info */}

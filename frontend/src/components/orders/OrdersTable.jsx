@@ -29,6 +29,13 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
     return layananMap[space.category] || space.category || '-';
   };
 
+  // Get city/regency name for a given spaceId
+  const getCityName = (spaceId) => {
+    const space = spaces?.find((s) => s.id === spaceId);
+    if (!space) return '-';
+    return space.location?.city || space.location?.regency || '-';
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('id-ID');
@@ -140,6 +147,10 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
                         <span className="truncate" title={order.spaceName || order.location}>
                           {order.spaceName || order.location}
                         </span>
+                      </div>
+                      {/* City/Regency */}
+                      <div className="text-xs text-gray-500 ml-4 truncate" title={spacesLoading ? '-' : getCityName(order.spaceId)}>
+                        {spacesLoading ? '-' : getCityName(order.spaceId)}
                       </div>
                     </div>
                   </td>

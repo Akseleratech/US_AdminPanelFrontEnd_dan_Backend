@@ -9,6 +9,9 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
         <table className="w-full table-auto divide-y divide-primary-200">
           <thead className="bg-primary-50 border-b border-primary-200">
             <tr>
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-20">
+                Image
+              </th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider max-w-[200px]">
                 Nama Gedung
               </th>
@@ -32,7 +35,7 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
           <tbody className="bg-white divide-y divide-primary-100">
             {loading ? (
               <tr>
-                <td colSpan="6" className="px-3 md:px-6 py-8 text-center">
+                <td colSpan="7" className="px-3 md:px-6 py-8 text-center">
                   <div className="flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
                     <p className="text-gray-500 font-medium">Memuat gedung...</p>
@@ -42,6 +45,21 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
             ) : buildings && buildings.length > 0 ? (
               buildings.map((building) => (
                 <tr key={building.id} className="hover:bg-primary-50 transition-colors duration-150">
+                  <td className="px-3 md:px-6 py-4">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                      {building.image ? (
+                        <img
+                          src={building.image}
+                          alt={building.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-3 md:px-6 py-4 text-sm font-medium text-gray-900">
                     <div className="min-w-0 break-words">{building.name}</div>
                   </td>
@@ -113,7 +131,7 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="px-3 md:px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan="7" className="px-3 md:px-6 py-8 text-center text-sm text-gray-500">
                   <div className="flex flex-col items-center justify-center">
                     <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />

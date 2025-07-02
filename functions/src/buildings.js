@@ -7,6 +7,7 @@ const {
   validateRequired, 
   sanitizeString
 } = require("./utils/helpers");
+const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
 
 // Enhanced validation schema for Buildings
 const buildingValidationSchema = {
@@ -352,6 +353,8 @@ const buildings = onRequest(async (req, res) => {
         }
       } else if (method === 'POST' && pathParts.length === 0) {
         return await createBuilding(req, res);
+      } else if (method === 'POST' && pathParts.length === 2 && pathParts[1] === 'upload-image') {
+        return await uploadBuildingImage(pathParts[0], req, res);
       } else if (method === 'PUT' && pathParts.length === 1) {
         return await updateBuilding(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
@@ -640,6 +643,58 @@ const deleteBuilding = async (buildingId, req, res) => {
 
     handleResponse(res, { message: 'Building deleted successfully' });
   } catch (error) {
+    handleError(res, error);
+  }
+};
+
+// POST /buildings/:id/upload-image
+const uploadBuildingImage = async (buildingId, req, res) => {
+  try {
+    const db = getDb();
+    const { imageData, fileName } = req.body;
+
+    if (!imageData) {
+      return handleResponse(res, { message: 'No image data provided' }, 400);
+    }
+
+    // Check if building exists
+    const buildingDoc = await db.collection('buildings').doc(buildingId).get();
+    if (!buildingDoc.exists) {
+      return handleResponse(res, { message: 'Building not found' }, 404);
+    }
+
+    const buildingData = buildingDoc.data();
+
+    // Delete existing image if any
+    if (buildingData.image) {
+      await deleteImage(buildingData.image);
+    }
+
+    // Upload new image
+    const uploadResult = await uploadImageFromBase64(
+      imageData, 
+      fileName || `building_${buildingId}`, 
+      'buildings'
+    );
+
+    // Update building document with new image URL
+    await db.collection('buildings').doc(buildingId).update({
+      image: uploadResult.url,
+      metadata: {
+        ...buildingData.metadata,
+        updatedAt: new Date(),
+        version: (buildingData.metadata?.version || 1) + 1
+      }
+    });
+
+    console.log(`✅ Successfully updated building ${buildingId} with image: ${uploadResult.url}`);
+
+    handleResponse(res, {
+      image: uploadResult.url,
+      filename: uploadResult.filename
+    });
+  } catch (error) {
+    console.error('Error uploading building image:', error);
     handleError(res, error);
   }
 };

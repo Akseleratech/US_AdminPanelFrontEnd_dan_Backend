@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin } from 'lucide-react';
+import { X, MapPin, Upload } from 'lucide-react';
 import GoogleMap from '../common/GoogleMap.jsx';
+import buildingApiService from '../../services/buildingApi.js';
 
 const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
   const [formData, setFormData] = useState({
@@ -17,13 +18,20 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
       latitude: null,
       longitude: null
     },
-    isActive: true
+    isActive: true,
+    image: null
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showMapModal, setShowMapModal] = useState(false);
   const [previewLocationData, setPreviewLocationData] = useState(null);
+  
+  // Image upload states
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState('');
 
   const brands = [
     { value: 'UnionSpace', label: 'UnionSpace' },
@@ -50,8 +58,14 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
           latitude: building.location?.latitude || null,
           longitude: building.location?.longitude || null
         },
-        isActive: building.isActive !== undefined ? building.isActive : true
+        isActive: building.isActive !== undefined ? building.isActive : true,
+        image: building.image || null
       });
+      
+      // Set existing image if available
+      if (building.image) {
+        setImagePreview(building.image);
+      }
     } else {
       // Reset form for add mode
       setFormData({
@@ -68,10 +82,14 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
           latitude: null,
           longitude: null
         },
-        isActive: true
+        isActive: true,
+        image: null
       });
+      setImagePreview(null);
+      setImageFile(null);
     }
     setError('');
+    setImageError('');
   }, [building, mode, isOpen]);
 
   const handleInputChange = (e) => {
@@ -118,7 +136,59 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
     setPreviewLocationData(null);
   };
 
+  // Handle image upload
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
+    console.log('🖼️ BuildingModal: Image upload started', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    });
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      console.error('❌ BuildingModal: Invalid file type:', file.type);
+      setImageError('File harus berupa gambar (JPG, PNG, WebP, GIF)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      console.error('❌ BuildingModal: File too large:', file.size);
+      setImageError('Ukuran file maksimal 5MB');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setImageError('');
+      console.log('📤 BuildingModal: Processing image upload...');
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        console.log('✅ BuildingModal: Image preview created');
+        setImagePreview(e.target.result);
+      };
+      reader.onerror = (error) => {
+        console.error('❌ BuildingModal: Error creating preview:', error);
+        setImageError('Gagal membuat preview gambar');
+      };
+      reader.readAsDataURL(file);
+
+      // Store the file object for upload after building is saved
+      setImageFile(file);
+      
+      console.log('✅ BuildingModal: File stored, ready for upload after save');
+    } catch (error) {
+      console.error('❌ BuildingModal: Error processing image:', error);
+      setImageError('Gagal memproses gambar');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -151,7 +221,22 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
         ...formData
       };
 
-      await onSave(submissionData);
+      const savedBuilding = await onSave(submissionData);
+      
+      // Upload image if there's a new one
+      if (imageFile && (savedBuilding?.id || (mode === 'edit' && building?.id))) {
+        try {
+          const buildingId = savedBuilding?.id || building?.id;
+          console.log('📤 BuildingModal: Uploading image for building:', buildingId);
+          await buildingApiService.uploadBuildingImage(buildingId, imageFile);
+          console.log('✅ BuildingModal: Image uploaded successfully');
+        } catch (imageError) {
+          console.error('❌ BuildingModal: Error uploading image:', imageError);
+          setError(`Gedung berhasil disimpan, tetapi gagal mengupload gambar: ${imageError.message}`);
+          return; // Don't close modal so user can see the error
+        }
+      }
+      
       onClose();
     } catch (error) {
       setError(error.message || 'Terjadi kesalahan saat menyimpan data');
@@ -257,6 +342,72 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hero Image/Thumbnail
+                </label>
+                <div className="space-y-3">
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <div className="relative w-full h-48 border-2 border-gray-200 rounded-lg overflow-hidden">
+                      <img
+                        src={imagePreview}
+                        alt="Building preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImagePreview(null);
+                          setImageFile(null);
+                        }}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Upload Button */}
+                  <div className="flex items-center justify-center w-full">
+                    <label
+                      htmlFor="building-image-upload"
+                      className={`flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-8 h-8 mb-4 text-gray-500" />
+                        <p className="mb-2 text-sm text-gray-500">
+                          <span className="font-semibold">Click to upload</span> building image
+                        </p>
+                        <p className="text-xs text-gray-500">PNG, JPG, WebP up to 5MB</p>
+                      </div>
+                      <input
+                        id="building-image-upload"
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                      />
+                    </label>
+                  </div>
+                  
+                  {/* Image Error */}
+                  {imageError && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
+                      {imageError}
+                    </div>
+                  )}
+                  
+                  {/* Upload Progress */}
+                  {uploadingImage && (
+                    <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-md p-2">
+                      Processing image...
+                    </div>
+                  )}
+                </div>
               </div>
 
             </div>

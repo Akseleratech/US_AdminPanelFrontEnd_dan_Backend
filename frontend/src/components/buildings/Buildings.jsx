@@ -77,15 +77,16 @@ const Buildings = () => {
 
   const handleSaveBuilding = async (buildingData) => {
     try {
+      let result;
       if (modalMode === 'add') {
-        const result = await createBuilding(buildingData);
+        result = await createBuilding(buildingData);
         
         // Trigger global refresh untuk buildings dan spaces (karena space modal butuh building data)
         refreshRelatedToBuildings();
         
         showNotification('Lokasi/gedung baru berhasil ditambahkan', 'success');
       } else {
-        const result = await updateBuilding(selectedBuilding.id, buildingData);
+        result = await updateBuilding(selectedBuilding.id, buildingData);
         
         // Trigger global refresh untuk buildings dan spaces (karena space modal butuh building data)
         refreshRelatedToBuildings();
@@ -94,6 +95,7 @@ const Buildings = () => {
       }
       setShowBuildingModal(false);
       setSelectedBuilding(null);
+      return result; // Return the saved building data for image upload
     } catch (error) {
       const errorMessage = error.message || 'Unknown error occurred';
       showNotification(`Gagal ${modalMode === 'add' ? 'menambah' : 'memperbarui'} lokasi/gedung: ${errorMessage}`, 'error');

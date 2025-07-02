@@ -192,6 +192,52 @@ class BuildingApiService {
       throw error;
     }
   }
+
+  // Upload building image
+  async uploadBuildingImage(buildingId, imageFile) {
+    try {
+      console.log('🖼️ BuildingAPI: Uploading image for building:', buildingId);
+      
+      // Convert file to base64 for Cloud Functions
+      const base64 = await this.fileToBase64(imageFile);
+      
+      const payload = {
+        imageData: base64,
+        fileName: imageFile.name
+      };
+      
+      console.log('📤 BuildingAPI: Sending image upload request');
+      const response = await fetch(`${this.baseURL}/${buildingId}/upload-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ BuildingAPI: Image uploaded successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('💥 BuildingAPI: Error uploading building image:', error);
+      throw new Error(error.message || 'Failed to upload image');
+    }
+  }
+
+  // Helper method to convert file to base64
+  async fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
 }
 
 // Create and export singleton instance
