@@ -9,7 +9,8 @@ const PromoModal = ({ isOpen, onClose, promo, onSave }) => {
     description: '',
     type: 'banner', // Default to banner
     isActive: true,
-    order: 0
+    order: 0,
+    endDate: '' // New end date field
   });
 
   // Image state
@@ -32,7 +33,8 @@ const PromoModal = ({ isOpen, onClose, promo, onSave }) => {
           description: promo.description || '',
           type: promo.type || 'banner',
           isActive: promo.isActive !== undefined ? promo.isActive : true,
-          order: promo.order || 0
+          order: promo.order || 0,
+          endDate: promo.endDate ? (() => { const d = promo.endDate.toDate ? promo.endDate.toDate() : (promo.endDate._seconds ? new Date(promo.endDate._seconds*1000) : new Date(promo.endDate)); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })() : ''
         });
         setImagePreview(promo.image || null);
       } else {
@@ -42,7 +44,8 @@ const PromoModal = ({ isOpen, onClose, promo, onSave }) => {
           description: '',
           type: 'banner',
           isActive: true,
-          order: 0
+          order: 0,
+          endDate: ''
         });
         setImagePreview(null);
       }
@@ -142,7 +145,8 @@ const PromoModal = ({ isOpen, onClose, promo, onSave }) => {
       // Ensure order is numeric before sending to API
       const payload = {
         ...formData,
-        order: parseInt(formData.order) || 0
+        order: parseInt(formData.order) || 0,
+        endDate: formData.endDate || null
       };
 
       let savedPromo;
@@ -310,6 +314,23 @@ const PromoModal = ({ isOpen, onClose, promo, onSave }) => {
             <p className="mt-1 text-xs text-gray-600">
               {getTypeDescription(formData.type)}
             </p>
+          </div>
+
+          {/* End Date */}
+          <div>
+            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+              Tanggal Berakhir
+            </label>
+            <input
+              type="date"
+              id="endDate"
+              name="endDate"
+              value={formData.endDate}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300"
+              disabled={loading || uploadingImage}
+            />
+            <p className="mt-1 text-xs text-gray-500">Biarkan kosong jika promo tidak memiliki tanggal berakhir.</p>
           </div>
 
           {/* Order and Active Status */}

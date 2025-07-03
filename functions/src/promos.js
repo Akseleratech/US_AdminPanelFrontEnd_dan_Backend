@@ -16,7 +16,8 @@ const promoValidationSchema = {
   type: { type: 'string', required: true, enum: ['banner', 'section'] },
   image: { type: 'string', required: false },
   isActive: { type: 'boolean', required: false, default: true },
-  order: { type: 'number', required: false, default: 0 }
+  order: { type: 'number', required: false, default: 0 },
+  endDate: { type: 'string', required: false }
 };
 
 // Enhanced validation function for promos
@@ -40,6 +41,14 @@ function validatePromoData(data, isUpdate = false) {
   // Description validation
   if (data.description && data.description.length > 500) {
     errors.push('Description must be less than 500 characters');
+  }
+  
+  // End Date validation
+  if (data.endDate) {
+    const end = new Date(data.endDate);
+    if (isNaN(end.getTime())) {
+      errors.push('End date must be a valid date');
+    }
   }
   
   // Order validation
@@ -67,6 +76,14 @@ function sanitizePromoData(data) {
   
   if (data.order !== undefined) {
     sanitized.order = parseInt(data.order) || 0;
+  }
+  
+  // End date sanitization
+  if (data.endDate) {
+    const end = new Date(data.endDate);
+    if (!isNaN(end.getTime())) {
+      sanitized.endDate = end;
+    }
   }
   
   return sanitized;
