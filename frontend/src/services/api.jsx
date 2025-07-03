@@ -1,7 +1,7 @@
 import { auth } from '../config/firebase.jsx';
 
-// API Base URL - using relative path for Vite proxy
-const API_BASE_URL = '/api';
+// API Base URL - using direct functions emulator URL since proxy isn't working
+const API_BASE_URL = 'http://localhost:5555/demo-unionspace-crm/asia-southeast1';
 
 // Helper function to get auth token
 const getAuthToken = async () => {
@@ -28,10 +28,14 @@ const apiCall = async (endpoint, options = {}) => {
       headers.Authorization = `Bearer ${token}`;
     }
 
+    console.log(`🔗 Making API call to: ${API_BASE_URL}${endpoint}`);
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
+      mode: 'cors', // Enable CORS
     });
+
+    console.log(`📡 API Response status: ${response.status}`);
 
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`;
@@ -51,8 +55,18 @@ const apiCall = async (endpoint, options = {}) => {
     }
 
     const responseData = await response.json();
+    console.log('✅ API Response data:', responseData);
+    
+    // Handle the response format from Firebase functions
+    if (responseData.success && responseData.data) {
+      return responseData.data;
+    } else if (responseData.success === false) {
+      throw new Error(responseData.error || 'API request failed');
+    }
+    
     return responseData;
   } catch (error) {
+    console.error('❌ API call failed:', error);
     throw error;
   }
 };

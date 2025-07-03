@@ -139,21 +139,31 @@ const PromoModal = ({ isOpen, onClose, promo, onSave }) => {
 
     setLoading(true);
     try {
+      // Ensure order is numeric before sending to API
+      const payload = {
+        ...formData,
+        order: parseInt(formData.order) || 0
+      };
+
       let savedPromo;
-      
       if (promo) {
         // Update existing promo
-        savedPromo = await promosAPI.update(promo.id, formData);
+        savedPromo = await promosAPI.update(promo.id, payload);
       } else {
         // Create new promo
-        savedPromo = await promosAPI.create(formData);
+        savedPromo = await promosAPI.create(payload);
       }
 
       // Upload image if selected
       if (imageFile) {
         setUploadingImage(true);
         try {
-          await promosAPI.uploadImage(savedPromo.id, imageFile);
+          const promoId = savedPromo?.id || savedPromo?.promoId;
+          if (promoId) {
+            await promosAPI.uploadImage(promoId, imageFile);
+          } else {
+            console.warn('Promo ID not found after creation. Skipping image upload.');
+          }
         } catch (imageUploadError) {
           console.error('Image upload failed:', imageUploadError);
           setImageError('Failed to upload image. The promo was saved without image.');
@@ -162,7 +172,9 @@ const PromoModal = ({ isOpen, onClose, promo, onSave }) => {
         }
       }
 
-      onSave();
+      if (onSave) {
+        await onSave();
+      }
       onClose();
     } catch (error) {
       console.error('Error saving promo:', error);

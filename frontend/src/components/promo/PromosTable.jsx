@@ -23,8 +23,31 @@ const PromosTable = ({ promos, loading, onEdit, onDelete, onToggleStatus }) => {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return '-';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('id-ID', {
+
+    // Firestore Timestamp instance
+    if (typeof timestamp.toDate === 'function') {
+      return timestamp.toDate().toLocaleDateString('id-ID', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    // Timestamp sent as {_seconds, _nanoseconds}
+    if (typeof timestamp === 'object' && timestamp._seconds) {
+      const date = new Date(timestamp._seconds * 1000);
+      return date.toLocaleDateString('id-ID', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    // ISO string or other parseable formats
+    const dateObj = new Date(timestamp);
+    if (isNaN(dateObj.getTime())) return '-';
+
+    return dateObj.toLocaleDateString('id-ID', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

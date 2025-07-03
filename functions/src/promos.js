@@ -194,27 +194,50 @@ const getAllPromos = async (req, res) => {
       sortOrder = 'asc'
     } = req.query;
 
-    // Build query
+    console.log('🎯 GET /promos - Request received');
+    console.log('Query params:', { page, limit, search, type, isActive, sortBy, sortOrder });
+
+    // Build query step by step
     let query = db.collection('promos');
 
     // Apply filters
     if (type) {
+      console.log('Adding type filter:', type);
       query = query.where('type', '==', type);
     }
 
     if (isActive !== '') {
-      query = query.where('isActive', '==', isActive === 'true');
+      const isActiveValue = isActive === 'true';
+      console.log('Adding isActive filter:', isActiveValue);
+      query = query.where('isActive', '==', isActiveValue);
     }
 
     // Apply search if provided
     if (search) {
       const searchLower = search.toLowerCase();
+      console.log('Adding search filter:', searchLower);
       query = query.where('searchKeywords', 'array-contains', searchLower);
     }
 
-    // Apply sorting
-    query = query.orderBy(sortBy, sortOrder);
+    // Apply sorting - be careful with composite indexes
+    try {
+      if (sortBy === 'order') {
+        query = query.orderBy('order', sortOrder);
+      } else if (sortBy === 'metadata.createdAt') {
+        query = query.orderBy('metadata.createdAt', sortOrder);
+      } else if (sortBy === 'title') {
+        query = query.orderBy('title', sortOrder);
+      } else {
+        // Default fallback
+        query = query.orderBy('order', 'asc');
+      }
+    } catch (error) {
+      console.warn('Sorting failed, using default order:', error.message);
+      // If sorting fails due to index issues, just use default order
+      query = query.orderBy('order', 'asc');
+    }
 
+    console.log('Executing Firestore query...');
     const snapshot = await query.get();
     let promos = [];
 
@@ -225,11 +248,13 @@ const getAllPromos = async (req, res) => {
       });
     });
 
+    console.log(`Found ${promos.length} promos`);
+
     // Apply pagination
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const paginatedPromos = promos.slice(offset, offset + parseInt(limit));
 
-    handleResponse(res, {
+    const response = {
       promos: paginatedPromos,
       pagination: {
         page: parseInt(page),
@@ -238,8 +263,12 @@ const getAllPromos = async (req, res) => {
         totalPages: Math.ceil(promos.length / parseInt(limit))
       },
       total: promos.length
-    });
+    };
+
+    console.log('✅ Returning response:', JSON.stringify(response, null, 2));
+    handleResponse(res, response);
   } catch (error) {
+    console.error('❌ Error in getAllPromos:', error);
     handleError(res, error);
   }
 };
