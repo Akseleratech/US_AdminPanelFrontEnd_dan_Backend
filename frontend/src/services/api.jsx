@@ -57,10 +57,10 @@ const apiCall = async (endpoint, options = {}) => {
     const responseData = await response.json();
     console.log('✅ API Response data:', responseData);
     
-    // Handle the response format from Firebase functions
-    if (responseData.success && responseData.data) {
-      return responseData.data;
-    } else if (responseData.success === false) {
+    // Updated: Always return the full response object so callers have access
+    // to `success`, `data`, and other metadata. Only throw when the backend
+    // explicitly marks the request as unsuccessful.
+    if (responseData.success === false) {
       throw new Error(responseData.error || 'API request failed');
     }
     
