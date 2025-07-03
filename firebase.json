@@ -60,6 +60,10 @@
         "function": "customers"
       },
       {
+        "source": "/api/promos/**",
+        "function": "promos"
+      },
+      {
         "source": "/api/health",
         "function": "health"
       },

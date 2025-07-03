@@ -239,3 +239,31 @@ export const amenitiesAPI = {
   toggleStatus: (id) => apiCall(`/amenities/${id}/toggle`, { method: 'PATCH' }),
   getActive: () => apiCall('/amenities?status=active')
 };
+
+// Promos API
+export const promosAPI = {
+  getAll: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return apiCall(`/promos${queryParams ? `?${queryParams}` : ''}`);
+  },
+  getById: (id) => apiCall(`/promos/${id}`),
+  create: (data) => apiCall('/promos', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  update: (id, data) => apiCall(`/promos/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  delete: (id) => apiCall(`/promos/${id}`, { method: 'DELETE' }),
+  uploadImage: async (promoId, file) => {
+    const base64Data = await fileToBase64(file);
+    return apiCall(`/promos/${promoId}/upload-image`, {
+      method: 'POST',
+      body: JSON.stringify({
+        imageData: base64Data,
+        fileName: file.name
+      })
+    });
+  }
+};
