@@ -55,6 +55,7 @@ const databaseFunctions = require("./src/database");
 const amenitiesFunctions = require("./src/amenities");
 const customersFunctions = require("./src/customers");
 const promosFunctions = require("./src/promos");
+const articlesFunctions = require("./src/articles");
 
 // Export all functions
 exports.cities = citiesFunctions.cities;
@@ -67,6 +68,7 @@ exports.database = databaseFunctions.database;
 exports.amenities = amenitiesFunctions.amenities;
 exports.customers = customersFunctions.customers;
 exports.promos = promosFunctions.promos;
+exports.articles = articlesFunctions.articles;
 
 // Health check endpoint
 exports.health = onRequest((req, res) => {

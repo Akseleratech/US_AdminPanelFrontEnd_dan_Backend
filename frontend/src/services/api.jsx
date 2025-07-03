@@ -267,3 +267,31 @@ export const promosAPI = {
     });
   }
 };
+
+// Articles API
+export const articlesAPI = {
+  getAll: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return apiCall(`/articles${queryParams ? `?${queryParams}` : ''}`);
+  },
+  getById: (id) => apiCall(`/articles/${id}`),
+  create: (data) => apiCall('/articles', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  update: (id, data) => apiCall(`/articles/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  delete: (id) => apiCall(`/articles/${id}`, { method: 'DELETE' }),
+  uploadImage: async (articleId, file) => {
+    const base64Data = await fileToBase64(file);
+    return apiCall(`/articles/${articleId}/upload-image`, {
+      method: 'POST',
+      body: JSON.stringify({
+        imageData: base64Data,
+        fileName: file.name
+      })
+    });
+  }
+};

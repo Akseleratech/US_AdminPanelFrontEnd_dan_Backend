@@ -24,6 +24,11 @@ service firebase.storage {
       allow write: if isAdmin() && isValidImage();
     }
     
+    match /articles/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidImage();
+    }
+    
     match /services/{imageId} {
       allow read: if true;
       allow write: if isAdmin() && isValidImage();

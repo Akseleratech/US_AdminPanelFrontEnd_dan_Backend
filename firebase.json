@@ -64,6 +64,10 @@
         "function": "promos"
       },
       {
+        "source": "/api/articles/**",
+        "function": "articles"
+      },
+      {
         "source": "/api/health",
         "function": "health"
       },

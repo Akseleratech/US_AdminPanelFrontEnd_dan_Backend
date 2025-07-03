@@ -11,7 +11,8 @@ import {
   Briefcase,
   Wrench,
   ChevronDown,
-  LogOut
+  LogOut,
+  Newspaper
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 
@@ -59,6 +60,11 @@ const Sidebar = () => {
       name: 'Promo',
       path: '/promo',
       icon: Ticket
+    },
+    {
+      name: 'Article',
+      path: '/articles',
+      icon: Newspaper
     },
     {
       name: 'Customers',
