@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Mail, Phone, Calendar, MapPin, Package, Clock, DollarSign } from 'lucide-react';
+import { X, User, Mail, Phone, Calendar, MapPin, Package, Clock, DollarSign, AlertTriangle } from 'lucide-react';
+import { ordersAPI } from '../../services/api.jsx';
 
 const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [ordersError, setOrdersError] = useState(null);
 
   useEffect(() => {
     if (isOpen && customer) {
@@ -16,43 +18,66 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
     
     try {
       setLoadingOrders(true);
-      // TODO: Implement API call to fetch customer's recent orders
-      // For now, using mock data
-      const mockOrders = [
-        {
-          id: 'ORD001',
-          orderDate: '2024-01-15',
-          service: 'Meeting Room A',
-          duration: '2 hours',
-          amount: 250000,
-          status: 'completed'
-        },
-        {
-          id: 'ORD002',
-          orderDate: '2024-01-10',
-          service: 'Coworking Space',
-          duration: '1 day',
-          amount: 150000,
-          status: 'completed'
-        },
-        {
-          id: 'ORD003',
-          orderDate: '2024-01-05',
-          service: 'Conference Room B',
-          duration: '3 hours',
-          amount: 375000,
-          status: 'pending'
-        }
-      ];
+      setOrdersError(null); // Clear previous errors
+      console.log('🔍 Fetching orders for customer:', customer.name, '-', customer.email || customer.customerId);
       
-      // Simulate API delay
-      setTimeout(() => {
-        setRecentOrders(mockOrders);
-        setLoadingOrders(false);
-      }, 500);
+      // Fetch orders filtered by customer email or customer ID
+      const filterParams = {
+        limit: 5, // Get last 5 orders
+        sortBy: 'metadata.createdAt',
+        sortOrder: 'desc'
+      };
+
+      // Try filtering by email first, then by customer ID as fallback
+      if (customer.email) {
+        filterParams.customerEmail = customer.email;
+      } else if (customer.customerId) {
+        filterParams.customerId = customer.customerId;
+      }
+
+      const response = await ordersAPI.getAll(filterParams);
+      
+      // Extract orders from response
+      const ordersData = response.data?.orders || response.orders || [];
+      console.log('✅ Fetched customer orders:', ordersData);
+      
+      // Transform API data to match component expectations
+      const transformedOrders = ordersData.map(order => ({
+        id: order.orderId || order.id,
+        orderDate: order.startDate || order.metadata?.createdAt,
+        service: order.spaceName || order.service || 'Unknown Service',
+        duration: calculateDuration(order.startDate, order.endDate),
+        amount: order.amount || 0,
+        status: order.status || 'unknown',
+        notes: order.notes
+      }));
+      
+      setRecentOrders(transformedOrders);
     } catch (error) {
-      console.error('Error fetching recent orders:', error);
+      console.error('❌ Error fetching recent orders:', error);
+      setOrdersError(error.message || 'Failed to fetch customer orders');
+      setRecentOrders([]); // Set empty array on error
+    } finally {
       setLoadingOrders(false);
+    }
+  };
+
+  // Helper function to calculate duration between start and end dates
+  const calculateDuration = (startDate, endDate) => {
+    if (!startDate || !endDate) return 'N/A';
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffMs = end - start;
+    const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays >= 1) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+    } else if (diffHours >= 1) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+    } else {
+      return 'Less than 1 hour';
     }
   };
 
@@ -200,12 +225,26 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
               <span className="text-sm text-gray-500">Last 5 orders</span>
             </div>
             
-            {loadingOrders ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-                <p className="text-gray-500 ml-4">Loading orders...</p>
-              </div>
-            ) : recentOrders.length > 0 ? (
+                         {loadingOrders ? (
+               <div className="flex items-center justify-center py-8">
+                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                 <p className="text-gray-500 ml-4">Loading orders...</p>
+               </div>
+             ) : ordersError ? (
+               <div className="text-center py-8">
+                 <div className="text-red-500 mb-2">
+                   <AlertTriangle className="mx-auto h-12 w-12" />
+                 </div>
+                 <p className="text-red-600 font-medium">Failed to load orders</p>
+                 <p className="text-gray-500 text-sm mt-1">{ordersError}</p>
+                 <button
+                   onClick={fetchRecentOrders}
+                   className="mt-3 px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark transition-colors"
+                 >
+                   Try Again
+                 </button>
+               </div>
+             ) : recentOrders.length > 0 ? (
               <div className="space-y-3">
                 {recentOrders.map((order) => (
                   <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
