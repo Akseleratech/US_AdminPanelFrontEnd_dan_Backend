@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, Plus, RefreshCw, AlertCircle, CheckCircle, Trash2, X, ChevronDown } from 'lucide-react';
 import CustomersTable from './CustomersTable.jsx';
 import CustomerModal from './CustomerModal.jsx';
+import CustomerDetailModal from './CustomerDetailModal.jsx';
 import useCustomers from '../../hooks/useCustomers';
 import { useAuth } from '../auth/AuthContext';
 import customerApi from '../../services/customerApi';
@@ -47,6 +48,10 @@ const Customers = () => {
   const [notification, setNotification] = useState(null);
   const [searchFilter, setSearchFilter] = useState('');
   
+  // Detail modal states
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [customerToView, setCustomerToView] = useState(null);
+  
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
   const [filterSearch, setFilterSearch] = useState('');
@@ -67,6 +72,11 @@ const Customers = () => {
     setSelectedCustomer(customer);
     setModalMode('edit');
     setShowModal(true);
+  };
+
+  const handleView = (customer) => {
+    setCustomerToView(customer);
+    setShowDetailModal(true);
   };
 
   const handleDelete = (customer) => {
@@ -319,6 +329,7 @@ const Customers = () => {
       <CustomersTable
         customers={filteredCustomers}
         onEdit={handleEdit}
+        onView={handleView}
         onDelete={handleDelete}
         loading={loading}
       />
@@ -330,6 +341,16 @@ const Customers = () => {
         onSave={handleSave}
         customer={selectedCustomer}
         mode={modalMode}
+      />
+
+      {/* Customer Detail Modal */}
+      <CustomerDetailModal
+        isOpen={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setCustomerToView(null);
+        }}
+        customer={customerToView}
       />
 
       {/* Delete Confirmation Modal */}

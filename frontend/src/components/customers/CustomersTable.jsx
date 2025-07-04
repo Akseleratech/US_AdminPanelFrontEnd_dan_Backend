@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
-import { Edit, Trash2, User, Image, Upload, Phone, Mail } from 'lucide-react';
+import { Edit, Trash2, User, Eye, Image, Upload, Phone, Mail } from 'lucide-react';
 
-const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, loading }) => {
+const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, loading }) => {
   const fileInputRefs = useRef({});
 
   const handleImageUpload = async (customerId, file) => {
@@ -98,6 +98,13 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, loading })
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
+                      <button 
+                        onClick={() => onView(customer)}
+                        className="text-primary-600 hover:text-primary-800 p-1"
+                        aria-label="View customer details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => onEdit(customer)}
                         className="text-green-600 hover:text-green-900 p-1"
