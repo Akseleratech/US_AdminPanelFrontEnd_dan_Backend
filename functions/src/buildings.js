@@ -508,6 +508,10 @@ const createBuilding = async (req, res) => {
       ...sanitizedData,
       cityId,
       searchKeywords: generateBuildingSearchKeywords(sanitizedData),
+      statistics: {
+        totalSpaces: 0,
+        activeSpaces: 0
+      },
       metadata: {
         createdAt: new Date(),
         updatedAt: new Date(),

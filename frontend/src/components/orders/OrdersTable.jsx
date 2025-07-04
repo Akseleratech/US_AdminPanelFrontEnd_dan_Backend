@@ -30,10 +30,13 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
   };
 
   // Get city/regency name for a given spaceId
-  const getCityName = (spaceId) => {
+  const getCityProvince = (spaceId) => {
     const space = spaces?.find((s) => s.id === spaceId);
     if (!space) return '-';
-    return space.location?.city || space.location?.regency || '-';
+    const city = space.location?.city || space.location?.regency || '';
+    const province = space.location?.province || '';
+    if (city && province) return `${city}, ${province}`;
+    return city || province || '-';
   };
 
   const formatDate = (dateString) => {
@@ -149,8 +152,8 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
                         </span>
                       </div>
                       {/* City/Regency */}
-                      <div className="text-xs text-gray-500 ml-4 truncate" title={spacesLoading ? '-' : getCityName(order.spaceId)}>
-                        {spacesLoading ? '-' : getCityName(order.spaceId)}
+                      <div className="text-xs text-gray-500 ml-4 truncate" title={spacesLoading ? '-' : getCityProvince(order.spaceId)}>
+                        {spacesLoading ? '-' : getCityProvince(order.spaceId)}
                       </div>
                     </div>
                   </td>

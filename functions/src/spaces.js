@@ -460,8 +460,8 @@ const createSpace = async (req, res) => {
     // Use spaceId as document ID
     await db.collection('spaces').doc(spaceId).set(spaceData);
     
-    // Update building statistics if needed
-    // TODO: Implement building statistics update
+    // Update building statistics for this building
+    await updateBuildingStatistics(sanitizedData.buildingId);
 
     console.log(`✅ Space created: ${spaceId} - ${sanitizedData.name}`);
 
@@ -519,6 +519,13 @@ const updateSpace = async (spaceId, req, res) => {
       ]);
     }
 
+    // Update building statistics (if buildingId unchanged)
+    if (sanitizedData.buildingId) {
+      await updateBuildingStatistics(sanitizedData.buildingId);
+    } else if (existingData.buildingId) {
+      await updateBuildingStatistics(existingData.buildingId);
+    }
+
     // Get updated document
     const updatedDoc = await db.collection('spaces').doc(spaceId).get();
     const data = updatedDoc.data();
@@ -560,6 +567,11 @@ const deleteSpace = async (spaceId, req, res) => {
     // Update city statistics
     if (spaceData.location?.city) {
       await updateCityStatistics(spaceData.location.city);
+    }
+
+    // Update building statistics after deletion
+    if (spaceData.buildingId) {
+      await updateBuildingStatistics(spaceData.buildingId);
     }
 
     console.log(`✅ Space deleted: ${spaceId} - ${spaceData.name}`);
@@ -696,6 +708,32 @@ const updateAllOperationalStatusEndpoint = async (req, res) => {
   } catch (error) {
     console.error('Error updating all spaces operational status:', error);
     handleError(res, error);
+  }
+};
+
+// Update building statistics
+const updateBuildingStatistics = async (buildingId) => {
+  try {
+    const db = getDb();
+
+    // Count spaces for this building
+    const spacesSnapshot = await db.collection('spaces')
+      .where('buildingId', '==', buildingId)
+      .get();
+
+    const totalSpaces = spacesSnapshot.size;
+    const activeSpaces = spacesSnapshot.docs.filter(doc => doc.data().isActive).length;
+
+    await db.collection('buildings').doc(buildingId).update({
+      'statistics.totalSpaces': totalSpaces,
+      'statistics.activeSpaces': activeSpaces,
+      updatedAt: new Date()
+    });
+
+    console.log(`✅ Updated building ${buildingId} statistics: ${totalSpaces} total, ${activeSpaces} active`);
+  } catch (error) {
+    console.error('Error updating building statistics:', error);
+    // Do not throw to avoid failing main operation
   }
 };
 
