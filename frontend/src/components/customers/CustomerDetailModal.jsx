@@ -9,6 +9,7 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
 
   useEffect(() => {
     if (isOpen && customer) {
+      console.log('Customer data:', customer);
       fetchRecentOrders();
     }
   }, [isOpen, customer]);
@@ -24,7 +25,7 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
       // Fetch orders filtered by customer email or customer ID
       const filterParams = {
         limit: 5, // Get last 5 orders
-        sortBy: 'metadata.createdAt',
+        sortBy: 'createdAt',
         sortOrder: 'desc'
       };
 
@@ -35,11 +36,12 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
         filterParams.customerId = customer.customerId;
       }
 
+      console.log('📤 Sending request with params:', filterParams);
       const response = await ordersAPI.getAll(filterParams);
       
       // Extract orders from response
       const ordersData = response.data?.orders || response.orders || [];
-      console.log('✅ Fetched customer orders:', ordersData);
+      console.log('✅ Fetched customer orders:', ordersData.length, 'orders');
       
       // Transform API data to match component expectations
       const transformedOrders = ordersData.map(order => ({
@@ -172,16 +174,6 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
                   </span>
                 </div>
 
-                {customer.createdBy && (
-                  <>
-                    <div className="text-gray-500">Created By</div>
-                    <div className="text-gray-900">
-                      <p>{customer.createdBy.displayName}</p>
-                      <p className="text-xs text-gray-500">{customer.createdBy.email}</p>
-                    </div>
-                  </>
-                )}
-
                 {customer.notes && (
                   <>
                     <div className="text-gray-500">Notes</div>
@@ -192,7 +184,7 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
             </div>
 
             {/* Card 2: Recent Orders */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm md:col-span-2">
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm md:col-span-2 md:row-span-2 h-full flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <Package className="w-5 h-5 text-primary-600" />
@@ -262,6 +254,33 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
                 </div>
               )}
             </div>
+
+            {/* Card 3: User Tracking */}
+            {(customer.createdBy || customer.updatedBy) && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm md:col-span-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                  <User className="w-5 h-5 text-primary-600" />
+                  <span>User Tracking</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+                  {customer.createdBy && (
+                    <div>
+                      <p className="text-gray-500 mb-1">Created By</p>
+                      <p className="font-medium text-gray-900">{customer.createdBy.displayName}</p>
+                      <p className="text-xs text-gray-500">{customer.createdBy.email}</p>
+                    </div>
+                  )}
+
+                  {customer.updatedBy && (
+                    <div>
+                      <p className="text-gray-500 mb-1">Last Updated By</p>
+                      <p className="font-medium text-gray-900">{customer.updatedBy.displayName}</p>
+                      <p className="text-xs text-gray-500">{customer.updatedBy.email}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

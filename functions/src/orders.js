@@ -48,14 +48,24 @@ const orders = onRequest(async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     const db = getDb();
-    const { status, limit, search } = req.query;
+    const { status, limit, search, customerEmail, customerId, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
     let ordersRef = db.collection('orders');
 
+    // Apply filters
     if (status) {
       ordersRef = ordersRef.where('status', '==', status);
     }
 
-    ordersRef = ordersRef.orderBy('createdAt', 'desc');
+    if (customerEmail) {
+      ordersRef = ordersRef.where('customerEmail', '==', customerEmail);
+    }
+
+    if (customerId) {
+      ordersRef = ordersRef.where('customerId', '==', customerId);
+    }
+
+    // Apply sorting
+    ordersRef = ordersRef.orderBy(sortBy, sortOrder);
     
     const snapshot = await ordersRef.get();
     let orders = [];
@@ -66,29 +76,36 @@ const getAllOrders = async (req, res) => {
       // Ensure date fields are serialized as ISO strings
       const startDate = data.startDate && data.startDate.toDate ? data.startDate.toDate().toISOString() : data.startDate;
       const endDate = data.endDate && data.endDate.toDate ? data.endDate.toDate().toISOString() : data.endDate;
+      const createdAt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toISOString() : data.createdAt;
 
       orders.push({
         id: doc.id,  // This will now be the orderId (e.g., ORD-20250701-GEN-MAN-0001)
         ...data,
         startDate,
-        endDate
+        endDate,
+        createdAt
       });
     });
 
+    // Apply search filter after fetching (for flexible text search)
     if (search) {
       const searchLower = search.toLowerCase();
       orders = orders.filter(order =>
         order.customerName?.toLowerCase().includes(searchLower) ||
-        order.spaceName?.toLowerCase().includes(searchLower)
+        order.spaceName?.toLowerCase().includes(searchLower) ||
+        order.customerEmail?.toLowerCase().includes(searchLower)
       );
     }
 
+    // Apply limit after all filters
     if (limit) {
       orders = orders.slice(0, parseInt(limit));
     }
 
+    console.log(`✅ Retrieved ${orders.length} orders${customerEmail ? ` for customer ${customerEmail}` : ''}${customerId ? ` for customer ID ${customerId}` : ''}`);
     handleResponse(res, { orders, total: orders.length });
   } catch (error) {
+    console.error('Error in getAllOrders:', error);
     handleError(res, error);
   }
 };

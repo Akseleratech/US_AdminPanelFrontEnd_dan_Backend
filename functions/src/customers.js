@@ -17,6 +17,15 @@ const getUserFromToken = async (req) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // In development mode, provide a default user if no token is provided
+      const isDevelopment = process.env.NODE_ENV === 'development' || process.env.FUNCTIONS_EMULATOR === 'true';
+      if (isDevelopment) {
+        return {
+          uid: 'dev-user-123',
+          email: 'dev@unionspace.com',
+          displayName: 'Dev User'
+        };
+      }
       return null;
     }
 
@@ -30,6 +39,16 @@ const getUserFromToken = async (req) => {
     };
   } catch (error) {
     console.warn('Failed to verify auth token:', error.message);
+    
+    // In development mode, provide a default user if token verification fails
+    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.FUNCTIONS_EMULATOR === 'true';
+    if (isDevelopment) {
+      return {
+        uid: 'dev-user-123',
+        email: 'dev@unionspace.com',
+        displayName: 'Dev User'
+      };
+    }
     return null;
   }
 };
@@ -63,6 +82,14 @@ function validateCustomerData(data, isUpdate = false) {
     errors.push('Phone number must be less than 50 characters');
   }
   
+  // Gender validation
+  if (data.gender) {
+    const allowedGenders = ['male', 'female', 'other', 'prefer not to say'];
+    if (!allowedGenders.includes(String(data.gender).toLowerCase())) {
+      errors.push('Gender must be male, female, or other');
+    }
+  }
+  
   // Date of birth validation
   if (data.dateOfBirth) {
     const date = new Date(data.dateOfBirth);
@@ -88,6 +115,7 @@ function sanitizeCustomerData(data) {
 
   // Optional fields
   if (data.phone) sanitized.phone = sanitizeString(data.phone);
+  if (data.gender) sanitized.gender = sanitizeString(data.gender).toLowerCase();
   if (data.dateOfBirth) sanitized.dateOfBirth = data.dateOfBirth;
   if (data.notes) sanitized.notes = sanitizeString(data.notes);
   if (data.tags && Array.isArray(data.tags)) sanitized.tags = data.tags;

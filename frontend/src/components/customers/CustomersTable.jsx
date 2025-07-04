@@ -39,6 +39,7 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer ID</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
@@ -50,7 +51,7 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
           <tbody className="bg-white divide-y divide-primary-100">
             {loading ? (
               <tr>
-                <td colSpan="8" className="px-6 py-8 text-center">
+                <td colSpan="9" className="px-6 py-8 text-center">
                   <div className="flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
                     <p className="text-gray-500 font-medium">Loading customers...</p>
@@ -73,6 +74,11 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{customer.email}</div>
                     <div className="text-sm text-gray-500">{customer.phone}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {customer.gender ? (
+                      customer.gender === 'male' ? 'Male' : customer.gender === 'female' ? 'Female' : 'Prefer not to say'
+                    ) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {customer.joinDate ? new Date(customer.joinDate).toLocaleDateString() : 'N/A'}
@@ -127,7 +133,7 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan="9" className="px-6 py-8 text-center text-sm text-gray-500">
                   <div className="flex flex-col items-center justify-center">
                     <User className="mx-auto h-12 w-12 text-gray-400" />
                     <p className="text-gray-500 font-medium">No customers found</p>

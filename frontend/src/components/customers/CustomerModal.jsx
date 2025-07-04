@@ -6,6 +6,7 @@ const CustomerModal = ({ isOpen, onClose, onSave, customer, mode = 'add' }) => {
     name: '',
     email: '',
     phone: '',
+    gender: '',
     company: '',
     dateOfBirth: '',
     photo: null,
@@ -22,6 +23,7 @@ const CustomerModal = ({ isOpen, onClose, onSave, customer, mode = 'add' }) => {
         name: customer.name || '',
         email: customer.email || '',
         phone: customer.phone || '',
+        gender: customer.gender || '',
         company: customer.company || '',
         dateOfBirth: customer.dateOfBirth || '',
         photo: null,
@@ -33,6 +35,7 @@ const CustomerModal = ({ isOpen, onClose, onSave, customer, mode = 'add' }) => {
         name: '',
         email: '',
         phone: '',
+        gender: '',
         company: '',
         dateOfBirth: '',
         photo: null,
@@ -262,6 +265,32 @@ const CustomerModal = ({ isOpen, onClose, onSave, customer, mode = 'add' }) => {
                     <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
                   )}
                 </div>
+
+                {/* Gender */}
+                <div>
+                  <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="gender"
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleInputChange}
+                      className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                        errors.gender ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">Select gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  {errors.gender && (
+                    <p className="mt-1 text-sm text-red-600">{errors.gender}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -304,41 +333,6 @@ const CustomerModal = ({ isOpen, onClose, onSave, customer, mode = 'add' }) => {
             </div>
 
           </div> {/* Close space-y-6 */}
-
-          {/* User Tracking Information */}
-          {customer && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">User Tracking</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-500">Created by:</span>
-                  <div className="mt-1">
-                    {customer.createdBy ? (
-                      <div>
-                        <div className="font-medium text-gray-900">{customer.createdBy.displayName}</div>
-                        <div className="text-gray-500">{customer.createdBy.email}</div>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">Unknown</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-gray-500">Last updated by:</span>
-                  <div className="mt-1">
-                    {customer.updatedBy ? (
-                      <div>
-                        <div className="font-medium text-gray-900">{customer.updatedBy.displayName}</div>
-                        <div className="text-gray-500">{customer.updatedBy.email}</div>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">Unknown</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">

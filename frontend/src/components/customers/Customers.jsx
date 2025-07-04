@@ -7,6 +7,7 @@ import useCustomers from '../../hooks/useCustomers';
 import { useAuth } from '../auth/AuthContext';
 import customerApi from '../../services/customerApi';
 import { ordersAPI } from '../../services/api.jsx';
+import customerAPI from '../../services/customerApi';
 
 const Customers = () => {
   const {
@@ -97,9 +98,17 @@ const Customers = () => {
     setShowModal(true);
   };
 
-  const handleView = (customer) => {
-    setCustomerToView(customer);
-    setShowDetailModal(true);
+  const handleView = async (customer) => {
+    try {
+      // Fetch full customer details to ensure createdBy/updatedBy are included
+      const detailedCustomer = await customerAPI.getCustomerById(customer.id || customer.customerId);
+      setCustomerToView(detailedCustomer);
+    } catch (err) {
+      console.warn('Failed to fetch detailed customer data, falling back to existing object.', err);
+      setCustomerToView(customer);
+    } finally {
+      setShowDetailModal(true);
+    }
   };
 
   const handleDelete = (customer) => {
