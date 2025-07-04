@@ -130,6 +130,23 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
                     <StructuredOrderId orderId={order.orderId || order.id} />
                   </td>
 
+                  {/* Date Range */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="max-w-[180px]">
+                      <div className="flex items-center text-xs">
+                        <Calendar className="w-3 h-3 text-gray-400 mr-1 flex-shrink-0" />
+                        <span className="truncate">
+                          {formatDate(order.startDate)} - {formatDate(order.endDate)}
+                        </span>
+                      </div>
+                      {order.notes && (
+                        <div className="text-xs text-gray-500 truncate mt-1" title={order.notes}>
+                          {order.notes}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+
                   {/* Customer */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="max-w-[160px]">
@@ -173,23 +190,6 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
                     <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                       {getStatusIcon(order.status)}
                       <span className="ml-1 capitalize">{order.status}</span>
-                    </div>
-                  </td>
-
-                  {/* Date Range */}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="max-w-[180px]">
-                      <div className="flex items-center text-xs">
-                        <Calendar className="w-3 h-3 text-gray-400 mr-1 flex-shrink-0" />
-                        <span className="truncate">
-                          {formatDate(order.startDate)} - {formatDate(order.endDate)}
-                        </span>
-                      </div>
-                      {order.notes && (
-                        <div className="text-xs text-gray-500 truncate mt-1" title={order.notes}>
-                          {order.notes}
-                        </div>
-                      )}
                     </div>
                   </td>
 

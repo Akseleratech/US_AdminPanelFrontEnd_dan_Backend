@@ -932,20 +932,29 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           {/* Active Status */}
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-3">Status Manual</h3>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="isActive"
-                checked={formData.isActive}
-                onChange={handleInputChange}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label className="ml-2 text-sm text-gray-700">
-                <span className="font-medium">Aktifkan ruang secara manual</span>
-                <p className="text-xs text-gray-500 mt-1">
-                  Ruang tetap harus mengikuti jam operasional meskipun diaktifkan manual
-                </p>
-              </label>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label className="text-sm text-gray-700">
+                  <span className="font-medium">Aktifkan ruang secara manual</span>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Ruang tetap harus mengikuti jam operasional meskipun diaktifkan manual
+                  </p>
+                </label>
+              </div>
+              <div className="ml-4">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="isActive"
+                    checked={formData.isActive}
+                    onChange={handleInputChange}
+                    className="sr-only peer"
+                  />
+                  <div className={`relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${
+                    formData.isActive ? 'peer-checked:bg-green-600' : ''
+                  }`}></div>
+                </label>
+              </div>
             </div>
           </div>
 
