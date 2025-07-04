@@ -116,7 +116,7 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
 
   return (
     <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-7xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -136,155 +136,132 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Card 1: Customer Details */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <div className="flex items-center space-x-2 mb-4">
-              <User className="w-5 h-5 text-primary-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Customer Information</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Basic Info */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Customer ID</label>
-                  <p className="text-lg font-semibold text-gray-900">{customer.customerId}</p>
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Full Name</label>
-                  <p className="text-lg text-gray-900">{customer.name}</p>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Mail className="w-4 h-4 text-gray-400" />
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Email Address</label>
-                    <p className="text-lg text-gray-900">{customer.email}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Phone className="w-4 h-4 text-gray-400" />
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Phone Number</label>
-                    <p className="text-lg text-gray-900">{customer.phone || '-'}</p>
-                  </div>
-                </div>
+        {/* Body */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Card 1: Customer Details */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm md:col-span-1 space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <User className="w-5 h-5 text-primary-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Customer Information</h3>
               </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                {/* Row */}
+                <div className="text-gray-500">Customer ID</div>
+                <div className="font-medium text-gray-900 break-all">{customer.customerId}</div>
 
-              {/* Additional Info */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Join Date</label>
-                    <p className="text-lg text-gray-900">{formatDate(customer.joinDate)}</p>
-                  </div>
-                </div>
-                
+                <div className="text-gray-500">Full Name</div>
+                <div className="text-gray-900">{customer.name}</div>
+
+                <div className="text-gray-500">Email</div>
+                <div className="text-gray-900 break-all">{customer.email}</div>
+
+                <div className="text-gray-500">Phone</div>
+                <div className="text-gray-900">{customer.phone || '-'}</div>
+
+                <div className="text-gray-500">Join Date</div>
+                <div className="text-gray-900">{formatDate(customer.joinDate)}</div>
+
+                <div className="text-gray-500">Status</div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Status</label>
-                  <span className={`inline-flex px-2 py-1 text-sm font-semibold rounded-full ${
-                    customer.isActive
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800'
+                  <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                    customer.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                   }`}>
                     {customer.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                
-                {customer.createdBy && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Created By</label>
-                    <div className="text-lg text-gray-900">
-                      <p>{customer.createdBy.displayName}</p>
-                      <p className="text-sm text-gray-500">{customer.createdBy.email}</p>
-                    </div>
-                  </div>
-                )}
-                
-                {customer.notes && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Notes</label>
-                    <p className="text-lg text-gray-900">{customer.notes}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
-          {/* Card 2: Recent Orders */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Package className="w-5 h-5 text-primary-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
+                {customer.createdBy && (
+                  <>
+                    <div className="text-gray-500">Created By</div>
+                    <div className="text-gray-900">
+                      <p>{customer.createdBy.displayName}</p>
+                      <p className="text-xs text-gray-500">{customer.createdBy.email}</p>
+                    </div>
+                  </>
+                )}
+
+                {customer.notes && (
+                  <>
+                    <div className="text-gray-500">Notes</div>
+                    <div className="text-gray-900 text-xs">{customer.notes}</div>
+                  </>
+                )}
               </div>
-              <span className="text-sm text-gray-500">Last 5 orders</span>
             </div>
-            
-                         {loadingOrders ? (
-               <div className="flex items-center justify-center py-8">
-                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-                 <p className="text-gray-500 ml-4">Loading orders...</p>
-               </div>
-             ) : ordersError ? (
-               <div className="text-center py-8">
-                 <div className="text-red-500 mb-2">
-                   <AlertTriangle className="mx-auto h-12 w-12" />
-                 </div>
-                 <p className="text-red-600 font-medium">Failed to load orders</p>
-                 <p className="text-gray-500 text-sm mt-1">{ordersError}</p>
-                 <button
-                   onClick={fetchRecentOrders}
-                   className="mt-3 px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark transition-colors"
-                 >
-                   Try Again
-                 </button>
-               </div>
-             ) : recentOrders.length > 0 ? (
-              <div className="space-y-3">
-                {recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900">{order.service}</p>
-                          <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                            <span className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              {formatDate(order.orderDate)}
-                            </span>
-                            <span className="flex items-center">
-                              <Clock className="w-4 h-4 mr-1" />
-                              {order.duration}
-                            </span>
-                            <span className="flex items-center">
-                              <DollarSign className="w-4 h-4 mr-1" />
-                              {formatCurrency(order.amount)}
-                            </span>
+
+            {/* Card 2: Recent Orders */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm md:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <Package className="w-5 h-5 text-primary-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
+                </div>
+                <span className="text-sm text-gray-500">Last 5 orders</span>
+              </div>
+              
+              {loadingOrders ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                  <p className="text-gray-500 ml-4">Loading orders...</p>
+                </div>
+              ) : ordersError ? (
+                <div className="text-center py-8">
+                  <div className="text-red-500 mb-2">
+                    <AlertTriangle className="mx-auto h-12 w-12" />
+                  </div>
+                  <p className="text-red-600 font-medium">Failed to load orders</p>
+                  <p className="text-gray-500 text-sm mt-1">{ordersError}</p>
+                  <button
+                    onClick={fetchRecentOrders}
+                    className="mt-3 px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : recentOrders.length > 0 ? (
+                <div className="space-y-3">
+                  {recentOrders.map((order) => (
+                    <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-gray-900">{order.service}</p>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                              <span className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                {formatDate(order.orderDate)}
+                              </span>
+                              <span className="flex items-center">
+                                <Clock className="w-4 h-4 mr-1" />
+                                {order.duration}
+                              </span>
+                              <span className="flex items-center">
+                                <DollarSign className="w-4 h-4 mr-1" />
+                                {formatCurrency(order.amount)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                          </span>
-                          <span className="text-sm font-medium text-gray-600">#{order.id}</span>
+                          <div className="flex items-center space-x-3">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
+                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                            </span>
+                            <span className="text-sm font-medium text-gray-600">#{order.id}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Package className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2 text-gray-500 font-medium">No orders found</p>
-                <p className="text-gray-400 text-sm">This customer hasn't made any orders yet.</p>
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Package className="mx-auto h-12 w-12 text-gray-400" />
+                  <p className="mt-2 text-gray-500 font-medium">No orders found</p>
+                  <p className="text-gray-400 text-sm">This customer hasn't made any orders yet.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
