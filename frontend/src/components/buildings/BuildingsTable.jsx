@@ -3,6 +3,9 @@ import { Eye, Edit, Trash2, MapPin } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
 const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds }) => {
+  // Debug log to see building data
+  console.log('🏢 BuildingsTable: Received buildings data:', buildings);
+  
   return (
     <div className="bg-white border border-primary-200 table-green-theme rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -43,7 +46,17 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
                 </td>
               </tr>
             ) : buildings && buildings.length > 0 ? (
-              buildings.map((building) => (
+              buildings.map((building) => {
+                // Debug log for each building
+                console.log(`🏢 Building ${building.name}:`, {
+                  id: building.id,
+                  name: building.name,
+                  hasImage: !!building.image,
+                  imageUrl: building.image,
+                  fullBuilding: building
+                });
+                
+                return (
                 <tr key={building.id} className="hover:bg-primary-50 transition-colors duration-150">
                   <td className="px-3 md:px-6 py-4">
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
@@ -52,6 +65,13 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
                           src={building.image}
                           alt={building.name}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error('❌ Image failed to load:', building.image);
+                            console.error('Error event:', e);
+                          }}
+                          onLoad={() => {
+                            console.log('✅ Image loaded successfully:', building.image);
+                          }}
                         />
                       ) : (
                         <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,7 +148,8 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             ) : (
               <tr>
                 <td colSpan="7" className="px-3 md:px-6 py-8 text-center text-sm text-gray-500">

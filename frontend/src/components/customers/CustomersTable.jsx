@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Edit2, Trash2, User, Image, Upload, Phone, Mail } from 'lucide-react';
+import { Edit, Trash2, User, Image, Upload, Phone, Mail } from 'lucide-react';
 
 const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, loading }) => {
   const fileInputRefs = useRef({});
@@ -97,12 +97,22 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, loading })
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={() => onEdit(customer)} className="text-indigo-600 hover:text-indigo-900 mr-4">
-                      Edit
-                    </button>
-                    <button onClick={() => onDelete(customer.id)} className="text-red-600 hover:text-red-900">
-                      Delete
-                    </button>
+                    <div className="flex items-center justify-end space-x-2">
+                      <button
+                        onClick={() => onEdit(customer)}
+                        className="text-green-600 hover:text-green-900 p-1"
+                        aria-label="Edit customer"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDelete(customer.id)}
+                        className="text-red-600 hover:text-red-900 p-1"
+                        aria-label="Delete customer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

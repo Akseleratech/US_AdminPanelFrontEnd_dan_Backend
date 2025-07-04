@@ -30,8 +30,10 @@ const getImageUrl = (fileName) => {
   
   if (isEmulator()) {
     // Use emulator URL format
-    const emulatorHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || "127.0.0.1:9199";
-    return `http://${emulatorHost}/v0/b/${bucketName}/o/${encodeURIComponent(fileName)}?alt=media`;
+    const emulatorHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || "127.0.0.1:9999";
+    const url = `http://${emulatorHost}/v0/b/${bucketName}/o/${encodeURIComponent(fileName)}?alt=media`;
+    console.log(`🔗 Generated emulator URL: ${url}`);
+    return url;
   } else {
     // Use production URL format  
     return `https://storage.googleapis.com/${bucketName}/${fileName}`;
@@ -147,14 +149,30 @@ const deleteImage = async (imageUrl) => {
 
     // Extract filename from URL
     let fileName;
-    if (imageUrl.includes('127.0.0.1:9199') || imageUrl.includes('localhost:9199')) {
-      // Emulator URL format
+    if (imageUrl.includes('127.0.0.1:9999') || imageUrl.includes('localhost:9999') || imageUrl.includes('127.0.0.1:9199') || imageUrl.includes('localhost:9199')) {
+      // Emulator URL format: http://127.0.0.1:9199/v0/b/bucket/o/path%2Fto%2Ffile.jpg?alt=media
+      const matches = imageUrl.match(/o\/([^?]+)/);
+      if (matches) {
+        fileName = decodeURIComponent(matches[1]);
+      }
+    } else if (imageUrl.includes('storage.googleapis.com')) {
+      // Production URL format: https://storage.googleapis.com/bucket/path/to/file.jpg
+      const urlParts = imageUrl.split('/');
+      // Remove the bucket name and join the rest as the filename
+      const bucketIndex = urlParts.findIndex(part => part.includes('.appspot.com'));
+      if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+        fileName = urlParts.slice(bucketIndex + 1).join('/');
+      } else {
+        fileName = urlParts[urlParts.length - 1];
+      }
+    } else if (imageUrl.includes('firebasestorage.googleapis.com')) {
+      // Firebase Storage URL format: https://firebasestorage.googleapis.com/v0/b/bucket/o/path%2Fto%2Ffile.jpg?alt=media
       const matches = imageUrl.match(/o\/([^?]+)/);
       if (matches) {
         fileName = decodeURIComponent(matches[1]);
       }
     } else {
-      // Production URL format
+      // Fallback: try to extract from the last part of URL
       const urlParts = imageUrl.split('/');
       fileName = urlParts[urlParts.length - 1];
     }

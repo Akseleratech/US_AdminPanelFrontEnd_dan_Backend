@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Edit2, Trash2, MapPin, Image, Upload } from 'lucide-react';
+import { Edit, Trash2, MapPin, Image, Upload } from 'lucide-react';
 
 const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCityIds }) => {
   const fileInputRefs = useRef({});
@@ -114,10 +114,10 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
                     <div className="flex items-center justify-start space-x-2">
                       <button
                         onClick={() => onEdit(city)}
-                        className="text-blue-600 hover:text-blue-900 transition-colors duration-150 p-1"
+                        className="text-green-600 hover:text-blue-900 transition-colors duration-150 p-1"
                         title="Edit kota"
                       >
-                        <Edit2 className="w-4 h-4" />
+                        <Edit className="w-4 h-4" />
                       </button>
                       <div className="relative group">
                         <button

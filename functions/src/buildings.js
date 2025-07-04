@@ -634,6 +634,18 @@ const deleteBuilding = async (buildingId, req, res) => {
     const buildingData = buildingDoc.data();
     const cityName = buildingData.location?.city;
 
+    // Delete associated image from storage if exists
+    if (buildingData.image) {
+      try {
+        console.log(`🖼️ Deleting building image: ${buildingData.image}`);
+        await deleteImage(buildingData.image);
+        console.log(`✅ Building image deleted successfully`);
+      } catch (imageError) {
+        console.error('⚠️ Error deleting building image:', imageError);
+        // Continue with building deletion even if image deletion fails
+      }
+    }
+
     await db.collection('buildings').doc(buildingId).delete();
 
     // Update city statistics

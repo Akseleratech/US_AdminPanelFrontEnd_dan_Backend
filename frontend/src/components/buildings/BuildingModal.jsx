@@ -3,7 +3,7 @@ import { X, MapPin, Upload } from 'lucide-react';
 import GoogleMap from '../common/GoogleMap.jsx';
 import buildingApiService from '../../services/buildingApi.js';
 
-const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
+const BuildingModal = ({ isOpen, onClose, onSave, building, mode, onImageUploaded }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -230,6 +230,21 @@ const BuildingModal = ({ isOpen, onClose, onSave, building, mode }) => {
           console.log('📤 BuildingModal: Uploading image for building:', buildingId);
           await buildingApiService.uploadBuildingImage(buildingId, imageFile);
           console.log('✅ BuildingModal: Image uploaded successfully');
+          
+          // Notify parent component to refresh data after successful image upload
+          if (onImageUploaded) {
+            onImageUploaded();
+          }
+          
+          // Show success message for image upload
+          setError('✅ Gedung dan gambar berhasil disimpan!');
+          
+          // Close modal after a short delay to let user see the success message
+          setTimeout(() => {
+            onClose();
+          }, 1500);
+          
+          return; // Don't close modal immediately
         } catch (imageError) {
           console.error('❌ BuildingModal: Error uploading image:', imageError);
           setError(`Gedung berhasil disimpan, tetapi gagal mengupload gambar: ${imageError.message}`);

@@ -48,14 +48,40 @@ const useBuildings = () => {
       
       // Fix: Handle nested response structure
       if (response.success) {
-        setBuildings(response.data?.buildings || []);
+        const buildings = response.data?.buildings || [];
+        console.log('🏢 useBuildings: Setting buildings from API (success response):', buildings);
+        
+        // Debug: Check each building for image property
+        buildings.forEach((building, index) => {
+          console.log(`🏢 Building ${index + 1} (${building.name}):`, {
+            id: building.id,
+            buildingId: building.buildingId,
+            hasImage: !!building.image,
+            imageUrl: building.image
+          });
+        });
+        
+        setBuildings(buildings);
         setPagination(prev => ({
           ...prev,
           total: response.data?.total || 0,
           totalPages: response.data?.totalPages || Math.ceil((response.data?.total || 0) / pagination.limit)
         }));
       } else {
-        setBuildings(response.buildings || []);
+        const buildings = response.buildings || [];
+        console.log('🏢 useBuildings: Setting buildings from API (legacy response):', buildings);
+        
+        // Debug: Check each building for image property
+        buildings.forEach((building, index) => {
+          console.log(`🏢 Building ${index + 1} (${building.name}):`, {
+            id: building.id,
+            buildingId: building.buildingId,
+            hasImage: !!building.image,
+            imageUrl: building.image
+          });
+        });
+        
+        setBuildings(buildings);
         setPagination(prev => ({
           ...prev,
           total: response.pagination?.total || 0,

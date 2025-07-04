@@ -37,13 +37,14 @@ class BuildingApiService {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error(errorData.error?.message || errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
       console.log('✅ Buildings fetched successfully:', data);
       
-      return data;
+      // Return the actual data, ensuring consistent structure
+      return data.success ? data.data : data;
     } catch (error) {
       console.error('❌ Error fetching buildings:', error);
       throw error;
@@ -59,13 +60,13 @@ class BuildingApiService {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error(errorData.error?.message || errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
       console.log('✅ Building fetched successfully:', data);
       
-      return data.building;
+      return data.data; // Fixed: use data.data instead of data.building
     } catch (error) {
       console.error('❌ Error fetching building:', error);
       throw error;
@@ -89,11 +90,11 @@ class BuildingApiService {
 
       if (!response.ok) {
         console.error('❌ Building creation failed:', data);
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        throw new Error(data.error?.message || data.message || `HTTP error! status: ${response.status}`);
       }
 
       console.log('✅ Building created successfully:', data);
-      return data.building;
+      return data.data; // Fixed: use data.data instead of data.building
     } catch (error) {
       console.error('❌ Error creating building:', error);
       throw error;
@@ -117,11 +118,11 @@ class BuildingApiService {
 
       if (!response.ok) {
         console.error('❌ Building update failed:', data);
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        throw new Error(data.error?.message || data.message || `HTTP error! status: ${response.status}`);
       }
 
       console.log('✅ Building updated successfully:', data);
-      return data.building;
+      return data.data; // Fixed: use data.data instead of data.building
     } catch (error) {
       console.error('❌ Error updating building:', error);
       throw error;

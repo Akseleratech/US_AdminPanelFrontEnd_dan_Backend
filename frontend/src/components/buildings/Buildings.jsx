@@ -84,6 +84,8 @@ const Buildings = () => {
         // Trigger global refresh untuk buildings dan spaces (karena space modal butuh building data)
         refreshRelatedToBuildings();
         
+        // Only show notification here if no image will be uploaded
+        // Image upload success will be handled by the modal
         showNotification('Lokasi/gedung baru berhasil ditambahkan', 'success');
       } else {
         result = await updateBuilding(selectedBuilding.id, buildingData);
@@ -93,14 +95,23 @@ const Buildings = () => {
         
         showNotification('Lokasi/gedung berhasil diperbarui', 'success');
       }
-      setShowBuildingModal(false);
-      setSelectedBuilding(null);
       return result; // Return the saved building data for image upload
     } catch (error) {
       const errorMessage = error.message || 'Unknown error occurred';
       showNotification(`Gagal ${modalMode === 'add' ? 'menambah' : 'memperbarui'} lokasi/gedung: ${errorMessage}`, 'error');
       throw error; // Let the modal handle the error display
     }
+  };
+
+  const handleImageUploaded = () => {
+    // Refresh building data after image upload
+    refreshRelatedToBuildings();
+    console.log('🔄 Buildings: Refreshing data after image upload');
+  };
+
+  const handleModalClose = () => {
+    setShowBuildingModal(false);
+    setSelectedBuilding(null);
   };
 
   return (
@@ -191,13 +202,11 @@ const Buildings = () => {
       {/* Building Modal */}
       <BuildingModal
         isOpen={showBuildingModal}
-        onClose={() => {
-          setShowBuildingModal(false);
-          setSelectedBuilding(null);
-        }}
+        onClose={handleModalClose}
         onSave={handleSaveBuilding}
         building={selectedBuilding}
         mode={modalMode}
+        onImageUploaded={handleImageUploaded}
       />
 
       {/* Delete Confirmation Modal */}
