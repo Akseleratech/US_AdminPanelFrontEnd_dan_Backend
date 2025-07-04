@@ -1,30 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Mail, Phone, Calendar, MapPin, Package, Clock, DollarSign, AlertTriangle } from 'lucide-react';
+import { X, User, Mail, Phone, Calendar, MapPin, Package, Clock, DollarSign, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ordersAPI } from '../../services/api.jsx';
 
 const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [ordersError, setOrdersError] = useState(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const ordersPerPage = 10;
 
   useEffect(() => {
     if (isOpen && customer) {
       console.log('Customer data:', customer);
-      fetchRecentOrders();
+      setCurrentPage(1); // Reset to first page when modal opens
+      fetchRecentOrders(1);
     }
   }, [isOpen, customer]);
 
-  const fetchRecentOrders = async () => {
+  useEffect(() => {
+    if (isOpen && customer) {
+      fetchRecentOrders(currentPage);
+    }
+  }, [currentPage]);
+
+  const fetchRecentOrders = async (page = 1) => {
     if (!customer) return;
     
     try {
       setLoadingOrders(true);
       setOrdersError(null); // Clear previous errors
-      console.log('🔍 Fetching orders for customer:', customer.name, '-', customer.email || customer.customerId);
+      console.log('🔍 Fetching orders for customer:', customer.name, '-', customer.email || customer.customerId, 'page:', page);
+      
+      // Calculate offset for pagination
+      const offset = (page - 1) * ordersPerPage;
       
       // Fetch orders filtered by customer email or customer ID
       const filterParams = {
-        limit: 5, // Get last 5 orders
+        limit: ordersPerPage,
+        offset: offset,
         sortBy: 'createdAt',
         sortOrder: 'desc'
       };
@@ -41,7 +57,9 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
       
       // Extract orders from response
       const ordersData = response.data?.orders || response.orders || [];
-      console.log('✅ Fetched customer orders:', ordersData.length, 'orders');
+      const total = response.data?.total || response.total || ordersData.length;
+      
+      console.log('✅ Fetched customer orders:', ordersData.length, 'orders, total:', total);
       
       // Transform API data to match component expectations
       const transformedOrders = ordersData.map(order => ({
@@ -55,10 +73,12 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
       }));
       
       setRecentOrders(transformedOrders);
+      setTotalOrders(total);
     } catch (error) {
       console.error('❌ Error fetching recent orders:', error);
       setOrdersError(error.message || 'Failed to fetch customer orders');
       setRecentOrders([]); // Set empty array on error
+      setTotalOrders(0);
     } finally {
       setLoadingOrders(false);
     }
@@ -111,6 +131,23 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Pagination helper functions
+  const totalPages = Math.ceil(totalOrders / ordersPerPage);
+  const startItem = (currentPage - 1) * ordersPerPage + 1;
+  const endItem = Math.min(currentPage * ordersPerPage, totalOrders);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
     }
   };
 
@@ -190,7 +227,15 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
                   <Package className="w-5 h-5 text-primary-600" />
                   <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
                 </div>
-                <span className="text-sm text-gray-500">Last 5 orders</span>
+                <div className="text-sm text-gray-500">
+                  {totalOrders > 0 ? (
+                    <span>
+                      Showing {startItem}-{endItem} of {totalOrders} orders
+                    </span>
+                  ) : (
+                    <span>No orders</span>
+                  )}
+                </div>
               </div>
               
               {loadingOrders ? (
@@ -213,38 +258,76 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
                   </button>
                 </div>
               ) : recentOrders.length > 0 ? (
-                <div className="space-y-3">
-                  {recentOrders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-gray-900">{order.service}</p>
-                            <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                              <span className="flex items-center">
-                                <Calendar className="w-4 h-4 mr-1" />
-                                {formatDate(order.orderDate)}
-                              </span>
-                              <span className="flex items-center">
-                                <Clock className="w-4 h-4 mr-1" />
-                                {order.duration}
-                              </span>
-                              <span className="flex items-center">
-                                <DollarSign className="w-4 h-4 mr-1" />
-                                {formatCurrency(order.amount)}
-                              </span>
+                <div className="flex flex-col flex-1">
+                  <div className="space-y-3 flex-1">
+                    {recentOrders.map((order) => (
+                      <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-gray-900">{order.service}</p>
+                              <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                                <span className="flex items-center">
+                                  <Calendar className="w-4 h-4 mr-1" />
+                                  {formatDate(order.orderDate)}
+                                </span>
+                                <span className="flex items-center">
+                                  <Clock className="w-4 h-4 mr-1" />
+                                  {order.duration}
+                                </span>
+                                <span className="flex items-center">
+                                  <DollarSign className="w-4 h-4 mr-1" />
+                                  {formatCurrency(order.amount)}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                            </span>
-                            <span className="text-sm font-medium text-gray-600">#{order.id}</span>
+                            <div className="flex items-center space-x-3">
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </span>
+                              <span className="text-sm font-medium text-gray-600">#{order.id}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                  
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+                      <div className="text-sm text-gray-500">
+                        Page {currentPage} of {totalPages}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={handlePreviousPage}
+                          disabled={currentPage === 1}
+                          className={`p-2 rounded-md border transition-colors ${
+                            currentPage === 1
+                              ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="text-sm text-gray-600 px-2">
+                          {currentPage} / {totalPages}
+                        </span>
+                        <button
+                          onClick={handleNextPage}
+                          disabled={currentPage === totalPages}
+                          className={`p-2 rounded-md border transition-colors ${
+                            currentPage === totalPages
+                              ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-8">

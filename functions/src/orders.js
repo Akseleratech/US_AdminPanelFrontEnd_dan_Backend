@@ -48,7 +48,7 @@ const orders = onRequest(async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     const db = getDb();
-    const { status, limit, search, customerEmail, customerId, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    const { status, limit, offset = 0, search, customerEmail, customerId, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
     let ordersRef = db.collection('orders');
 
     // Apply filters
@@ -97,13 +97,25 @@ const getAllOrders = async (req, res) => {
       );
     }
 
-    // Apply limit after all filters
-    if (limit) {
-      orders = orders.slice(0, parseInt(limit));
-    }
+    // Get total count before pagination
+    const totalOrders = orders.length;
 
-    console.log(`✅ Retrieved ${orders.length} orders${customerEmail ? ` for customer ${customerEmail}` : ''}${customerId ? ` for customer ID ${customerId}` : ''}`);
-    handleResponse(res, { orders, total: orders.length });
+    // Apply pagination (offset and limit)
+    const offsetNum = parseInt(offset) || 0;
+    const limitNum = parseInt(limit) || orders.length;
+    orders = orders.slice(offsetNum, offsetNum + limitNum);
+
+    console.log(`✅ Retrieved ${orders.length} orders (${offsetNum + 1}-${offsetNum + orders.length} of ${totalOrders})${customerEmail ? ` for customer ${customerEmail}` : ''}${customerId ? ` for customer ID ${customerId}` : ''}`);
+    handleResponse(res, { 
+      orders, 
+      total: totalOrders,
+      pagination: {
+        offset: offsetNum,
+        limit: limitNum,
+        total: totalOrders,
+        hasMore: (offsetNum + orders.length) < totalOrders
+      }
+    });
   } catch (error) {
     console.error('Error in getAllOrders:', error);
     handleError(res, error);
