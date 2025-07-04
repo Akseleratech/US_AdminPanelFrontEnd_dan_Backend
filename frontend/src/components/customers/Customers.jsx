@@ -6,6 +6,7 @@ import CustomerDetailModal from './CustomerDetailModal.jsx';
 import useCustomers from '../../hooks/useCustomers';
 import { useAuth } from '../auth/AuthContext';
 import customerApi from '../../services/customerApi';
+import { ordersAPI } from '../../services/api.jsx';
 
 const Customers = () => {
   const {
@@ -56,6 +57,28 @@ const Customers = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [filterSearch, setFilterSearch] = useState('');
   const [selectedStatuses, setSelectedStatuses] = useState(new Set());
+
+  // Active orders state
+  const [activeCustomerEmails, setActiveCustomerEmails] = useState(new Set());
+  const ACTIVE_ORDER_STATUSES = ['pending', 'confirmed', 'active'];
+
+  const fetchActiveOrders = async () => {
+    try {
+      const response = await ordersAPI.getAll({ limit: 1000 }); // adjust limit as needed
+      const allOrders = response.data?.orders || response.orders || [];
+
+      const activeSet = new Set();
+      allOrders.forEach((order) => {
+        const status = order.status?.toLowerCase();
+        if (ACTIVE_ORDER_STATUSES.includes(status)) {
+          if (order.customerEmail) activeSet.add(order.customerEmail.toLowerCase());
+        }
+      });
+      setActiveCustomerEmails(activeSet);
+    } catch (err) {
+      console.error('Failed to fetch active orders:', err);
+    }
+  };
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -117,6 +140,7 @@ const Customers = () => {
 
   const handleRefresh = () => {
     refresh();
+    fetchActiveOrders();
     showNotification('Customer data successfully updated', 'success');
   };
 
@@ -173,6 +197,11 @@ const Customers = () => {
 
     return true;
   });
+
+  // Initial fetch active orders
+  useEffect(() => {
+    fetchActiveOrders();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -331,6 +360,7 @@ const Customers = () => {
         onEdit={handleEdit}
         onView={handleView}
         onDelete={handleDelete}
+        activeCustomerEmails={activeCustomerEmails}
         loading={loading}
       />
 
