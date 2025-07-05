@@ -1,5 +1,5 @@
-import React from 'react';
-import { Edit, Trash2, Calendar, MapPin } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Edit, Trash2, Calendar, MapPin, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { 
   getStatusColor, 
   getStatusIcon, 
@@ -13,6 +13,56 @@ import useLayanan from '../../hooks/useLayanan';
 const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
   const { spaces, loading: spacesLoading } = useSpaces();
   const { layananList } = useLayanan();
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  // Calculate pagination values
+  const totalItems = orders.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentOrders = orders.slice(startIndex, endIndex);
+
+  // Pagination handlers
+  const goToFirstPage = () => setCurrentPage(1);
+  const goToLastPage = () => setCurrentPage(totalPages);
+  const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const goToPage = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Reset to first page when orders change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [orders.length]);
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, currentPage + 2);
+      
+      if (currentPage <= 3) {
+        endPage = Math.min(maxVisiblePages, totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        startPage = Math.max(1, totalPages - maxVisiblePages + 1);
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  };
 
   const layananMap = {};
   if (Array.isArray(layananList)) {
@@ -201,6 +251,126 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
     );
   };
 
+  // Pagination Controls Component
+  const PaginationControls = () => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-primary-200 sm:px-6">
+        <div className="flex-1 flex justify-between sm:hidden">
+          <button
+            onClick={goToPreviousPage}
+            disabled={currentPage === 1}
+            className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+              currentPage === 1 
+                ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                : 'text-gray-700 bg-white hover:bg-gray-50'
+            }`}
+          >
+            Previous
+          </button>
+          <button
+            onClick={goToNextPage}
+            disabled={currentPage === totalPages}
+            className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+              currentPage === totalPages 
+                ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                : 'text-gray-700 bg-white hover:bg-gray-50'
+            }`}
+          >
+            Next
+          </button>
+        </div>
+        
+        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-700">
+              Menampilkan{' '}
+              <span className="font-medium">{startIndex + 1}</span> sampai{' '}
+              <span className="font-medium">{Math.min(endIndex, totalItems)}</span> dari{' '}
+              <span className="font-medium">{totalItems}</span> hasil
+            </p>
+          </div>
+          
+          <div>
+            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              {/* First Page Button */}
+              <button
+                onClick={goToFirstPage}
+                disabled={currentPage === 1}
+                className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${
+                  currentPage === 1 
+                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                    : 'text-gray-500 bg-white hover:bg-gray-50'
+                }`}
+                title="Halaman Pertama"
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </button>
+              
+              {/* Previous Page Button */}
+              <button
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                className={`relative inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium ${
+                  currentPage === 1 
+                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                    : 'text-gray-500 bg-white hover:bg-gray-50'
+                }`}
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              
+              {/* Page Numbers */}
+              {getPageNumbers().map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  onClick={() => goToPage(pageNumber)}
+                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                    pageNumber === currentPage
+                      ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
+                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+              
+              {/* Next Page Button */}
+              <button
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                className={`relative inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium ${
+                  currentPage === totalPages 
+                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                    : 'text-gray-500 bg-white hover:bg-gray-50'
+                }`}
+                title="Halaman Selanjutnya"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              
+              {/* Last Page Button */}
+              <button
+                onClick={goToLastPage}
+                disabled={currentPage === totalPages}
+                className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 text-sm font-medium ${
+                  currentPage === totalPages 
+                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                    : 'text-gray-500 bg-white hover:bg-gray-50'
+                }`}
+                title="Halaman Terakhir"
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white border border-primary-200 table-green-theme">
       <div className="overflow-x-auto">
@@ -218,8 +388,8 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-primary-100">
-            {orders && orders.length > 0 ? (
-              orders.map((order) => (
+            {currentOrders && currentOrders.length > 0 ? (
+              currentOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-primary-50 transition-colors duration-150">
                   {/* Order ID */}
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
@@ -324,6 +494,9 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
           </tbody>
         </table>
       </div>
+      
+      {/* Pagination Controls */}
+      <PaginationControls />
     </div>
   );
 };

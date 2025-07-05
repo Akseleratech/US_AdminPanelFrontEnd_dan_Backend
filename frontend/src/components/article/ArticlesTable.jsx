@@ -1,7 +1,177 @@
-import React from 'react';
-import { Edit2, Trash2, Eye, EyeOff, Image as ImageIcon, Star, User, FolderOpen, Tag, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { Edit2, Trash2, Eye, EyeOff, Image as ImageIcon, Star, User, FolderOpen, Tag, Calendar, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 const ArticlesTable = ({ articles, loading, onEdit, onDelete, onToggleStatus }) => {
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  // Calculate pagination values
+  const totalItems = articles?.length || 0;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentArticles = articles?.slice(startIndex, endIndex) || [];
+
+  // Pagination handlers
+  const goToFirstPage = () => setCurrentPage(1);
+  const goToLastPage = () => setCurrentPage(totalPages);
+  const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const goToPage = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Reset to first page when articles change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [articles?.length]);
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, currentPage + 2);
+      
+      if (currentPage <= 3) {
+        endPage = Math.min(maxVisiblePages, totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        startPage = Math.max(1, totalPages - maxVisiblePages + 1);
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  };
+
+  // Pagination Controls Component
+  const PaginationControls = () => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div className="flex-1 flex justify-between sm:hidden">
+          <button
+            onClick={goToPreviousPage}
+            disabled={currentPage === 1}
+            className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+              currentPage === 1 
+                ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                : 'text-gray-700 bg-white hover:bg-gray-50'
+            }`}
+          >
+            Previous
+          </button>
+          <button
+            onClick={goToNextPage}
+            disabled={currentPage === totalPages}
+            className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+              currentPage === totalPages 
+                ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                : 'text-gray-700 bg-white hover:bg-gray-50'
+            }`}
+          >
+            Next
+          </button>
+        </div>
+        
+        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-700">
+              Menampilkan{' '}
+              <span className="font-medium">{startIndex + 1}</span> sampai{' '}
+              <span className="font-medium">{Math.min(endIndex, totalItems)}</span> dari{' '}
+              <span className="font-medium">{totalItems}</span> artikel
+            </p>
+          </div>
+          
+          <div>
+            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              {/* First Page Button */}
+              <button
+                onClick={goToFirstPage}
+                disabled={currentPage === 1}
+                className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${
+                  currentPage === 1 
+                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                    : 'text-gray-500 bg-white hover:bg-gray-50'
+                }`}
+                title="Halaman Pertama"
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </button>
+              
+              {/* Previous Page Button */}
+              <button
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                className={`relative inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium ${
+                  currentPage === 1 
+                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                    : 'text-gray-500 bg-white hover:bg-gray-50'
+                }`}
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              
+              {/* Page Numbers */}
+              {getPageNumbers().map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  onClick={() => goToPage(pageNumber)}
+                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                    pageNumber === currentPage
+                      ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+              
+              {/* Next Page Button */}
+              <button
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                className={`relative inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium ${
+                  currentPage === totalPages 
+                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                    : 'text-gray-500 bg-white hover:bg-gray-50'
+                }`}
+                title="Halaman Selanjutnya"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              
+              {/* Last Page Button */}
+              <button
+                onClick={goToLastPage}
+                disabled={currentPage === totalPages}
+                className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 text-sm font-medium ${
+                  currentPage === totalPages 
+                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                    : 'text-gray-500 bg-white hover:bg-gray-50'
+                }`}
+                title="Halaman Terakhir"
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const getStatusLabel = (status) => {
     switch (status) {
       case 'published':
@@ -73,7 +243,7 @@ const ArticlesTable = ({ articles, loading, onEdit, onDelete, onToggleStatus }) 
         <h3 className="text-lg font-medium text-gray-900">Daftar Article</h3>
       </div>
 
-      {articles.length === 0 ? (
+      {currentArticles.length === 0 ? (
         <div className="p-6 text-center">
           <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada article</h3>
@@ -82,160 +252,165 @@ const ArticlesTable = ({ articles, loading, onEdit, onDelete, onToggleStatus }) 
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Article
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Penulis & Kategori
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tanggal
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {articles.map((article) => (
-                <tr key={article.id} className="hover:bg-gray-50">
-                  {/* Article Info */}
-                  <td className="px-6 py-4">
-                    <div className="flex items-start space-x-4">
-                      {/* Featured Image */}
-                      <div className="flex-shrink-0 h-16 w-16">
-                        {article.featuredImage ? (
-                          <img
-                            className="h-16 w-16 rounded-lg object-cover"
-                            src={article.featuredImage}
-                            alt={article.title}
-                          />
-                        ) : (
-                          <div className="h-16 w-16 rounded-lg bg-gray-200 flex items-center justify-center">
-                            <ImageIcon className="h-8 w-8 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Article Details */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {article.title}
-                          </p>
-                          {article.isFeatured && (
-                            <Star className="ml-2 h-4 w-4 text-yellow-500 flex-shrink-0" />
+        <>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Article
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Penulis & Kategori
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tanggal
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {currentArticles.map((article) => (
+                  <tr key={article.id} className="hover:bg-gray-50">
+                    {/* Article Info */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-start space-x-4">
+                        {/* Featured Image */}
+                        <div className="flex-shrink-0 h-16 w-16">
+                          {article.featuredImage ? (
+                            <img
+                              className="h-16 w-16 rounded-lg object-cover"
+                              src={article.featuredImage}
+                              alt={article.title}
+                            />
+                          ) : (
+                            <div className="h-16 w-16 rounded-lg bg-gray-200 flex items-center justify-center">
+                              <ImageIcon className="h-8 w-8 text-gray-400" />
+                            </div>
                           )}
                         </div>
                         
-                        {article.excerpt && (
-                          <p className="text-sm text-gray-500 mt-1">
-                            {truncateText(article.excerpt, 120)}
-                          </p>
-                        )}
-                        
-                        {/* Tags */}
-                        {article.tags && article.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {article.tags.slice(0, 3).map((tag, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-                              >
-                                <Tag className="h-3 w-3 mr-1" />
-                                {tag}
-                              </span>
-                            ))}
-                            {article.tags.length > 3 && (
-                              <span className="text-xs text-gray-500">
-                                +{article.tags.length - 3} more
-                              </span>
+                        {/* Article Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {article.title}
+                            </p>
+                            {article.isFeatured && (
+                              <Star className="ml-2 h-4 w-4 text-yellow-500 flex-shrink-0" />
                             )}
                           </div>
-                        )}
-                        
-                        <div className="text-xs text-gray-400 mt-2">
-                          ID: {article.articleId || article.id}
+                          
+                          {article.excerpt && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              {truncateText(article.excerpt, 120)}
+                            </p>
+                          )}
+                          
+                          {/* Tags */}
+                          {article.tags && article.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {article.tags.slice(0, 3).map((tag, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                                >
+                                  <Tag className="h-3 w-3 mr-1" />
+                                  {tag}
+                                </span>
+                              ))}
+                              {article.tags.length > 3 && (
+                                <span className="text-xs text-gray-500">
+                                  +{article.tags.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          
+                          <div className="text-xs text-gray-400 mt-2">
+                            ID: {article.articleId || article.id}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Author & Category */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      {article.author && (
-                        <div className="flex items-center text-sm text-gray-900">
-                          <User className="h-4 w-4 mr-1 text-gray-400" />
-                          {article.author}
-                        </div>
-                      )}
-                      {article.category && (
-                        <div className="flex items-center text-sm text-gray-500">
-                          <FolderOpen className="h-4 w-4 mr-1 text-gray-400" />
-                          {article.category}
-                        </div>
-                      )}
-                    </div>
-                  </td>
+                    {/* Author & Category */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="space-y-1">
+                        {article.author && (
+                          <div className="flex items-center text-sm text-gray-900">
+                            <User className="h-4 w-4 mr-1 text-gray-400" />
+                            {article.author}
+                          </div>
+                        )}
+                        {article.category && (
+                          <div className="flex items-center text-sm text-gray-500">
+                            <FolderOpen className="h-4 w-4 mr-1 text-gray-400" />
+                            {article.category}
+                          </div>
+                        )}
+                      </div>
+                    </td>
 
-                  {/* Status */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      {getStatusLabel(article.status)}
-                      {article.status === 'published' && article.publishedAt && (
-                        <div className="text-xs text-gray-500 flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {formatDate(article.publishedAt)}
-                        </div>
-                      )}
-                    </div>
-                  </td>
+                    {/* Status */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="space-y-1">
+                        {getStatusLabel(article.status)}
+                        {article.status === 'published' && article.publishedAt && (
+                          <div className="text-xs text-gray-500 flex items-center">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {formatDate(article.publishedAt)}
+                          </div>
+                        )}
+                      </div>
+                    </td>
 
-                  {/* Date */}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="space-y-1">
-                      <div>Dibuat: {formatDate(article.metadata?.createdAt)}</div>
-                      {article.metadata?.updatedAt && 
-                        article.metadata.updatedAt !== article.metadata.createdAt && (
-                        <div className="text-xs">
-                          Diupdate: {formatDate(article.metadata.updatedAt)}
-                        </div>
-                      )}
-                    </div>
-                  </td>
+                    {/* Date */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="space-y-1">
+                        <div>Dibuat: {formatDate(article.metadata?.createdAt)}</div>
+                        {article.metadata?.updatedAt && 
+                          article.metadata.updatedAt !== article.metadata.createdAt && (
+                          <div className="text-xs">
+                            Diupdate: {formatDate(article.metadata.updatedAt)}
+                          </div>
+                        )}
+                      </div>
+                    </td>
 
-                  {/* Actions */}
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end space-x-2">
-                      <button
-                        onClick={() => onEdit(article)}
-                        className="text-blue-600 hover:text-blue-900 p-1 rounded transition-colors"
-                        title="Edit article"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => onDelete(article)}
-                        className="text-red-600 hover:text-red-900 p-1 rounded transition-colors"
-                        title="Hapus article"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    {/* Actions */}
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => onEdit(article)}
+                          className="text-blue-600 hover:text-blue-900 p-1 rounded transition-colors"
+                          title="Edit article"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => onDelete(article)}
+                          className="text-red-600 hover:text-red-900 p-1 rounded transition-colors"
+                          title="Hapus article"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Pagination Controls */}
+          <PaginationControls />
+        </>
       )}
     </div>
   );
