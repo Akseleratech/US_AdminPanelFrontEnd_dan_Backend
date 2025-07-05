@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import useSpaceAvailability from '../../hooks/useSpaceAvailability';
 
 const AvailabilityCalendar = ({ 
   spaceId, 
-  selectedDate, 
-  onDateSelect, 
+  selectedRange,
+  onDateRangeSelect, 
   pricingType = 'daily',
   dateRange = null 
 }) => {
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('17:00');
   const { availability, loading, error, getDisabledDates, getBookingsForDate } = useSpaceAvailability(spaceId, dateRange);
 
   if (loading) {
@@ -88,9 +90,31 @@ const AvailabilityCalendar = ({
         </div>
 
         <DayPicker
-          mode="single"
-          selected={selectedDate}
-          onSelect={onDateSelect}
+          mode={pricingType === 'hourly' ? 'single' : 'range'}
+          selected={pricingType === 'hourly' ? selectedRange?.from : selectedRange}
+          onSelect={(selected) => {
+            if (pricingType === 'hourly') {
+              // For hourly, we only select one day and use time inputs
+              if (selected) {
+                const startDateTime = new Date(selected);
+                const endDateTime = new Date(selected);
+                
+                // Set times
+                const [startHour, startMin] = startTime.split(':');
+                const [endHour, endMin] = endTime.split(':');
+                
+                startDateTime.setHours(parseInt(startHour), parseInt(startMin), 0, 0);
+                endDateTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
+                
+                onDateRangeSelect({ from: startDateTime, to: endDateTime });
+              } else {
+                onDateRangeSelect(null);
+              }
+            } else {
+              // For other pricing types, use date range
+              onDateRangeSelect(selected);
+            }
+          }}
           disabled={[
             { before: today },
             ...disabledDates
@@ -102,6 +126,63 @@ const AvailabilityCalendar = ({
           }}
           className="mx-auto"
         />
+
+        {/* Time picker for hourly bookings */}
+        {pricingType === 'hourly' && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <h5 className="text-sm font-medium text-blue-900 mb-2">Select Time Range</h5>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-blue-700 mb-1">Start Time</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => {
+                    setStartTime(e.target.value);
+                    // Update the selected range with new time
+                    if (selectedRange?.from) {
+                      const startDateTime = new Date(selectedRange.from);
+                      const endDateTime = new Date(selectedRange.from);
+                      
+                      const [startHour, startMin] = e.target.value.split(':');
+                      const [endHour, endMin] = endTime.split(':');
+                      
+                      startDateTime.setHours(parseInt(startHour), parseInt(startMin), 0, 0);
+                      endDateTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
+                      
+                      onDateRangeSelect({ from: startDateTime, to: endDateTime });
+                    }
+                  }}
+                  className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-blue-700 mb-1">End Time</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => {
+                    setEndTime(e.target.value);
+                    // Update the selected range with new time
+                    if (selectedRange?.from) {
+                      const startDateTime = new Date(selectedRange.from);
+                      const endDateTime = new Date(selectedRange.from);
+                      
+                      const [startHour, startMin] = startTime.split(':');
+                      const [endHour, endMin] = e.target.value.split(':');
+                      
+                      startDateTime.setHours(parseInt(startHour), parseInt(startMin), 0, 0);
+                      endDateTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
+                      
+                      onDateRangeSelect({ from: startDateTime, to: endDateTime });
+                    }
+                  }}
+                  className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Legend */}
         <div className="mt-4 flex flex-wrap gap-4 text-sm">
@@ -120,54 +201,138 @@ const AvailabilityCalendar = ({
         </div>
       </div>
 
-      {/* Show booking details for selected date */}
-      {selectedDate && (
+      {/* Show selected date range and booking details */}
+      {selectedRange && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <h5 className="font-medium text-gray-900 mb-2">
-            {selectedDate.toLocaleDateString('id-ID', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
+            Selected {pricingType === 'hourly' ? 'Date & Time' : 'Date Range'}
           </h5>
           
+          {pricingType === 'hourly' ? (
+            <div className="mb-3">
+              <p className="text-sm text-gray-700">
+                📅 {selectedRange.from?.toLocaleDateString('id-ID', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </p>
+              <p className="text-sm text-gray-700">
+                🕐 {selectedRange.from?.toLocaleTimeString('id-ID', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })} - {selectedRange.to?.toLocaleTimeString('id-ID', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </p>
+            </div>
+          ) : (
+            <div className="mb-3">
+              {selectedRange.from && (
+                <p className="text-sm text-gray-700">
+                  📅 From: {selectedRange.from.toLocaleDateString('id-ID', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </p>
+              )}
+              {selectedRange.to && (
+                <p className="text-sm text-gray-700">
+                  📅 To: {selectedRange.to.toLocaleDateString('id-ID', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </p>
+              )}
+            </div>
+          )}
+          
+          {/* Check availability for the selected range */}
           {(() => {
-            const bookings = getBookingsForDate(selectedDate);
-            if (bookings.length === 0) {
-              return (
-                <p className="text-green-600 text-sm">✅ This date is available for booking</p>
-              );
+            if (pricingType === 'hourly') {
+              // For hourly, check the specific date
+              const bookings = getBookingsForDate(selectedRange.from);
+              if (bookings.length === 0) {
+                return (
+                  <p className="text-green-600 text-sm">✅ This date and time appears to be available</p>
+                );
+              } else {
+                return (
+                  <div className="space-y-2">
+                    <p className="text-yellow-600 text-sm">⚠️ This date has existing bookings (please verify time conflicts):</p>
+                    {bookings.map((booking, index) => (
+                      <div key={index} className="bg-white p-2 rounded border text-sm">
+                        <div className="font-medium">{booking.customerName}</div>
+                        <div className="text-gray-600">
+                          {new Date(booking.startDate).toLocaleDateString('id-ID')} - {new Date(booking.endDate).toLocaleDateString('id-ID')}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {booking.pricingType} • {booking.status}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
             } else {
-              return (
-                <div className="space-y-2">
-                  <p className="text-red-600 text-sm">❌ This date has existing bookings:</p>
-                  {bookings.map((booking, index) => (
-                    <div key={index} className="bg-white p-2 rounded border text-sm">
-                      <div className="font-medium">{booking.customerName}</div>
-                      <div className="text-gray-600">
-                        {new Date(booking.startDate).toLocaleDateString('id-ID')} - {new Date(booking.endDate).toLocaleDateString('id-ID')}
+              // For other pricing types, check range availability
+              if (!selectedRange.from || !selectedRange.to) {
+                return (
+                  <p className="text-gray-600 text-sm">📅 Please select both start and end dates</p>
+                );
+              }
+              
+              // Check each date in the range for conflicts
+              const conflictDates = [];
+              const currentDate = new Date(selectedRange.from);
+              const endDate = new Date(selectedRange.to);
+              
+              while (currentDate <= endDate) {
+                const bookings = getBookingsForDate(currentDate);
+                if (bookings.length > 0) {
+                  conflictDates.push({
+                    date: new Date(currentDate),
+                    bookings: bookings
+                  });
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+              }
+              
+              if (conflictDates.length === 0) {
+                return (
+                  <p className="text-green-600 text-sm">✅ Selected date range appears to be available</p>
+                );
+              } else {
+                return (
+                  <div className="space-y-2">
+                    <p className="text-red-600 text-sm">❌ Selected date range has booking conflicts:</p>
+                    {conflictDates.map((conflict, index) => (
+                      <div key={index} className="bg-white p-2 rounded border text-sm">
+                        <div className="font-medium text-red-700">
+                          {conflict.date.toLocaleDateString('id-ID', { 
+                            weekday: 'short', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </div>
+                        {conflict.bookings.map((booking, bookingIndex) => (
+                          <div key={bookingIndex} className="text-xs text-gray-600 ml-2">
+                            • {booking.customerName} ({booking.pricingType})
+                          </div>
+                        ))}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {booking.pricingType} • {booking.status}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
+                    ))}
+                  </div>
+                );
+              }
             }
           })()}
-        </div>
-      )}
-
-      {/* Hourly booking time slots */}
-      {pricingType === 'hourly' && selectedDate && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h5 className="font-medium text-blue-900 mb-2">Available Time Slots</h5>
-          <p className="text-blue-700 text-sm">
-            For hourly bookings, please select your preferred time in the date/time fields above. 
-            The system will validate availability when you submit the form.
-          </p>
         </div>
       )}
     </div>

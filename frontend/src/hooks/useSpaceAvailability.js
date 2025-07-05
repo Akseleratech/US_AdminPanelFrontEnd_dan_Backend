@@ -42,11 +42,17 @@ const useSpaceAvailability = (spaceId, dateRange = null) => {
     fetchAvailability();
   }, [spaceId, dateRange?.from, dateRange?.to]);
 
+  // Helper function to format date to avoid timezone issues
+  const formatDateLocal = (date) => {
+    if (!(date instanceof Date)) return date;
+    return date.toLocaleDateString('en-CA'); // YYYY-MM-DD format without timezone conversion
+  };
+
   // Helper function to check if a date is available
   const isDateAvailable = (date) => {
     if (!availability?.availableDates) return true;
     
-    const dateStr = date instanceof Date ? date.toISOString().split('T')[0] : date;
+    const dateStr = formatDateLocal(date);
     const dayInfo = availability.availableDates.find(d => d.date === dateStr);
     
     return dayInfo ? dayInfo.available : true;
@@ -56,7 +62,7 @@ const useSpaceAvailability = (spaceId, dateRange = null) => {
   const getBookingsForDate = (date) => {
     if (!availability?.availableDates) return [];
     
-    const dateStr = date instanceof Date ? date.toISOString().split('T')[0] : date;
+    const dateStr = formatDateLocal(date);
     const dayInfo = availability.availableDates.find(d => d.date === dateStr);
     
     return dayInfo ? dayInfo.bookings : [];

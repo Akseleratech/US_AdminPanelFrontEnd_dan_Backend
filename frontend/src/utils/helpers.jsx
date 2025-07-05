@@ -135,4 +135,17 @@ export const getSourceColor = (source) => {
   return source === 'APP' 
     ? 'bg-emerald-100 text-emerald-800' 
     : 'bg-amber-100 text-amber-800';
+};
+
+// Helper function to format date to YYYY-MM-DD without timezone conversion
+export const formatDateLocal = (date) => {
+  // Use en-CA locale to get ISO format (YYYY-MM-DD) without timezone conversion
+  return date.toLocaleDateString('en-CA');
+};
+
+// Alternative helper for manual formatting
+export const formatDateManual = (date) => {
+  return date.getFullYear() + '-' +
+    String(date.getMonth() + 1).padStart(2, '0') + '-' +
+    String(date.getDate()).padStart(2, '0');
 }; 

@@ -4,6 +4,7 @@ import useCustomers from '../../hooks/useCustomers';
 import useSpaces from '../../hooks/useSpaces';
 import AvailabilityCalendar from '../common/AvailabilityCalendar';
 import useSpaceAvailability from '../../hooks/useSpaceAvailability';
+import { formatDateLocal } from '../../utils/helpers';
 
 const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
   const { customers, loading: customersLoading } = useCustomers();
@@ -25,7 +26,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+  const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
 
   // Get availability data for the selected space
@@ -46,8 +47,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
               // For datetime-local input format: YYYY-MM-DDTHH:MM
               return date.toISOString().slice(0, 16);
             } else {
-              // For date input format: YYYY-MM-DD
-              return date.toISOString().split('T')[0];
+              // For date input format: YYYY-MM-DD - use formatDateLocal to avoid timezone issues
+              return formatDateLocal(date);
             }
           } catch (error) {
             console.warn('Invalid date value:', dateValue);
@@ -155,23 +156,33 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     }));
 
     // Reset calendar state when space changes
-    setSelectedCalendarDate(null);
+    setSelectedDateRange(null);
     setShowCalendar(!!spaceId); // Show calendar when space is selected
   };
 
-  const handleCalendarDateSelect = (date) => {
-    setSelectedCalendarDate(date);
-    if (date) {
-      // Auto-fill start date when calendar date is selected
-      const dateStr = formData.pricingType === 'hourly' 
-        ? date.toISOString().slice(0, 16) 
-        : date.toISOString().split('T')[0];
-      
+  const handleDateRangeSelect = (range) => {
+    setSelectedDateRange(range);
+    if (range) {
+      if (formData.pricingType === 'hourly') {
+        // For hourly pricing, use the datetime values directly
+        setFormData(prev => ({
+          ...prev,
+          startDate: range.from ? range.from.toISOString().slice(0, 16) : '',
+          endDate: range.to ? range.to.toISOString().slice(0, 16) : ''
+        }));
+      } else {
+        // For other pricing types, use formatDateLocal to avoid timezone issues
+        setFormData(prev => ({
+          ...prev,
+          startDate: range.from ? formatDateLocal(range.from) : '',
+          endDate: range.to ? formatDateLocal(range.to) : ''
+        }));
+      }
+    } else {
       setFormData(prev => ({
         ...prev,
-        startDate: dateStr,
-        // For daily/halfday/monthly, set end date to same day initially
-        endDate: formData.pricingType === 'hourly' ? '' : dateStr
+        startDate: '',
+        endDate: ''
       }));
     }
   };
@@ -343,6 +354,10 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       const requiresReset = (prev.pricingType === 'hourly' && pricingType !== 'hourly') ||
                             (prev.pricingType !== 'hourly' && pricingType === 'hourly');
 
+      if (requiresReset) {
+        setSelectedDateRange(null); // Reset calendar selection when switching pricing types
+      }
+
       return {
         ...prev,
         pricingType,
@@ -463,87 +478,49 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                   <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
                     <p className="text-sm text-blue-700">
                       <strong>Total Estimasi:</strong> {formatCurrency(formData.amount)}
+                    </p>
+                    <div className="text-xs text-blue-600 mt-1">
                       {formData.pricingType === 'hourly' && formData.startDate && formData.endDate && (
-                        <span className="text-xs block">
-                          ({Math.ceil((new Date(formData.endDate) - new Date(formData.startDate)) / (1000 * 60 * 60))} jam × {formatCurrency(selectedSpace.pricing.hourly)})
-                        </span>
+                        <>
+                          <div>📅 {new Date(formData.startDate).toLocaleDateString('id-ID')}</div>
+                          <div>🕐 {new Date(formData.startDate).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} - {new Date(formData.endDate).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})}</div>
+                          <div>({Math.ceil((new Date(formData.endDate) - new Date(formData.startDate)) / (1000 * 60 * 60))} jam × {formatCurrency(selectedSpace.pricing.hourly)})</div>
+                        </>
                       )}
                       {formData.pricingType === 'halfday' && formData.startDate && formData.endDate && (
-                        <span className="text-xs block">
-                          ({Math.floor(((new Date(formData.endDate) - new Date(formData.startDate)) / (24 * 60 * 60 * 1000)) + 1) * 2} setengah hari × {formatCurrency(selectedSpace.pricing.halfday)})
-                        </span>
+                        <>
+                          <div>📅 {new Date(formData.startDate).toLocaleDateString('id-ID')} - {new Date(formData.endDate).toLocaleDateString('id-ID')}</div>
+                          <div>({Math.floor(((new Date(formData.endDate) - new Date(formData.startDate)) / (24 * 60 * 60 * 1000)) + 1) * 2} setengah hari × {formatCurrency(selectedSpace.pricing.halfday)})</div>
+                        </>
                       )}
                       {formData.pricingType === 'daily' && formData.startDate && formData.endDate && (
-                        <span className="text-xs block">
-                          ({Math.floor(((new Date(formData.endDate) - new Date(formData.startDate)) / (24 * 60 * 60 * 1000)) + 1)} hari × {formatCurrency(selectedSpace.pricing.daily)})
-                        </span>
+                        <>
+                          <div>📅 {new Date(formData.startDate).toLocaleDateString('id-ID')} - {new Date(formData.endDate).toLocaleDateString('id-ID')}</div>
+                          <div>({Math.floor(((new Date(formData.endDate) - new Date(formData.startDate)) / (24 * 60 * 60 * 1000)) + 1)} hari × {formatCurrency(selectedSpace.pricing.daily)})</div>
+                        </>
                       )}
                       {formData.pricingType === 'monthly' && formData.startDate && formData.endDate && (
-                        <span className="text-xs block">
-                          ({Math.ceil((new Date(formData.endDate) - new Date(formData.startDate)) / (1000 * 60 * 60 * 24 * 30))} bulan × {formatCurrency(selectedSpace.pricing.monthly)})
-                        </span>
+                        <>
+                          <div>📅 {new Date(formData.startDate).toLocaleDateString('id-ID')} - {new Date(formData.endDate).toLocaleDateString('id-ID')}</div>
+                          <div>({Math.ceil((new Date(formData.endDate) - new Date(formData.startDate)) / (1000 * 60 * 60 * 24 * 30))} bulan × {formatCurrency(selectedSpace.pricing.monthly)})</div>
+                        </>
                       )}
-                    </p>
+                    </div>
                   </div>
                 )}
               </div>
             );
           })()}
 
-          {/* Date Range */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                {formData.pricingType === 'hourly' ? 'Start Date & Time *' : 'Start Date *'}
-              </label>
-              <input
-                type={formData.pricingType === 'hourly' ? 'datetime-local' : 'date'}
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                  errors.startDate ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-              {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                {formData.pricingType === 'hourly' ? 'End Date & Time *' : 'End Date *'}
-              </label>
-              <input
-                type={formData.pricingType === 'hourly' ? 'datetime-local' : 'date'}
-                name="endDate"
-                value={formData.endDate}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                  errors.endDate ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-              {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
-            </div>
-          </div>
-
-          {/* Duration Info for Hourly */}
-          {formData.pricingType === 'hourly' && formData.startDate && formData.endDate && (
-            <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
-              <p className="text-sm text-yellow-700">
-                <strong>Info:</strong> Untuk pricing per jam, pastikan waktu mulai dan selesai sudah benar. 
-                Durasi akan dihitung berdasarkan selisih jam antara waktu mulai dan selesai.
-              </p>
-            </div>
-          )}
 
           {/* Availability Calendar */}
           {showCalendar && (
             <div className="border-t pt-4">
               <AvailabilityCalendar
                 spaceId={formData.spaceId}
-                selectedDate={selectedCalendarDate}
-                onDateSelect={handleCalendarDateSelect}
+                selectedRange={selectedDateRange}
+                onDateRangeSelect={handleDateRangeSelect}
                 pricingType={formData.pricingType}
               />
             </div>
