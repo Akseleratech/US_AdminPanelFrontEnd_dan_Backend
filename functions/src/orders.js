@@ -48,7 +48,7 @@ const orders = onRequest(async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     const db = getDb();
-    const { status, limit, offset = 0, search, customerEmail, customerId, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    const { status, limit, offset = 0, search, customerEmail, customerId, spaceId, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
     let ordersRef = db.collection('orders');
 
     // Apply filters
@@ -62,6 +62,10 @@ const getAllOrders = async (req, res) => {
 
     if (customerId) {
       ordersRef = ordersRef.where('customerId', '==', customerId);
+    }
+
+    if (spaceId) {
+      ordersRef = ordersRef.where('spaceId', '==', spaceId);
     }
 
     // Apply sorting
@@ -105,7 +109,7 @@ const getAllOrders = async (req, res) => {
     const limitNum = parseInt(limit) || orders.length;
     orders = orders.slice(offsetNum, offsetNum + limitNum);
 
-    console.log(`✅ Retrieved ${orders.length} orders (${offsetNum + 1}-${offsetNum + orders.length} of ${totalOrders})${customerEmail ? ` for customer ${customerEmail}` : ''}${customerId ? ` for customer ID ${customerId}` : ''}`);
+    console.log(`✅ Retrieved ${orders.length} orders (${offsetNum + 1}-${offsetNum + orders.length} of ${totalOrders})${customerEmail ? ` for customer ${customerEmail}` : ''}${customerId ? ` for customer ID ${customerId}` : ''}${spaceId ? ` for space ID ${spaceId}` : ''}`);
     handleResponse(res, { 
       orders, 
       total: totalOrders,

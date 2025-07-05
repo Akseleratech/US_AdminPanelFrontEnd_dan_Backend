@@ -131,6 +131,10 @@ export const ordersAPI = {
 export const spacesAPI = {
   getAll: () => apiCall('/spaces'),
   getById: (id) => apiCall(`/spaces/${id}`),
+  getAvailability: (id, params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return apiCall(`/spaces/${id}/availability${queryParams ? `?${queryParams}` : ''}`);
+  },
   create: (data) => apiCall('/spaces', {
     method: 'POST',
     body: JSON.stringify(data)

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, User, MapPin } from 'lucide-react';
 import useCustomers from '../../hooks/useCustomers';
 import useSpaces from '../../hooks/useSpaces';
+import AvailabilityCalendar from '../common/AvailabilityCalendar';
+import useSpaceAvailability from '../../hooks/useSpaceAvailability';
 
 const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
   const { customers, loading: customersLoading } = useCustomers();
@@ -23,6 +25,11 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  // Get availability data for the selected space
+  const { isDateAvailable, getBookingsForDate } = useSpaceAvailability(formData.spaceId);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -146,6 +153,27 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       endDate: '',
       amount: 0
     }));
+
+    // Reset calendar state when space changes
+    setSelectedCalendarDate(null);
+    setShowCalendar(!!spaceId); // Show calendar when space is selected
+  };
+
+  const handleCalendarDateSelect = (date) => {
+    setSelectedCalendarDate(date);
+    if (date) {
+      // Auto-fill start date when calendar date is selected
+      const dateStr = formData.pricingType === 'hourly' 
+        ? date.toISOString().slice(0, 16) 
+        : date.toISOString().split('T')[0];
+      
+      setFormData(prev => ({
+        ...prev,
+        startDate: dateStr,
+        // For daily/halfday/monthly, set end date to same day initially
+        endDate: formData.pricingType === 'hourly' ? '' : dateStr
+      }));
+    }
   };
 
   // Helper to calculate total amount based on pricing type & date range
@@ -252,6 +280,30 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     
     if (!formData.amount || formData.amount <= 0) {
       newErrors.amount = 'Amount must be greater than Rp. 0';
+    }
+
+    // Check availability for the selected dates
+    if (formData.spaceId && formData.startDate && formData.endDate) {
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      
+      // Check if start date is available
+      if (!isDateAvailable(startDate)) {
+        const bookings = getBookingsForDate(startDate);
+        if (bookings.length > 0) {
+          newErrors.startDate = `Start date is not available. Existing booking by ${bookings[0].customerName}`;
+        }
+      }
+      
+      // For multi-day bookings, check if end date is available
+      if (formData.pricingType !== 'hourly' && startDate.toDateString() !== endDate.toDateString()) {
+        if (!isDateAvailable(endDate)) {
+          const bookings = getBookingsForDate(endDate);
+          if (bookings.length > 0) {
+            newErrors.endDate = `End date is not available. Existing booking by ${bookings[0].customerName}`;
+          }
+        }
+      }
     }
 
     setErrors(newErrors);
@@ -482,6 +534,18 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                 <strong>Info:</strong> Untuk pricing per jam, pastikan waktu mulai dan selesai sudah benar. 
                 Durasi akan dihitung berdasarkan selisih jam antara waktu mulai dan selesai.
               </p>
+            </div>
+          )}
+
+          {/* Availability Calendar */}
+          {showCalendar && (
+            <div className="border-t pt-4">
+              <AvailabilityCalendar
+                spaceId={formData.spaceId}
+                selectedDate={selectedCalendarDate}
+                onDateSelect={handleCalendarDateSelect}
+                pricingType={formData.pricingType}
+              />
             </div>
           )}
 

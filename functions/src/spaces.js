@@ -32,6 +32,9 @@ const spaces = onRequest(async (req, res) => {
         } else if (pathParts.length === 1) {
           // GET /spaces/:id
           return await getSpaceById(pathParts[0], req, res);
+        } else if (pathParts.length === 2 && pathParts[1] === 'availability') {
+          // GET /spaces/:id/availability
+          return await getSpaceAvailability(pathParts[0], req, res);
         } else if (pathParts.length === 2 && pathParts[1] === 'update-operational-status') {
           // GET /spaces/:id/update-operational-status
           return await updateSingleSpaceOperationalStatus(pathParts[0], req, res);
@@ -734,6 +737,120 @@ const updateBuildingStatistics = async (buildingId) => {
   } catch (error) {
     console.error('Error updating building statistics:', error);
     // Do not throw to avoid failing main operation
+  }
+};
+
+// GET /spaces/:id/availability
+const getSpaceAvailability = async (spaceId, req, res) => {
+  try {
+    const db = getDb();
+    const { from, to } = req.query;
+
+    // Check if space exists
+    const spaceDoc = await db.collection('spaces').doc(spaceId).get();
+    if (!spaceDoc.exists) {
+      return handleResponse(res, { message: 'Space not found' }, 404);
+    }
+
+    // Set default date range if not provided (next 30 days)
+    const fromDate = from ? new Date(from) : new Date();
+    const toDate = to ? new Date(to) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // Query orders for this space with confirmed or active status
+    const ordersSnapshot = await db.collection('orders')
+      .where('spaceId', '==', spaceId)
+      .where('status', 'in', ['confirmed', 'active'])
+      .get();
+
+    const bookedRanges = [];
+    const bookedSlots = []; // For hourly bookings
+
+    ordersSnapshot.forEach(doc => {
+      const order = doc.data();
+      const startDate = order.startDate && order.startDate.toDate ? order.startDate.toDate() : new Date(order.startDate);
+      const endDate = order.endDate && order.endDate.toDate ? order.endDate.toDate() : new Date(order.endDate);
+
+      // Only include orders that overlap with the requested date range
+      if (startDate <= toDate && endDate >= fromDate) {
+        const bookedRange = {
+          orderId: doc.id,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          pricingType: order.pricingType,
+          customerName: order.customerName,
+          status: order.status
+        };
+
+        bookedRanges.push(bookedRange);
+
+        // For hourly bookings, also create hourly slots
+        if (order.pricingType === 'hourly') {
+          const current = new Date(startDate);
+          while (current < endDate) {
+            bookedSlots.push({
+              datetime: current.toISOString(),
+              orderId: doc.id,
+              customerName: order.customerName
+            });
+            current.setHours(current.getHours() + 1);
+          }
+        }
+      }
+    });
+
+    // Generate available dates for the requested range
+    const availableDates = [];
+    const current = new Date(fromDate);
+    current.setHours(0, 0, 0, 0);
+
+    while (current <= toDate) {
+      const dateStr = current.toISOString().split('T')[0];
+      const dayStart = new Date(current);
+      const dayEnd = new Date(current);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      // Check if this date has any bookings
+      const hasBooking = bookedRanges.some(range => {
+        const rangeStart = new Date(range.startDate);
+        const rangeEnd = new Date(range.endDate);
+        return rangeStart <= dayEnd && rangeEnd >= dayStart;
+      });
+
+      availableDates.push({
+        date: dateStr,
+        available: !hasBooking,
+        bookings: bookedRanges.filter(range => {
+          const rangeStart = new Date(range.startDate);
+          const rangeEnd = new Date(range.endDate);
+          return rangeStart <= dayEnd && rangeEnd >= dayStart;
+        })
+      });
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    console.log(`✅ Retrieved availability for space ${spaceId}: ${bookedRanges.length} bookings found`);
+
+    handleResponse(res, {
+      spaceId,
+      spaceName: spaceDoc.data().name,
+      dateRange: {
+        from: fromDate.toISOString(),
+        to: toDate.toISOString()
+      },
+      bookedRanges,
+      bookedSlots, // For hourly bookings
+      availableDates,
+      summary: {
+        totalDaysChecked: availableDates.length,
+        availableDays: availableDates.filter(d => d.available).length,
+        bookedDays: availableDates.filter(d => !d.available).length,
+        totalBookings: bookedRanges.length
+      }
+    });
+  } catch (error) {
+    console.error('Error getting space availability:', error);
+    handleError(res, error);
   }
 };
 
