@@ -44,6 +44,102 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
     return new Date(dateString).toLocaleDateString('id-ID');
   };
 
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatDateRange = (order) => {
+    if (!order.startDate || !order.endDate) return '-';
+    
+    const startDate = new Date(order.startDate);
+    const endDate = new Date(order.endDate);
+    const pricingType = order.pricingType || 'daily';
+    
+    // Check if it's the same day
+    const isSameDay = startDate.toDateString() === endDate.toDateString();
+    
+    // Calculate duration for display
+    const getDurationInfo = () => {
+      if (pricingType === 'hourly') {
+        const hours = Math.ceil((endDate - startDate) / (1000 * 60 * 60));
+        return `${hours} jam`;
+      } else if (pricingType === 'daily') {
+        const days = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+        return days === 1 ? '1 hari' : `${days} hari`;
+      } else if (pricingType === 'halfday') {
+        const days = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+        const sessions = days * 2;
+        return `${sessions} sesi`;
+      } else if (pricingType === 'monthly') {
+        const months = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24 * 30));
+        return months === 1 ? '1 bulan' : `${months} bulan`;
+      }
+      return '';
+    };
+    
+    if (pricingType === 'hourly') {
+      // For hourly: show date and time range
+      if (isSameDay) {
+        return (
+          <div>
+            <div className="font-medium">{formatDate(order.startDate)}</div>
+            <div className="text-xs text-blue-600">
+              🕐 {formatTime(order.startDate)} - {formatTime(order.endDate)}
+            </div>
+            <div className="text-xs text-blue-500 font-medium">
+              ⏱️ {getDurationInfo()}
+            </div>
+          </div>
+        );
+      } else {
+        // Hourly booking across multiple days (rare case)
+        return (
+          <div>
+            <div className="text-xs">
+              {formatDate(order.startDate)} {formatTime(order.startDate)}
+            </div>
+            <div className="text-xs">
+              - {formatDate(order.endDate)} {formatTime(order.endDate)}
+            </div>
+            <div className="text-xs text-blue-500 font-medium">
+              ⏱️ {getDurationInfo()}
+            </div>
+          </div>
+        );
+      }
+    } else {
+      // For daily, halfday, monthly: show date range
+      if (isSameDay) {
+        return (
+          <div>
+            <div className="font-medium">{formatDate(order.startDate)}</div>
+            <div className="text-xs text-gray-600">
+              {pricingType === 'halfday' && '🌅 Half Day'}
+              {pricingType === 'daily' && '📅 Full Day'}
+              {pricingType === 'monthly' && '📆 Monthly'}
+            </div>
+          </div>
+        );
+      } else {
+        return (
+          <div>
+            <div className="text-xs font-medium">{formatDate(order.startDate)}</div>
+            <div className="text-xs font-medium">- {formatDate(order.endDate)}</div>
+            <div className="text-xs text-gray-600">
+              {pricingType === 'halfday' && `🌅 ${getDurationInfo()}`}
+              {pricingType === 'daily' && `📅 ${getDurationInfo()}`}
+              {pricingType === 'monthly' && `📆 ${getDurationInfo()}`}
+            </div>
+          </div>
+        );
+      }
+    }
+  };
+
   const formatCurrency = (amount) => {
     if (!amount) return 'Rp 0';
     return `Rp ${Number(amount).toLocaleString('id-ID')}`;
@@ -133,15 +229,15 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
                   {/* Date Range */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="max-w-[180px]">
-                      <div className="flex items-center text-xs">
-                        <Calendar className="w-3 h-3 text-gray-400 mr-1 flex-shrink-0" />
-                        <span className="truncate">
-                          {formatDate(order.startDate)} - {formatDate(order.endDate)}
-                        </span>
+                      <div className="flex items-start">
+                        <Calendar className="w-3 h-3 text-gray-400 mr-1 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          {formatDateRange(order)}
+                        </div>
                       </div>
                       {order.notes && (
-                        <div className="text-xs text-gray-500 truncate mt-1" title={order.notes}>
-                          {order.notes}
+                        <div className="text-xs text-gray-500 truncate mt-1 ml-4" title={order.notes}>
+                          💬 {order.notes}
                         </div>
                       )}
                     </div>

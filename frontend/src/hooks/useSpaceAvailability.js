@@ -68,12 +68,56 @@ const useSpaceAvailability = (spaceId, dateRange = null) => {
     return dayInfo ? dayInfo.bookings : [];
   };
 
-  // Helper function to get disabled dates for calendar
+  // Helper function to get booked hours for a specific date
+  const getBookedHoursForDate = (date) => {
+    if (!availability?.bookedSlots) return [];
+    
+    const dateStr = formatDateLocal(date); // YYYY-MM-DD
+    return availability.bookedSlots
+      .filter(slot => {
+        // slot is an object with datetime property
+        if (typeof slot === 'string') {
+          return slot.startsWith(dateStr);
+        } else if (slot && slot.datetime) {
+          return slot.datetime.startsWith(dateStr);
+        }
+        return false;
+      })
+      .map(slot => {
+        // Extract hour from datetime
+        const datetime = typeof slot === 'string' ? slot : slot.datetime;
+        return new Date(datetime).getHours();
+      })
+      .filter((hour, index, arr) => arr.indexOf(hour) === index); // Remove duplicates
+  };
+
+  // Helper function to check if a date is fully booked (all day occupied)
+  const isDateFullyBooked = (date) => {
+    if (!availability?.availableDates) return false;
+    
+    const dateStr = formatDateLocal(date);
+    const dayInfo = availability.availableDates.find(d => d.date === dateStr);
+    
+    if (!dayInfo) return false;
+    
+    // Check if there are any non-hourly bookings (daily, halfday, monthly)
+    const hasFullDayBookings = dayInfo.bookings.some(booking => 
+      booking.pricingType !== 'hourly'
+    );
+    
+    if (hasFullDayBookings) return true;
+    
+    // For hourly bookings, check if most hours are booked (>= 18 hours = 75%)
+    const bookedHours = getBookedHoursForDate(date);
+    return bookedHours.length >= 18;
+  };
+
+  // Helper function to get disabled dates for calendar (only fully booked dates)
   const getDisabledDates = () => {
     if (!availability?.availableDates) return [];
     
     return availability.availableDates
-      .filter(d => !d.available)
+      .filter(d => isDateFullyBooked(new Date(d.date)))
       .map(d => new Date(d.date));
   };
 
@@ -95,7 +139,9 @@ const useSpaceAvailability = (spaceId, dateRange = null) => {
     isDateAvailable,
     getBookingsForDate,
     getDisabledDates,
-    isTimeSlotAvailable
+    isTimeSlotAvailable,
+    getBookedHoursForDate,
+    isDateFullyBooked
   };
 };
 

@@ -3,8 +3,9 @@ import { X, Calendar, User, MapPin } from 'lucide-react';
 import useCustomers from '../../hooks/useCustomers';
 import useSpaces from '../../hooks/useSpaces';
 import AvailabilityCalendar from '../common/AvailabilityCalendar';
+import HalfDaySessionSelector from '../common/HalfDaySessionSelector';
 import useSpaceAvailability from '../../hooks/useSpaceAvailability';
-import { formatDateLocal } from '../../utils/helpers';
+import { formatDateLocal, formatDateTimeLocal } from '../../utils/helpers';
 
 const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
   const { customers, loading: customersLoading } = useCustomers();
@@ -28,9 +29,10 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedHalfDaySession, setSelectedHalfDaySession] = useState(null);
 
   // Get availability data for the selected space
-  const { isDateAvailable, getBookingsForDate } = useSpaceAvailability(formData.spaceId);
+  const { isDateAvailable, getBookingsForDate, getBookedHoursForDate, isDateFullyBooked } = useSpaceAvailability(formData.spaceId);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -44,8 +46,13 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
             if (isNaN(date.getTime())) return '';
             
             if (pricingType === 'hourly') {
-              // For datetime-local input format: YYYY-MM-DDTHH:MM
-              return date.toISOString().slice(0, 16);
+              // For datetime-local input format: YYYY-MM-DDTHH:MM - use local time
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              const hours = String(date.getHours()).padStart(2, '0');
+              const minutes = String(date.getMinutes()).padStart(2, '0');
+              return `${year}-${month}-${day}T${hours}:${minutes}`;
             } else {
               // For date input format: YYYY-MM-DD - use formatDateLocal to avoid timezone issues
               return formatDateLocal(date);
@@ -164,12 +171,30 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     setSelectedDateRange(range);
     if (range) {
       if (formData.pricingType === 'hourly') {
-        // For hourly pricing, use the datetime values directly
+        // For hourly pricing, use local datetime format for datetime-local input
+        const formatForInput = (date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          return `${year}-${month}-${day}T${hours}:${minutes}`;
+        };
+        
         setFormData(prev => ({
           ...prev,
-          startDate: range.from ? range.from.toISOString().slice(0, 16) : '',
-          endDate: range.to ? range.to.toISOString().slice(0, 16) : ''
+          startDate: range.from ? formatForInput(range.from) : '',
+          endDate: range.to ? formatForInput(range.to) : ''
         }));
+      } else if (formData.pricingType === 'halfday') {
+        // For halfday, only set date, time will be handled by session selector
+        setFormData(prev => ({
+          ...prev,
+          startDate: range.from ? formatDateLocal(range.from) : '',
+          endDate: range.from ? formatDateLocal(range.from) : '' // Same day for halfday
+        }));
+        // Reset session when date changes
+        setSelectedHalfDaySession(null);
       } else {
         // For other pricing types, use formatDateLocal to avoid timezone issues
         setFormData(prev => ({
@@ -184,7 +209,28 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
         startDate: '',
         endDate: ''
       }));
+      setSelectedHalfDaySession(null);
     }
+  };
+
+  const handleHalfDaySessionSelect = (sessionData) => {
+    setSelectedHalfDaySession(sessionData);
+    
+    // Update form data with session times - use local time format for datetime-local input
+    const formatForInput = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+    
+    setFormData(prev => ({
+      ...prev,
+      startDate: formatForInput(sessionData.startDateTime),
+      endDate: formatForInput(sessionData.endDateTime)
+    }));
   };
 
   // Helper to calculate total amount based on pricing type & date range
@@ -328,15 +374,20 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
 
     setIsSubmitting(true);
     try {
+      // Temporary: use simple ISO string conversion for testing
+      const startDateToSend = formData.startDate ? new Date(formData.startDate).toISOString() : null;
+      const endDateToSend = formData.endDate ? new Date(formData.endDate).toISOString() : null;
+      
       const orderData = {
         ...formData,
         amount: parseFloat(formData.amount || 0),
         pricingType: formData.pricingType,
-        startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
-        endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
+        startDate: startDateToSend,
+        endDate: endDateToSend,
         source: 'manual' // Menandakan bahwa order ini dibuat manual
       };
 
+      console.log('🔍 Sending order data:', orderData);
       await onSave(orderData);
       onClose();
     } catch (error) {
@@ -352,10 +403,13 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       if (prev.pricingType === pricingType) return prev; // no change
 
       const requiresReset = (prev.pricingType === 'hourly' && pricingType !== 'hourly') ||
-                            (prev.pricingType !== 'hourly' && pricingType === 'hourly');
+                            (prev.pricingType !== 'hourly' && pricingType === 'hourly') ||
+                            (prev.pricingType === 'halfday' && pricingType !== 'halfday') ||
+                            (prev.pricingType !== 'halfday' && pricingType === 'halfday');
 
       if (requiresReset) {
         setSelectedDateRange(null); // Reset calendar selection when switching pricing types
+        setSelectedHalfDaySession(null); // Reset session selection
       }
 
       return {
@@ -521,7 +575,20 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                 spaceId={formData.spaceId}
                 selectedRange={selectedDateRange}
                 onDateRangeSelect={handleDateRangeSelect}
-                pricingType={formData.pricingType}
+                pricingType={formData.pricingType === 'halfday' ? 'single' : formData.pricingType}
+              />
+            </div>
+          )}
+
+          {/* Half-Day Session Selector */}
+          {showCalendar && formData.pricingType === 'halfday' && selectedDateRange?.from && (
+            <div className="border-t pt-4">
+              <HalfDaySessionSelector
+                selectedDate={selectedDateRange.from}
+                selectedSession={selectedHalfDaySession}
+                onSessionSelect={handleHalfDaySessionSelect}
+                bookedHours={getBookedHoursForDate(selectedDateRange.from)}
+                getBookingsForDate={getBookingsForDate}
               />
             </div>
           )}

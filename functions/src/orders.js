@@ -13,6 +13,96 @@ const {
 } = require("./utils/helpers");
 const admin = require("firebase-admin");
 
+// Helper function to update space booking status intelligently
+const updateSpaceBookingStatus = async (db, spaceId, orderId, orderStatus, pricingType, operation = 'create') => {
+  if (!spaceId) {
+    console.warn('⚠️ No spaceId provided for booking status update');
+    return;
+  }
+
+  const spaceRef = db.collection('spaces').doc(spaceId);
+  const spaceDoc = await spaceRef.get();
+  
+  if (!spaceDoc.exists) {
+    console.warn(`⚠️ Space ${spaceId} not found when trying to update booking status`);
+    return;
+  }
+
+  // Get all orders for this space to determine overall booking status
+  // Only confirmed and active orders should make space booked
+  const ordersQuery = await db.collection('orders')
+    .where('spaceId', '==', spaceId)
+    .where('status', 'in', ['confirmed', 'active'])
+    .get();
+
+  const activeOrders = [];
+  ordersQuery.forEach(doc => {
+    const orderData = doc.data();
+    // Skip the current order if we're deleting it
+    if (operation === 'delete' && doc.id === orderId) {
+      return;
+    }
+    activeOrders.push({
+      id: doc.id,
+      ...orderData
+    });
+  });
+
+  // If we're creating a new order with confirmed/active status, include it in the calculation
+  if (operation === 'create' && ['confirmed', 'active'].includes(orderStatus)) {
+    activeOrders.push({
+      id: orderId,
+      status: orderStatus,
+      pricingType: pricingType
+    });
+  }
+
+  // For hourly bookings, space can have multiple concurrent bookings
+  // For daily/monthly bookings, space should be marked as fully booked
+  const hasFullDayBookings = activeOrders.some(order => 
+    ['daily', 'monthly', 'halfday'].includes(order.pricingType)
+  );
+
+  const hasActiveBookings = activeOrders.length > 0;
+
+  // Determine new booking status
+  let isBooked = false;
+  let bookingOrderId = null;
+
+  if (hasFullDayBookings) {
+    // If there are any full-day bookings, space is booked
+    isBooked = true;
+    const fullDayOrder = activeOrders.find(order => 
+      ['daily', 'monthly', 'halfday'].includes(order.pricingType)
+    );
+    bookingOrderId = fullDayOrder.id;
+  } else if (hasActiveBookings) {
+    // If only hourly bookings, space is partially booked
+    isBooked = false; // Keep as false for hourly-only bookings
+    bookingOrderId = null; // Don't set a specific order ID
+  } else {
+    // No active bookings
+    isBooked = false;
+    bookingOrderId = null;
+  }
+
+  // Update space
+  const spaceUpdate = {
+    isBooked: isBooked,
+    lastBookingUpdate: new Date()
+  };
+
+  if (bookingOrderId) {
+    spaceUpdate.bookingOrderId = bookingOrderId;
+  } else {
+    spaceUpdate.bookingOrderId = admin.firestore.FieldValue.delete();
+  }
+
+  await spaceRef.update(spaceUpdate);
+
+  console.log(`✅ Space ${spaceId} booking status updated: ${isBooked ? 'booked' : 'available'} (${activeOrders.length} confirmed/active orders, ${hasFullDayBookings ? 'has full-day bookings' : 'hourly only'})`);
+};
+
 // Main orders function
 const orders = onRequest(async (req, res) => {
   return cors(req, res, async () => {
@@ -180,6 +270,16 @@ const createOrder = async (req, res) => {
     const token = verifyAuthToken(req);
     const user = token ? await getUserFromToken(token) : null;
 
+    // Debug logging for datetime values
+    console.log('📅 CREATE - Original startDate:', startDate);
+    console.log('📅 CREATE - Original endDate:', endDate);
+    
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    
+    console.log('📅 CREATE - Converted startDate:', startDateObj);
+    console.log('📅 CREATE - Converted endDate:', endDateObj);
+    
     const orderData = {
       orderId: orderId,  // Structured order ID like "ORD-20250701-GEN-MAN-0001"
       customerId: sanitizeString(customerId), // Real customer ID from form
@@ -189,8 +289,8 @@ const createOrder = async (req, res) => {
       spaceName: sanitizeString(spaceName || ''),
       amount: parseFloat(amount),
       pricingType: sanitizeString(pricingType),
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      startDate: startDateObj,
+      endDate: endDateObj,
       status: sanitizeString(status),
       notes: sanitizeString(notes),
       source: sanitizeString(source),
@@ -203,15 +303,9 @@ const createOrder = async (req, res) => {
     // Use orderId as document name instead of auto-generated ID
     await db.collection('orders').doc(orderId).set(orderData);
 
-    // Update space booking status based on order status
+    // Update space booking status based on order status and pricing type
     try {
-      const shouldBeBooked = ['confirmed', 'active'].includes(status);
-      const spaceUpdate = shouldBeBooked 
-        ? { isBooked: true, bookingOrderId: orderId }
-        : { isBooked: false, bookingOrderId: admin.firestore.FieldValue.delete() };
-      
-      await db.collection('spaces').doc(spaceId).update(spaceUpdate);
-      console.log(`✅ Space ${spaceId} booking status updated: ${shouldBeBooked ? 'booked' : 'available'} for order ${orderId} with status '${status}'`);
+      await updateSpaceBookingStatus(db, spaceId, orderId, status, pricingType, 'create');
     } catch (err) {
       console.warn('⚠️ Unable to update space booking status:', err.message);
     }
@@ -245,6 +339,18 @@ const updateOrder = async (orderId, req, res) => {
     const updateData = { ...req.body };
     delete updateData.id;
     
+    // Handle datetime fields properly
+    if (updateData.startDate) {
+      console.log('📅 Original startDate:', updateData.startDate);
+      updateData.startDate = new Date(updateData.startDate);
+      console.log('📅 Converted startDate:', updateData.startDate);
+    }
+    if (updateData.endDate) {
+      console.log('📅 Original endDate:', updateData.endDate);
+      updateData.endDate = new Date(updateData.endDate);
+      console.log('📅 Converted endDate:', updateData.endDate);
+    }
+    
     // Add update tracking
     updateData.updatedAt = new Date();
     updateData.updatedBy = user ? user.uid : 'system';
@@ -253,49 +359,16 @@ const updateOrder = async (orderId, req, res) => {
     try {
       const newStatus = updateData.status || prevData.status;
       const spaceIdToUpdate = updateData.spaceId || prevData.spaceId;
-      // Update booking logic based on new status rules:
-      // pending = space beroperasi (not booked)
-      // confirmed = space booked
-      // active = space booked  
-      // completed = space beroperasi (not booked)
-      // cancel = space beroperasi (not booked)
-      const bookedStatuses = ['confirmed', 'active'];
+      const pricingType = updateData.pricingType || prevData.pricingType;
 
-      // First check if the space exists
+      // First update the order
+      await db.collection('orders').doc(orderId).update(updateData);
+      
+      // Then update space booking status
       if (spaceIdToUpdate) {
-        const spaceRef = db.collection('spaces').doc(spaceIdToUpdate);
-        const spaceDoc = await spaceRef.get();
-        
-        if (spaceDoc.exists) {
-          // Use transaction to ensure atomicity
-          await db.runTransaction(async (transaction) => {
-            // First update the order
-            transaction.update(db.collection('orders').doc(orderId), updateData);
-            
-            // Then update space booking status based on order status
-            if (bookedStatuses.includes(newStatus)) {
-              transaction.update(spaceRef, { 
-                isBooked: true, 
-                bookingOrderId: orderId 
-              });
-              console.log(`✅ Space ${spaceIdToUpdate} marked as booked for order ${orderId} with status '${newStatus}'`);
-            } else if (['pending', 'completed', 'cancelled', 'cancel'].includes(newStatus)) {
-              transaction.update(spaceRef, { 
-                isBooked: false, 
-                bookingOrderId: admin.firestore.FieldValue.delete() 
-              });
-              console.log(`✅ Space ${spaceIdToUpdate} freed up after order ${orderId} status changed to '${newStatus}'`);
-            }
-          });
-        } else {
-          console.warn(`⚠️ Space ${spaceIdToUpdate} not found when trying to update booking status`);
-          // If space doesn't exist, just update the order
-          await db.collection('orders').doc(orderId).update(updateData);
-        }
+        await updateSpaceBookingStatus(db, spaceIdToUpdate, orderId, newStatus, pricingType, 'update');
       } else {
         console.warn(`⚠️ No spaceId found in order ${orderId}`);
-        // If no spaceId, just update the order
-        await db.collection('orders').doc(orderId).update(updateData);
       }
     } catch (err) {
       console.warn('⚠️ Unable to sync space booking status:', err.message);
@@ -328,43 +401,25 @@ const deleteOrder = async (orderId, req, res) => {
 
     const orderData = orderDoc.data();
     
-    // Free up the space
+    // Free up the space and delete order
     try {
-      // First check if the space exists
       const spaceId = orderData.spaceId;
+      const pricingType = orderData.pricingType;
+      
+      // First delete the order
+      await db.collection('orders').doc(orderId).delete();
+      
+      // Then update space booking status
       if (spaceId) {
-        const spaceRef = db.collection('spaces').doc(spaceId);
-        const spaceDoc = await spaceRef.get();
-        
-        if (spaceDoc.exists) {
-          console.log(`🔄 Freeing up space ${spaceId} after deleting order ${orderId}`);
-          
-          // Use a transaction to ensure both operations complete
-          await db.runTransaction(async (transaction) => {
-            // First delete the order
-            transaction.delete(db.collection('orders').doc(orderId));
-            
-            // Then update the space
-            transaction.update(spaceRef, { 
-              isBooked: false, 
-              bookingOrderId: admin.firestore.FieldValue.delete() 
-            });
-          });
-          
-          console.log(`✅ Successfully freed up space ${spaceId} after deleting order ${orderId}`);
-        } else {
-          console.warn(`⚠️ Space ${spaceId} not found when trying to free it up`);
-          // If space doesn't exist, just delete the order
-          await db.collection('orders').doc(orderId).delete();
-        }
+        console.log(`🔄 Updating space ${spaceId} booking status after deleting order ${orderId}`);
+        await updateSpaceBookingStatus(db, spaceId, orderId, null, pricingType, 'delete');
+        console.log(`✅ Successfully updated space ${spaceId} after deleting order ${orderId}`);
       } else {
         console.warn(`⚠️ No spaceId found in order ${orderId}`);
-        // If no spaceId, just delete the order
-        await db.collection('orders').doc(orderId).delete();
       }
     } catch (err) {
-      console.error('❌ Error while freeing space and deleting order:', err);
-      // If transaction fails, try to at least delete the order
+      console.error('❌ Error while deleting order and updating space:', err);
+      // If delete fails, try to at least delete the order
       await db.collection('orders').doc(orderId).delete();
     }
     

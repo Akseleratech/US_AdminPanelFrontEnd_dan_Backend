@@ -12,7 +12,7 @@ const AvailabilityCalendar = ({
 }) => {
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('17:00');
-  const { availability, loading, error, getDisabledDates, getBookingsForDate } = useSpaceAvailability(spaceId, dateRange);
+  const { availability, loading, error, getDisabledDates, getBookingsForDate, getBookedHoursForDate, isDateFullyBooked } = useSpaceAvailability(spaceId, dateRange);
 
   if (loading) {
     return (
@@ -46,12 +46,31 @@ const AvailabilityCalendar = ({
   const renderDayContent = (day) => {
     const bookings = getBookingsForDate(day);
     const hasBookings = bookings.length > 0;
+    const bookedHours = getBookedHoursForDate(day);
+    const isFullyBooked = isDateFullyBooked(day);
+    
+    // Calculate percentage of hours booked (for progress bar)
+    const bookedPercentage = bookedHours.length / 24; // 24 hours in a day
     
     return (
-      <div className="relative">
+      <div className="relative w-full h-full flex items-center justify-center">
         <span>{day.getDate()}</span>
+        
+        {/* Dot indicator for any bookings */}
         {hasBookings && (
-          <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+          <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
+            isFullyBooked ? 'bg-red-500' : 'bg-yellow-500'
+          }`}></div>
+        )}
+        
+        {/* Progress bar for hourly bookings */}
+        {bookedHours.length > 0 && (
+          <div
+            className={`absolute bottom-0 left-0 h-0.5 ${
+              isFullyBooked ? 'bg-red-500' : 'bg-yellow-500/70'
+            }`}
+            style={{ width: `${bookedPercentage * 100}%` }}
+          />
         )}
       </div>
     );
@@ -60,12 +79,12 @@ const AvailabilityCalendar = ({
   // Custom modifiers for styling
   const modifiers = {
     disabled: disabledDates,
-    booked: disabledDates,
+    fullyBooked: disabledDates,
     today: today,
   };
 
   const modifiersStyles = {
-    booked: {
+    fullyBooked: {
       backgroundColor: '#fee2e2',
       color: '#dc2626',
       fontWeight: 'bold',
@@ -90,8 +109,8 @@ const AvailabilityCalendar = ({
         </div>
 
         <DayPicker
-          mode={pricingType === 'hourly' ? 'single' : 'range'}
-          selected={pricingType === 'hourly' ? selectedRange?.from : selectedRange}
+          mode={pricingType === 'hourly' || pricingType === 'single' ? 'single' : 'range'}
+          selected={pricingType === 'hourly' || pricingType === 'single' ? selectedRange?.from : selectedRange}
           onSelect={(selected) => {
             if (pricingType === 'hourly') {
               // For hourly, we only select one day and use time inputs
@@ -107,6 +126,13 @@ const AvailabilityCalendar = ({
                 endDateTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
                 
                 onDateRangeSelect({ from: startDateTime, to: endDateTime });
+              } else {
+                onDateRangeSelect(null);
+              }
+            } else if (pricingType === 'single') {
+              // For single date selection (halfday)
+              if (selected) {
+                onDateRangeSelect({ from: selected, to: selected });
               } else {
                 onDateRangeSelect(null);
               }
@@ -191,8 +217,17 @@ const AvailabilityCalendar = ({
             <span>Today</span>
           </div>
           <div className="flex items-center">
-            <div className="w-4 h-4 bg-red-200 border border-red-300 rounded mr-2"></div>
-            <span>Booked</span>
+            <div className="w-4 h-4 bg-red-200 border border-red-300 rounded mr-2 relative">
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+            </div>
+            <span>Fully Booked</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-4 h-4 bg-white border border-gray-300 rounded mr-2 relative">
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-500 rounded-full"></div>
+              <div className="absolute bottom-0 left-0 w-2 h-0.5 bg-yellow-500"></div>
+            </div>
+            <span>Partially Booked</span>
           </div>
           <div className="flex items-center">
             <div className="w-4 h-4 bg-green-100 border border-green-300 rounded mr-2"></div>
@@ -258,6 +293,8 @@ const AvailabilityCalendar = ({
             if (pricingType === 'hourly') {
               // For hourly, check the specific date
               const bookings = getBookingsForDate(selectedRange.from);
+              const bookedHours = getBookedHoursForDate(selectedRange.from);
+              
               if (bookings.length === 0) {
                 return (
                   <p className="text-green-600 text-sm">✅ This date and time appears to be available</p>
@@ -265,12 +302,34 @@ const AvailabilityCalendar = ({
               } else {
                 return (
                   <div className="space-y-2">
-                    <p className="text-yellow-600 text-sm">⚠️ This date has existing bookings (please verify time conflicts):</p>
+                    <p className="text-yellow-600 text-sm">⚠️ This date has existing bookings:</p>
+                    
+                    {/* Show booked hours */}
+                    {bookedHours.length > 0 && (
+                      <div className="bg-yellow-50 p-2 rounded border border-yellow-200">
+                        <p className="text-xs font-medium text-yellow-800">Jam Terbooking:</p>
+                        <p className="text-xs text-yellow-700">
+                          {bookedHours.sort((a, b) => a - b).map(hour => `${hour.toString().padStart(2, '0')}:00`).join(', ')}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Show booking details */}
                     {bookings.map((booking, index) => (
                       <div key={index} className="bg-white p-2 rounded border text-sm">
                         <div className="font-medium">{booking.customerName}</div>
                         <div className="text-gray-600">
-                          {new Date(booking.startDate).toLocaleDateString('id-ID')} - {new Date(booking.endDate).toLocaleDateString('id-ID')}
+                          {booking.pricingType === 'hourly' ? (
+                            <>
+                              {new Date(booking.startDate).toLocaleDateString('id-ID')} • {' '}
+                              {new Date(booking.startDate).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} - {' '}
+                              {new Date(booking.endDate).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})}
+                            </>
+                          ) : (
+                            <>
+                              {new Date(booking.startDate).toLocaleDateString('id-ID')} - {new Date(booking.endDate).toLocaleDateString('id-ID')}
+                            </>
+                          )}
                         </div>
                         <div className="text-xs text-gray-500">
                           {booking.pricingType} • {booking.status}

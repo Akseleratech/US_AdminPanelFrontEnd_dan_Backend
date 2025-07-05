@@ -105,6 +105,77 @@ const SpacesGrid = ({
     });
   };
 
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatBookingDateRange = (booking) => {
+    if (!booking.startDate || !booking.endDate) return '-';
+    
+    const startDate = new Date(booking.startDate);
+    const endDate = new Date(booking.endDate);
+    const pricingType = booking.pricingType || 'daily';
+    
+    // Check if it's the same day
+    const isSameDay = startDate.toDateString() === endDate.toDateString();
+    
+    if (pricingType === 'hourly') {
+      // For hourly: show date and time range
+      if (isSameDay) {
+        return (
+          <div>
+            <div className="font-medium">{formatDate(booking.startDate)}</div>
+            <div className="text-blue-600 text-xs">
+              🕐 {formatTime(booking.startDate)} - {formatTime(booking.endDate)}
+            </div>
+          </div>
+        );
+      } else {
+        // Hourly booking across multiple days (rare case)
+        return (
+          <div>
+            <div className="text-xs">
+              {formatDate(booking.startDate)} {formatTime(booking.startDate)}
+            </div>
+            <div className="text-xs">
+              - {formatDate(booking.endDate)} {formatTime(booking.endDate)}
+            </div>
+          </div>
+        );
+      }
+    } else {
+      // For daily, halfday, monthly: show date range
+      if (isSameDay) {
+        return (
+          <div>
+            <div className="font-medium">{formatDate(booking.startDate)}</div>
+            <div className="text-xs text-gray-600">
+              {pricingType === 'halfday' && '🌅 Half Day'}
+              {pricingType === 'daily' && '📅 Full Day'}
+              {pricingType === 'monthly' && '📆 Monthly'}
+            </div>
+          </div>
+        );
+      } else {
+        return (
+          <div>
+            <div className="font-medium text-xs">{formatDate(booking.startDate)}</div>
+            <div className="font-medium text-xs">- {formatDate(booking.endDate)}</div>
+            <div className="text-xs text-gray-600">
+              {pricingType === 'halfday' && '🌅 Half Day'}
+              {pricingType === 'daily' && '📅 Full Day'}
+              {pricingType === 'monthly' && '📆 Monthly'}
+            </div>
+          </div>
+        );
+      }
+    }
+  };
+
   // Helper function to get booking information for a space
   const getSpaceBookings = (spaceId) => {
     if (!orders || !Array.isArray(orders)) {
@@ -264,14 +335,14 @@ const SpacesGrid = ({
                   <div className="space-y-2 max-h-24 overflow-y-auto">
                     {bookings.map((booking, index) => (
                       <div key={index} className="p-2 bg-blue-50 rounded text-xs">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center text-blue-700">
-                            <Calendar className="w-3 h-3 mr-1" />
-                            <span className="font-medium">
-                              {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
-                            </span>
+                        <div className="flex items-start justify-between mb-1">
+                          <div className="flex items-start text-blue-700 flex-1 min-w-0">
+                            <Calendar className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              {formatBookingDateRange(booking)}
+                            </div>
                           </div>
-                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ml-2 flex-shrink-0 ${
                             booking.status === 'confirmed' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
                           }`}>
                             {booking.status}
@@ -279,10 +350,10 @@ const SpacesGrid = ({
                         </div>
                         <div className="flex items-center text-blue-600">
                           <User className="w-3 h-3 mr-1" />
-                          <span>{booking.customerName || 'Unknown Customer'}</span>
+                          <span className="truncate">{booking.customerName || 'Unknown Customer'}</span>
                         </div>
                         {booking.orderId && (
-                          <div className="text-gray-500 mt-1">
+                          <div className="text-gray-500 mt-1 text-xs truncate">
                             Order: {booking.orderId}
                           </div>
                         )}
