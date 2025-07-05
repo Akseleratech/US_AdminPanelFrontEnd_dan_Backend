@@ -251,7 +251,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     }
     
     if (!formData.amount || formData.amount <= 0) {
-      newErrors.amount = 'Amount must be greater than 0';
+      newErrors.amount = 'Amount must be greater than Rp. 0';
     }
 
     setErrors(newErrors);
@@ -501,7 +501,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
                   errors.amount ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="Total amount in IDR"
+                placeholder="Rp. 0"
               />
               {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
               <p className="text-xs text-gray-500 mt-1">

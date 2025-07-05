@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye, Calendar, RefreshCw } from 'lucide-react';
+import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye, Calendar, RefreshCw, Filter as FilterIcon, ChevronDown } from 'lucide-react';
 import useSpaces from '../../hooks/useSpaces';
 import useLayanan from '../../hooks/useLayanan';
 import useBuildings from '../../hooks/useBuildings';
@@ -66,6 +66,18 @@ const Spaces = () => {
     layanan: 'all',
     status: 'all', // 'all', 'active', 'inactive'
   });
+
+  // Toggle visibility of filter dropdowns
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Helper to count active filters
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (filters.buildingId !== 'all') count++;
+    if (filters.layanan !== 'all') count++;
+    if (filters.status !== 'all') count++;
+    return count;
+  };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -366,6 +378,27 @@ const Spaces = () => {
             />
           </div>
 
+          {/* Filter Toggle Button */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center px-4 py-2 border rounded-lg transition-colors duration-200 w-full md:w-auto text-sm font-semibold ${
+              showFilters || getActiveFilterCount() > 0
+                ? 'bg-primary-50 border-primary-300 text-primary-700' 
+                : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+            }`}
+          >
+            <FilterIcon className="w-4 h-4 mr-2" />
+            Filter
+            {getActiveFilterCount() > 0 && (
+              <span className="ml-2 px-2 py-1 text-xs bg-primary-600 text-white rounded-full">
+                {getActiveFilterCount()}
+              </span>
+            )}
+            <ChevronDown className={`w-4 h-4 ml-1 transition-transform duration-200 ${
+              showFilters ? 'rotate-180' : ''
+            }`} />
+          </button>
+
           {/* Add Button */}
           <button
             onClick={handleAddSpace}
@@ -377,6 +410,7 @@ const Spaces = () => {
         </div>
 
         {/* Filter Dropdowns */}
+        {showFilters && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1 block">Gedung</label>
@@ -420,6 +454,7 @@ const Spaces = () => {
             </select>
           </div>
         </div>
+        )}
       </div>
 
       {/* Spaces Grid */}
