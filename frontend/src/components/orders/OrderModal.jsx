@@ -45,7 +45,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
             const date = new Date(dateValue);
             if (isNaN(date.getTime())) return '';
             
-            if (pricingType === 'hourly') {
+            if (pricingType === 'hourly' || pricingType === 'halfday') {
               // For datetime-local input format: YYYY-MM-DDTHH:MM - use local time
               const year = date.getFullYear();
               const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -77,6 +77,45 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           status: editingOrder.status || 'pending',
           notes: editingOrder.notes || ''
         });
+
+        // Initialize calendar and session states for editing
+        if (editingOrder.startDate && editingOrder.endDate) {
+          const startDate = new Date(editingOrder.startDate);
+          const endDate = new Date(editingOrder.endDate);
+          
+          // Set calendar selection
+          setSelectedDateRange({ from: startDate, to: endDate });
+          
+          // For half-day orders, also set the session selection
+          if (pricingType === 'halfday') {
+            const startHour = startDate.getHours();
+            const endHour = endDate.getHours();
+            
+            // Find matching session based on start and end hours
+            const sessionOptions = [
+              { id: 'morning', startHour: 6, endHour: 12, label: 'Pagi', timeLabel: '06:00 - 12:00' },
+              { id: 'afternoon', startHour: 8, endHour: 14, label: 'Siang', timeLabel: '08:00 - 14:00' },
+              { id: 'day', startHour: 10, endHour: 16, label: 'Siang-Sore', timeLabel: '10:00 - 16:00' },
+              { id: 'evening', startHour: 12, endHour: 18, label: 'Sore', timeLabel: '12:00 - 18:00' },
+              { id: 'night', startHour: 18, endHour: 24, label: 'Malam', timeLabel: '18:00 - 24:00' }
+            ];
+            
+            const matchingSession = sessionOptions.find(session => 
+              session.startHour === startHour && session.endHour === endHour
+            );
+            
+            if (matchingSession) {
+              setSelectedHalfDaySession({
+                ...matchingSession,
+                startDateTime: startDate,
+                endDateTime: endDate
+              });
+            }
+          }
+        }
+        
+        // Show calendar if space is selected
+        setShowCalendar(!!editingOrder.spaceId);
       } else {
         setFormData({
           customerId: '',
@@ -91,6 +130,11 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           status: 'pending',
           notes: ''
         });
+        
+        // Reset calendar and session states for new orders
+        setSelectedDateRange(null);
+        setSelectedHalfDaySession(null);
+        setShowCalendar(false);
       }
       setErrors({});
     }
