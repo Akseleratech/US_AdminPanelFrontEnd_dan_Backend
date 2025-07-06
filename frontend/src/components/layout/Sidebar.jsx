@@ -12,7 +12,8 @@ import {
   Wrench,
   ChevronDown,
   LogOut,
-  Newspaper
+  Newspaper,
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 
@@ -70,6 +71,11 @@ const Sidebar = () => {
       name: 'Customers',
       path: '/customers',
       icon: Users
+    },
+    {
+      name: 'Finance',
+      path: '/finance',
+      icon: CreditCard
     }
   ];
 
