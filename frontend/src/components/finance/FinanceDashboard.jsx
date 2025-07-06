@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, FileText, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import StatCard from '../common/StatCard';
 import LoadingSpinner from '../common/LoadingSpinner';
+import PaymentModal from './PaymentModal';
+import * as invoiceAPI from '../../services/invoiceApi';
 
 const FinanceDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -14,31 +16,62 @@ const FinanceDashboard = () => {
     topCustomers: []
   });
   const [loading, setLoading] = useState(true);
+  const [paymentModal, setPaymentModal] = useState({
+    isOpen: false,
+    invoice: null
+  });
 
-  // Mock data for now - will be replaced with real API calls
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Fetch invoice stats and recent invoices from API
+        const [stats, recentInvoices] = await Promise.all([
+          invoiceAPI.getInvoiceStats(),
+          invoiceAPI.getRecentInvoices(5)
+        ]);
+        
+        // Process recent invoices to match dashboard format
+        const processedRecentInvoices = recentInvoices.map(invoice => ({
+          id: invoice.id,
+          customer: invoice.customerName,
+          amount: invoice.total,
+          status: invoice.status,
+          dueDate: invoice.dueDate
+        }));
+        
+        // Calculate top customers from invoice data
+        const allInvoices = await invoiceAPI.getAllInvoices();
+        const customerStats = {};
+        
+        // Group invoices by customer
+        allInvoices.forEach(invoice => {
+          const customerName = invoice.customerName;
+          if (!customerStats[customerName]) {
+            customerStats[customerName] = {
+              name: customerName,
+              revenue: 0,
+              invoices: 0
+            };
+          }
+          customerStats[customerName].revenue += invoice.total;
+          customerStats[customerName].invoices += 1;
+        });
+        
+        // Sort by revenue and get top 5
+        const topCustomers = Object.values(customerStats)
+          .sort((a, b) => b.revenue - a.revenue)
+          .slice(0, 5);
         
         setDashboardData({
-          totalRevenue: 125000000,
-          paidInvoices: 45,
-          outstandingAmount: 35000000,
-          overdueAmount: 8500000,
-          totalInvoices: 52,
-          recentInvoices: [
-            { id: 'INV/2024/05/001', customer: 'PT. Teknologi Maju', amount: 2500000, status: 'paid', dueDate: '2024-05-15' },
-            { id: 'INV/2024/05/002', customer: 'CV. Kreatif Digital', amount: 1800000, status: 'sent', dueDate: '2024-05-20' },
-            { id: 'INV/2024/05/003', customer: 'Startup Inovasi', amount: 3200000, status: 'overdue', dueDate: '2024-05-10' }
-          ],
-          topCustomers: [
-            { name: 'PT. Teknologi Maju', revenue: 15000000, invoices: 8 },
-            { name: 'CV. Kreatif Digital', revenue: 12500000, invoices: 6 },
-            { name: 'Startup Inovasi', revenue: 9800000, invoices: 5 }
-          ]
+          totalRevenue: stats.totalRevenue,
+          paidInvoices: stats.paidCount,
+          outstandingAmount: stats.outstandingAmount,
+          overdueAmount: stats.overdueAmount,
+          totalInvoices: stats.totalCount,
+          recentInvoices: processedRecentInvoices,
+          topCustomers: topCustomers
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -79,6 +112,36 @@ const FinanceDashboard = () => {
         return <AlertCircle className="w-3 h-3 mr-1" />;
       default:
         return <FileText className="w-3 h-3 mr-1" />;
+    }
+  };
+
+  const handleCreateInvoice = () => {
+    // Navigate to invoices page to create new invoice
+    window.location.href = '/finance/invoices';
+  };
+
+  const handleRecordPayment = () => {
+    setPaymentModal({
+      isOpen: true,
+      invoice: null // For general payment recording
+    });
+  };
+
+  const handleViewReports = () => {
+    // TODO: Navigate to reports page
+    alert('View Reports functionality will be implemented');
+  };
+
+  const handlePaymentSave = async (paymentData) => {
+    try {
+      await invoiceAPI.recordPayment(paymentData);
+      alert('Payment recorded successfully!');
+      setPaymentModal({ isOpen: false, invoice: null });
+      
+      // Refresh dashboard data
+      window.location.reload();
+    } catch (error) {
+      throw error;
     }
   };
 
@@ -179,20 +242,37 @@ const FinanceDashboard = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center justify-center px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
+          <button 
+            onClick={handleCreateInvoice}
+            className="flex items-center justify-center px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+          >
             <FileText className="w-5 h-5 mr-2" />
             Create Invoice
           </button>
-          <button className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+          <button 
+            onClick={handleRecordPayment}
+            className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
             <DollarSign className="w-5 h-5 mr-2" />
             Record Payment
           </button>
-          <button className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <button 
+            onClick={handleViewReports}
+            className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
             <TrendingUp className="w-5 h-5 mr-2" />
             View Reports
           </button>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={paymentModal.isOpen}
+        onClose={() => setPaymentModal({ isOpen: false, invoice: null })}
+        onSave={handlePaymentSave}
+        invoice={paymentModal.invoice}
+      />
     </div>
   );
 };

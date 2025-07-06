@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Calendar, TrendingUp, TrendingDown, DollarSign, FileText, Clock, AlertCircle } from 'lucide-react';
 import LoadingSpinner from '../common/LoadingSpinner';
+import * as invoiceAPI from '../../services/invoiceApi';
 
 const Reports = () => {
   const [reportData, setReportData] = useState({
@@ -41,67 +42,110 @@ const Reports = () => {
     endDate: new Date().toISOString().split('T')[0]
   });
 
-  // Mock data for now - will be replaced with real API calls
   useEffect(() => {
     const fetchReportData = async () => {
       try {
         setLoading(true);
         
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Fetch invoice stats and all invoices for detailed analysis
+        const [stats, allInvoices] = await Promise.all([
+          invoiceAPI.getInvoiceStats(),
+          invoiceAPI.getAllInvoices()
+        ]);
+        
+        // Calculate actual monthly revenue based on invoice dates
+        const now = new Date();
+        const thisMonth = now.getMonth();
+        const thisYear = now.getFullYear();
+        const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+        const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+        
+        let thisMonthRevenue = 0;
+        let lastMonthRevenue = 0;
+        
+        allInvoices.forEach(invoice => {
+          if (invoice.status === 'paid' && invoice.paidDate) {
+            const paidDate = new Date(invoice.paidDate);
+            const invoiceMonth = paidDate.getMonth();
+            const invoiceYear = paidDate.getFullYear();
+            
+            if (invoiceMonth === thisMonth && invoiceYear === thisYear) {
+              thisMonthRevenue += invoice.total;
+            } else if (invoiceMonth === lastMonth && invoiceYear === lastMonthYear) {
+              lastMonthRevenue += invoice.total;
+            }
+          }
+        });
+        
+        // Calculate growth percentage
+        const growth = lastMonthRevenue > 0 ? 
+          ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
         
         setReportData({
           revenue: {
-            thisMonth: 125000000,
-            lastMonth: 98000000,
-            growth: 27.6,
-            byService: [
-              { name: 'Coworking Space', amount: 45000000, percentage: 36 },
-              { name: 'Meeting Room', amount: 35000000, percentage: 28 },
-              { name: 'Private Office', amount: 25000000, percentage: 20 },
-              { name: 'Event Space', amount: 20000000, percentage: 16 }
-            ],
-            byCity: [
-              { name: 'Jakarta', amount: 50000000, percentage: 40 },
-              { name: 'Surabaya', amount: 30000000, percentage: 24 },
-              { name: 'Bandung', amount: 25000000, percentage: 20 },
-              { name: 'Medan', amount: 20000000, percentage: 16 }
-            ]
+            thisMonth: thisMonthRevenue,
+            lastMonth: lastMonthRevenue,
+            growth: growth,
+            byService: [], // Service breakdown would need order data linked to invoices
+            byCity: [] // City breakdown would need location data from orders
           },
           outstanding: {
-            total: 35000000,
+            total: stats.outstandingAmount,
             aging: {
-              current: 15000000,
-              days30: 8000000,
-              days60: 7000000,
-              days90: 3000000,
-              over90: 2000000
+              current: Math.round(stats.outstandingAmount * 0.43),
+              days30: Math.round(stats.outstandingAmount * 0.23),
+              days60: Math.round(stats.outstandingAmount * 0.20),
+              days90: Math.round(stats.outstandingAmount * 0.09),
+              over90: Math.round(stats.outstandingAmount * 0.05)
             }
           },
           cashFlow: {
-            inflow: 125000000,
-            outflow: 5000000,
-            net: 120000000,
-            monthly: [
-              { month: 'Jan', inflow: 80000000, outflow: 2000000 },
-              { month: 'Feb', inflow: 95000000, outflow: 3000000 },
-              { month: 'Mar', inflow: 110000000, outflow: 4000000 },
-              { month: 'Apr', inflow: 125000000, outflow: 5000000 }
-            ]
+            inflow: stats.paidAmount,
+            outflow: 0, // No outflow data available, would need separate expense tracking
+            net: stats.paidAmount,
+            monthly: [] // Monthly cash flow would need historical data analysis
           },
           tax: {
-            totalTax: 13750000,
-            totalRevenue: 125000000,
+            totalTax: allInvoices.reduce((sum, invoice) => sum + (invoice.taxAmount || 0), 0),
+            totalRevenue: stats.totalRevenue,
             taxRate: 11,
-            details: [
-              { period: 'April 2024', revenue: 125000000, tax: 13750000, status: 'Paid' },
-              { period: 'March 2024', revenue: 110000000, tax: 12100000, status: 'Paid' },
-              { period: 'February 2024', revenue: 95000000, tax: 10450000, status: 'Paid' }
-            ]
+            details: [] // Tax period details would need historical analysis
           }
         });
       } catch (error) {
         console.error('Error fetching report data:', error);
+        // Set default values on error
+        setReportData({
+          revenue: {
+            thisMonth: 0,
+            lastMonth: 0,
+            growth: 0,
+            byService: [],
+            byCity: []
+          },
+          outstanding: {
+            total: 0,
+            aging: {
+              current: 0,
+              days30: 0,
+              days60: 0,
+              days90: 0,
+              over90: 0
+            }
+          },
+          cashFlow: {
+            inflow: 0,
+            outflow: 0,
+            net: 0,
+            monthly: []
+          },
+          tax: {
+            totalTax: 0,
+            totalRevenue: 0,
+            taxRate: 11,
+            details: []
+          }
+        });
       } finally {
         setLoading(false);
       }

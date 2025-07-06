@@ -1,5 +1,6 @@
-import React from 'react';
-import { Eye, Edit, Send, Download, CheckCircle, Clock, AlertCircle, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { Eye, Edit, Send, Download, CheckCircle, Clock, AlertCircle, FileText, DollarSign } from 'lucide-react';
+import PaymentModal from './PaymentModal';
 
 const InvoicesTable = ({ 
   invoices = [], 
@@ -8,8 +9,13 @@ const InvoicesTable = ({
   onView, 
   onEdit, 
   onSend, 
-  onDownload 
+  onDownload,
+  onRecordPayment
 }) => {
+  const [paymentModal, setPaymentModal] = useState({
+    isOpen: false,
+    invoice: null
+  });
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('id-ID');
@@ -68,6 +74,22 @@ const InvoicesTable = ({
 
   const isAllSelected = invoices.length > 0 && selectedInvoices.length === invoices.length;
   const isIndeterminate = selectedInvoices.length > 0 && selectedInvoices.length < invoices.length;
+
+  const handleRecordPayment = (invoice) => {
+    setPaymentModal({
+      isOpen: true,
+      invoice: invoice
+    });
+  };
+
+  const handlePaymentSave = async (paymentData) => {
+    try {
+      await onRecordPayment(paymentData);
+      setPaymentModal({ isOpen: false, invoice: null });
+    } catch (error) {
+      throw error;
+    }
+  };
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -158,10 +180,10 @@ const InvoicesTable = ({
                     <div>
                       <div className="font-medium">{formatCurrency(invoice.total)}</div>
                       <div className="text-xs text-gray-500">
-                        Subtotal: {formatCurrency(invoice.amount)}
+                        Base: {formatCurrency(invoice.amountBase)}
                       </div>
                       <div className="text-xs text-gray-500">
-                        Tax: {formatCurrency(invoice.tax)}
+                        Tax: {formatCurrency(invoice.taxAmount)}
                       </div>
                     </div>
                   </td>
@@ -237,6 +259,16 @@ const InvoicesTable = ({
                       >
                         <Download className="w-4 h-4" />
                       </button>
+                      
+                      {invoice.status !== 'paid' && (
+                        <button 
+                          onClick={() => handleRecordPayment(invoice)}
+                          className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                          title="Record Payment"
+                        >
+                          <DollarSign className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -255,6 +287,14 @@ const InvoicesTable = ({
           </tbody>
         </table>
       </div>
+      
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={paymentModal.isOpen}
+        onClose={() => setPaymentModal({ isOpen: false, invoice: null })}
+        onSave={handlePaymentSave}
+        invoice={paymentModal.invoice}
+      />
     </div>
   );
 };

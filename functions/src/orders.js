@@ -245,13 +245,14 @@ const getOrderById = async (orderId, req, res) => {
 const createOrder = async (req, res) => {
   try {
     const db = getDb();
-    const { 
+    const {
       customerId,
-      customerName, 
-      customerEmail, 
-      spaceId, 
-      spaceName, 
-      amount, 
+      customerName,
+      customerEmail,
+      spaceId,
+      spaceName,
+      amountBase, // Changed from amount to amountBase
+      invoiceId = null, // New field for invoice reference
       pricingType = 'daily',
       startDate,
       endDate,
@@ -261,7 +262,7 @@ const createOrder = async (req, res) => {
     } = req.body;
 
     // Validate required fields (service fields are now optional)
-    validateRequired(req.body, ['customerId', 'customerName', 'spaceId', 'amount', 'startDate', 'endDate']);
+    validateRequired(req.body, ['customerId', 'customerName', 'spaceId', 'amountBase', 'startDate', 'endDate']);
 
     // Generate structured OrderID (service type removed)
     const orderId = await generateStructuredOrderId(source);
@@ -287,7 +288,8 @@ const createOrder = async (req, res) => {
       customerEmail: sanitizeString(customerEmail),
       spaceId: sanitizeString(spaceId),
       spaceName: sanitizeString(spaceName || ''),
-      amount: parseFloat(amount),
+      amountBase: parseFloat(amountBase), // Base price before tax
+      invoiceId: invoiceId, // Reference to invoice (null if not yet generated)
       pricingType: sanitizeString(pricingType),
       startDate: startDateObj,
       endDate: endDateObj,

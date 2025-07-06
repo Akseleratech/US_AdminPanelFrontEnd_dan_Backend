@@ -3,6 +3,9 @@ import { auth } from '../config/firebase.jsx';
 // API Base URL - using direct functions emulator URL since proxy isn't working
 const API_BASE_URL = 'http://localhost:5555/demo-unionspace-crm/asia-southeast1';
 
+// Export API_BASE_URL for use in other services
+export { API_BASE_URL };
+
 // Helper function to get auth token
 const getAuthToken = async () => {
   try {

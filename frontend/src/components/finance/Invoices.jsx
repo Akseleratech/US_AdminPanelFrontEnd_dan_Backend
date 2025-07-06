@@ -1,108 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, RefreshCw, Download, Send, Eye, Edit } from 'lucide-react';
+import { Search, Filter, Plus, RefreshCw, Download, Send, Eye, Edit, Trash2 } from 'lucide-react';
 import InvoicesTable from './InvoicesTable';
 import InvoiceModal from './InvoiceModal';
 import LoadingSpinner from '../common/LoadingSpinner';
+import useInvoices from '../../hooks/useInvoices';
+import * as invoiceAPI from '../../services/invoiceApi';
 
 const Invoices = () => {
-  const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { 
+    invoices, 
+    loading, 
+    error, 
+    createInvoice, 
+    updateInvoice, 
+    deleteInvoice, 
+    refresh 
+  } = useInvoices();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [selectedInvoices, setSelectedInvoices] = useState([]);
 
-  // Mock data for now - will be replaced with real API calls
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockInvoices = [
-          {
-            id: 'INV/2024/05/001',
-            orderId: 'ORD-20240515-CO-WEB-001',
-            customerName: 'PT. Teknologi Maju',
-            customerEmail: 'finance@teknologimaju.com',
-            amount: 2500000,
-            tax: 275000,
-            total: 2775000,
-            status: 'paid',
-            issueDate: '2024-05-01',
-            dueDate: '2024-05-15',
-            paidDate: '2024-05-14',
-            paymentMethod: 'Bank Transfer',
-            notes: 'Pembayaran untuk sewa meeting room'
-          },
-          {
-            id: 'INV/2024/05/002',
-            orderId: 'ORD-20240516-CO-WEB-002',
-            customerName: 'CV. Kreatif Digital',
-            customerEmail: 'admin@kreatifdigital.com',
-            amount: 1800000,
-            tax: 198000,
-            total: 1998000,
-            status: 'sent',
-            issueDate: '2024-05-05',
-            dueDate: '2024-05-20',
-            paidDate: null,
-            paymentMethod: null,
-            notes: 'Invoice untuk coworking space'
-          },
-          {
-            id: 'INV/2024/05/003',
-            orderId: 'ORD-20240510-CO-WEB-003',
-            customerName: 'Startup Inovasi',
-            customerEmail: 'billing@startupinovasi.com',
-            amount: 3200000,
-            tax: 352000,
-            total: 3552000,
-            status: 'overdue',
-            issueDate: '2024-04-25',
-            dueDate: '2024-05-10',
-            paidDate: null,
-            paymentMethod: null,
-            notes: 'Invoice overdue - perlu follow up'
-          },
-          {
-            id: 'INV/2024/05/004',
-            orderId: 'ORD-20240518-CO-WEB-004',
-            customerName: 'PT. Solusi Bisnis',
-            customerEmail: 'finance@solusibisnis.com',
-            amount: 4500000,
-            tax: 495000,
-            total: 4995000,
-            status: 'draft',
-            issueDate: '2024-05-18',
-            dueDate: '2024-06-01',
-            paidDate: null,
-            paymentMethod: null,
-            notes: 'Draft invoice - belum dikirim'
-          }
-        ];
-        
-        setInvoices(mockInvoices);
-      } catch (err) {
-        setError(err.message);
-        console.error('Error fetching invoices:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Data is now managed by useInvoices hook
 
-    fetchInvoices();
-  }, []);
-
-  const handleRefresh = () => {
-    // Refresh invoice data
-    const event = new Event('refreshInvoices');
-    window.dispatchEvent(event);
+  const handleRefresh = async () => {
+    await refresh();
   };
 
   const handleAddInvoice = () => {
@@ -130,26 +54,46 @@ const Invoices = () => {
     console.log('Download invoice:', invoice);
   };
 
-  const handleBulkAction = (action) => {
+  const handleRecordPayment = async (paymentData) => {
+    try {
+      await invoiceAPI.recordPayment(paymentData);
+      alert('Payment recorded successfully!');
+      // Refresh data after recording payment
+      await handleRefresh();
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleBulkAction = async (action) => {
     if (selectedInvoices.length === 0) {
       alert('Please select invoices first');
       return;
     }
     
-    switch (action) {
-      case 'send':
-        console.log('Bulk send invoices:', selectedInvoices);
-        break;
-      case 'download':
-        console.log('Bulk download invoices:', selectedInvoices);
-        break;
-      case 'delete':
-        if (window.confirm(`Are you sure you want to delete ${selectedInvoices.length} invoices?`)) {
-          console.log('Bulk delete invoices:', selectedInvoices);
-        }
-        break;
-      default:
-        break;
+    try {
+      switch (action) {
+        case 'send':
+          await invoiceAPI.bulkSendInvoices(selectedInvoices);
+          alert(`Successfully sent ${selectedInvoices.length} invoices`);
+          break;
+        case 'download':
+          await invoiceAPI.bulkDownloadInvoices(selectedInvoices);
+          alert(`Successfully downloaded ${selectedInvoices.length} invoices`);
+          break;
+        case 'delete':
+          if (window.confirm(`Are you sure you want to delete ${selectedInvoices.length} invoices?`)) {
+            await invoiceAPI.bulkDeleteInvoices(selectedInvoices);
+            alert(`Successfully deleted ${selectedInvoices.length} invoices`);
+            setSelectedInvoices([]);
+            await handleRefresh();
+          }
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      alert(`Error performing bulk action: ${error.message}`);
     }
   };
 
@@ -157,13 +101,13 @@ const Invoices = () => {
     try {
       if (editingInvoice) {
         // Update existing invoice
-        console.log('Update invoice:', invoiceData);
+        await updateInvoice(editingInvoice.id, invoiceData);
       } else {
         // Create new invoice
-        console.log('Create invoice:', invoiceData);
+        await createInvoice(invoiceData);
       }
-      // Refresh data after save
-      handleRefresh();
+      setIsModalOpen(false);
+      setEditingInvoice(null);
     } catch (error) {
       throw error;
     }
@@ -282,6 +226,13 @@ const Invoices = () => {
                 <Download className="w-4 h-4" />
                 <span>Download</span>
               </button>
+              <button
+                onClick={() => handleBulkAction('delete')}
+                className="flex items-center space-x-1 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete</span>
+              </button>
             </div>
           </div>
         </div>
@@ -303,6 +254,7 @@ const Invoices = () => {
         onEdit={handleEditInvoice}
         onSend={handleSendInvoice}
         onDownload={handleDownloadInvoice}
+        onRecordPayment={handleRecordPayment}
       />
 
       {/* Modal */}

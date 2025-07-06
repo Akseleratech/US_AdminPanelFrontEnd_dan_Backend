@@ -9,10 +9,12 @@ import {
 } from '../../utils/helpers.jsx';
 import useSpaces from '../../hooks/useSpaces';
 import useLayanan from '../../hooks/useLayanan';
+import useInvoices from '../../hooks/useInvoices';
 
 const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
   const { spaces, loading: spacesLoading } = useSpaces();
   const { layananList } = useLayanan();
+  const { generateInvoiceFromOrder } = useInvoices();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -193,6 +195,17 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
   const formatCurrency = (amount) => {
     if (!amount) return 'Rp 0';
     return `Rp ${Number(amount).toLocaleString('id-ID')}`;
+  };
+
+  const handleGenerateInvoice = async (order) => {
+    try {
+      const invoice = await generateInvoiceFromOrder(order);
+      alert(`Invoice ${invoice.id} generated successfully!`);
+      // TODO: Update order with invoiceId
+      // onEdit && onEdit({ ...order, invoiceId: invoice.id });
+    } catch (error) {
+      alert(`Error generating invoice: ${error.message}`);
+    }
   };
 
   // Component for displaying structured OrderID
@@ -382,7 +395,8 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[180px]">Nama</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[140px]">Space</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Layanan</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Amount</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Base Price</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Invoice</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[200px]">Status Order</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[100px]">Actions</th>
             </tr>
@@ -446,9 +460,34 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
                     {spacesLoading ? '-' : getLayananName(order.spaceId)}
                   </td>
 
-                  {/* Amount */}
+                  {/* Base Price */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                    {formatCurrency(order.amount)}
+                    {formatCurrency(order.amountBase)}
+                  </td>
+
+                  {/* Invoice */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {order.invoiceId ? (
+                      <div className="flex items-center space-x-2">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Generated
+                        </span>
+                        <button 
+                          className="text-blue-600 hover:text-blue-900 text-xs"
+                          title="View Invoice"
+                        >
+                          View
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => handleGenerateInvoice(order)}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+                        title="Generate Invoice"
+                      >
+                        Generate
+                      </button>
+                    )}
                   </td>
 
                   {/* Status */}
@@ -482,7 +521,7 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan="9" className="px-6 py-8 text-center text-sm text-gray-500">
                   <div className="flex flex-col items-center justify-center">
                     <div className="text-gray-400 text-lg mb-2">📦</div>
                     <p className="text-gray-500 font-medium">No orders found</p>

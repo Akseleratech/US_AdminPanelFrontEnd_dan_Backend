@@ -17,7 +17,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     customerEmail: '',
     spaceId: '',
     spaceName: '',
-    amount: 0,
+    amountBase: 0, // Base price before tax
+    invoiceId: null, // Link to invoice
     pricingType: 'daily', // hourly, halfday, daily, monthly
     startDate: '',
     endDate: '',
@@ -70,7 +71,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           customerEmail: editingOrder.customerEmail || '',
           spaceId: editingOrder.spaceId || '',
           spaceName: editingOrder.spaceName || '',
-          amount: editingOrder.amount || 0,
+          amountBase: editingOrder.amountBase || 0,
+          invoiceId: editingOrder.invoiceId || null,
           pricingType: pricingType,
           startDate: formatDateForInput(editingOrder.startDate, pricingType),
           endDate: formatDateForInput(editingOrder.endDate, pricingType),
@@ -123,7 +125,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           customerEmail: '',
           spaceId: '',
           spaceName: '',
-          amount: 0,
+          amountBase: 0,
+          invoiceId: null,
           pricingType: 'daily',
           startDate: '',
           endDate: '',
@@ -156,7 +159,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           [name]: value,
           startDate: '',
           endDate: '',
-          amount: 0
+          amountBase: 0
         }));
       } else {
         setFormData(prev => ({
@@ -200,10 +203,10 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       ...prev,
       spaceId,
       spaceName: selectedSpace ? selectedSpace.name : '',
-      // Reset dates when changing space to avoid confusion
-      startDate: '',
-      endDate: '',
-      amount: 0
+                // Reset dates when changing space to avoid confusion
+          startDate: '',
+          endDate: '',
+          amountBase: 0
     }));
 
     // Reset calendar state when space changes
@@ -346,12 +349,12 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     return rate;
   };
 
-  // Recalculate amount whenever space or dates change
+  // Recalculate base amount whenever space or dates change
   useEffect(() => {
-    const newAmount = calculateTotalAmount(formData.spaceId, formData.startDate, formData.endDate, formData.pricingType);
+    const newAmountBase = calculateTotalAmount(formData.spaceId, formData.startDate, formData.endDate, formData.pricingType);
     setFormData((prev) => {
-      if (prev.amount === newAmount) return prev;
-      return { ...prev, amount: newAmount };
+      if (prev.amountBase === newAmountBase) return prev;
+      return { ...prev, amountBase: newAmountBase };
     });
   }, [formData.spaceId, formData.startDate, formData.endDate, formData.pricingType, spaces]);
 
@@ -385,8 +388,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       }
     }
     
-    if (!formData.amount || formData.amount <= 0) {
-      newErrors.amount = 'Amount must be greater than Rp. 0';
+    if (!formData.amountBase || formData.amountBase <= 0) {
+      newErrors.amountBase = 'Base amount must be greater than Rp. 0';
     }
 
     // Check availability for the selected dates
@@ -430,7 +433,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       
       const orderData = {
         ...formData,
-        amount: parseFloat(formData.amount || 0),
+        amountBase: parseFloat(formData.amountBase || 0),
         pricingType: formData.pricingType,
         startDate: startDateToSend,
         endDate: endDateToSend,
@@ -581,7 +584,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                 {formData.startDate && formData.endDate && (
                   <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
                     <p className="text-sm text-blue-700">
-                      <strong>Total Estimasi:</strong> {formatCurrency(formData.amount)}
+                      <strong>Base Price Estimasi:</strong> {formatCurrency(formData.amountBase)}
                     </p>
                     <div className="text-xs text-blue-600 mt-1">
                       {formData.pricingType === 'hourly' && formData.startDate && formData.endDate && (
@@ -643,27 +646,27 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
             </div>
           )}
 
-          {/* Manual Amount Override */}
+          {/* Manual Base Amount Override */}
           {formData.spaceId && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Total Amount (IDR) *
+                Base Price (before tax) *
               </label>
               <input
                 type="number"
-                name="amount"
-                value={formData.amount}
+                name="amountBase"
+                value={formData.amountBase}
                 onChange={handleInputChange}
                 min="0"
                 step="1000"
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                  errors.amount ? 'border-red-500' : 'border-gray-300'
+                  errors.amountBase ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Rp. 0"
               />
-              {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+              {errors.amountBase && <p className="text-red-500 text-xs mt-1">{errors.amountBase}</p>}
               <p className="text-xs text-gray-500 mt-1">
-                Amount dihitung otomatis berdasarkan pricing type dan durasi. Anda bisa mengedit manual jika diperlukan.
+                Base price dihitung otomatis berdasarkan pricing type dan durasi. Tax akan ditambahkan saat generate invoice.
               </p>
             </div>
           )}
