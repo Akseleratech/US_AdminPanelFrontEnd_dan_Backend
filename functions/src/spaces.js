@@ -783,8 +783,8 @@ const getSpaceAvailability = async (spaceId, req, res) => {
 
         bookedRanges.push(bookedRange);
 
-        // For hourly bookings, also create hourly slots
-        if (order.pricingType === 'hourly') {
+        // For hourly and halfday bookings, also create hourly slots
+        if (order.pricingType === 'hourly' || order.pricingType === 'halfday') {
           const current = new Date(startDate);
           while (current < endDate) {
             bookedSlots.push({

@@ -262,6 +262,12 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       const end = new Date(endDate);
       if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return rate;
       
+      // For half-day sessions, if start and end are the same day, it's just 1 session
+      if (start.toDateString() === end.toDateString()) {
+        return rate; // Single half-day session
+      }
+      
+      // For multi-day half-day bookings, calculate based on days
       const MS_PER_DAY = 24 * 60 * 60 * 1000;
       const diffDays = Math.floor((end - start) / MS_PER_DAY) + 1;
       const halfDayPeriods = diffDays * 2; // 2 half-days per day

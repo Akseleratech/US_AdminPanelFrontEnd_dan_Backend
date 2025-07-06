@@ -57,10 +57,10 @@ const updateSpaceBookingStatus = async (db, spaceId, orderId, orderStatus, prici
     });
   }
 
-  // For hourly bookings, space can have multiple concurrent bookings
+  // For hourly and halfday bookings, space can have multiple concurrent bookings
   // For daily/monthly bookings, space should be marked as fully booked
   const hasFullDayBookings = activeOrders.some(order => 
-    ['daily', 'monthly', 'halfday'].includes(order.pricingType)
+    ['daily', 'monthly'].includes(order.pricingType)
   );
 
   const hasActiveBookings = activeOrders.length > 0;
@@ -73,12 +73,12 @@ const updateSpaceBookingStatus = async (db, spaceId, orderId, orderStatus, prici
     // If there are any full-day bookings, space is booked
     isBooked = true;
     const fullDayOrder = activeOrders.find(order => 
-      ['daily', 'monthly', 'halfday'].includes(order.pricingType)
+      ['daily', 'monthly'].includes(order.pricingType)
     );
     bookingOrderId = fullDayOrder.id;
   } else if (hasActiveBookings) {
-    // If only hourly bookings, space is partially booked
-    isBooked = false; // Keep as false for hourly-only bookings
+    // If only hourly/halfday bookings, space is partially booked
+    isBooked = false; // Keep as false for hourly/halfday-only bookings
     bookingOrderId = null; // Don't set a specific order ID
   } else {
     // No active bookings
@@ -100,7 +100,7 @@ const updateSpaceBookingStatus = async (db, spaceId, orderId, orderStatus, prici
 
   await spaceRef.update(spaceUpdate);
 
-  console.log(`✅ Space ${spaceId} booking status updated: ${isBooked ? 'booked' : 'available'} (${activeOrders.length} confirmed/active orders, ${hasFullDayBookings ? 'has full-day bookings' : 'hourly only'})`);
+  console.log(`✅ Space ${spaceId} booking status updated: ${isBooked ? 'booked' : 'available'} (${activeOrders.length} confirmed/active orders, ${hasFullDayBookings ? 'has full-day bookings' : 'hourly/halfday only'})`);
 };
 
 // Main orders function
