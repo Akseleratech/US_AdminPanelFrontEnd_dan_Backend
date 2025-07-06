@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, RefreshCw, Download, Send, Eye, Edit, Trash2 } from 'lucide-react';
 import InvoicesTable from './InvoicesTable';
 import InvoiceModal from './InvoiceModal';
+import InvoiceViewModal from './InvoiceViewModal';
 import LoadingSpinner from '../common/LoadingSpinner';
 import useInvoices from '../../hooks/useInvoices';
 import * as invoiceAPI from '../../services/invoiceApi';
@@ -20,7 +21,9 @@ const Invoices = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
+  const [viewingInvoice, setViewingInvoice] = useState(null);
   const [selectedInvoices, setSelectedInvoices] = useState([]);
 
   // Data is now managed by useInvoices hook
@@ -40,8 +43,8 @@ const Invoices = () => {
   };
 
   const handleViewInvoice = (invoice) => {
-    // Open invoice detail view
-    console.log('View invoice:', invoice);
+    setViewingInvoice(invoice);
+    setIsViewModalOpen(true);
   };
 
   const handleSendInvoice = (invoice) => {
@@ -257,12 +260,21 @@ const Invoices = () => {
         onRecordPayment={handleRecordPayment}
       />
 
-      {/* Modal */}
+      {/* Modals */}
       <InvoiceModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveInvoice}
         editingInvoice={editingInvoice}
+      />
+      
+      <InvoiceViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingInvoice(null);
+        }}
+        invoice={viewingInvoice}
       />
     </div>
   );
