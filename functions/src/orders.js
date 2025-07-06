@@ -249,6 +249,7 @@ const createOrder = async (req, res) => {
       customerId,
       customerName,
       customerEmail,
+      customerPhone,
       spaceId,
       spaceName,
       amountBase, // Changed from amount to amountBase
@@ -286,6 +287,7 @@ const createOrder = async (req, res) => {
       customerId: sanitizeString(customerId), // Real customer ID from form
       customerName: sanitizeString(customerName),
       customerEmail: sanitizeString(customerEmail),
+      customerPhone: customerPhone ? sanitizeString(customerPhone) : null,
       spaceId: sanitizeString(spaceId),
       spaceName: sanitizeString(spaceName || ''),
       amountBase: parseFloat(amountBase), // Base price before tax

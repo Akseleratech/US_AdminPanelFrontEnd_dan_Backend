@@ -161,6 +161,8 @@ const createInvoice = async (req, res) => {
       orderIds = [],
       customerName,
       customerEmail,
+      customerPhone,
+      customerAddress,
       amountBase,
       taxRate = 0.11,
       discountRate = 0,
@@ -192,6 +194,8 @@ const createInvoice = async (req, res) => {
       orderIds: orderIds.length > 0 ? orderIds : (orderId ? [orderId] : []),
       customerName: sanitizeString(customerName),
       customerEmail: sanitizeString(customerEmail),
+      customerPhone: customerPhone ? sanitizeString(customerPhone) : null,
+      customerAddress: customerAddress ? sanitizeString(customerAddress) : null,
       amountBase: parseFloat(amountBase),
       taxRate: parseFloat(taxRate),
       taxAmount: parseFloat(taxAmount),
@@ -266,6 +270,27 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
       return handleResponse(res, { message: 'Order missing customerEmail field' }, 400);
     }
 
+    // Get customer data to fetch complete information including phone
+    console.log('🔍 DEBUG - Fetching customer data...');
+    let customerPhone = order.customerPhone || null;
+    let customerAddress = null;
+    
+    if (order.customerId) {
+      try {
+        const customerDoc = await db.collection('customers').doc(order.customerId).get();
+        if (customerDoc.exists) {
+          const customerData = customerDoc.data();
+          customerPhone = customerData.phone || customerPhone;
+          customerAddress = customerData.address || null;
+          console.log('✅ DEBUG - Customer data fetched:', { phone: customerPhone, address: customerAddress });
+        } else {
+          console.log('⚠️ DEBUG - Customer document not found for ID:', order.customerId);
+        }
+      } catch (customerError) {
+        console.warn('⚠️ DEBUG - Error fetching customer data:', customerError.message);
+      }
+    }
+
     // Generate invoice from order data
     console.log('🔍 DEBUG - Generating invoice data...');
     const taxRate = 0.11; // 11% PPN
@@ -291,6 +316,8 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
       orderIds: [orderId],
       customerName: order.customerName,
       customerEmail: order.customerEmail,
+      customerPhone: customerPhone,
+      customerAddress: customerAddress,
       amountBase: order.amountBase,
       taxRate: taxRate,
       taxAmount: taxAmount,
@@ -304,7 +331,19 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
       paidAmount: 0,
       paymentTerms: 30,
       paymentMethod: null,
-      notes: `Invoice for ${order.spaceName || 'space'} booking (${order.startDate} - ${order.endDate})`,
+      // Format dates safely to YYYY-MM-DD
+      notes: (() => {
+        const formatDate = (d) => {
+          if (!d) return '-';
+          if (d.toDate) return d.toDate().toISOString().split('T')[0]; // Firestore Timestamp
+          if (d instanceof Date) return d.toISOString().split('T')[0];
+          if (typeof d === 'string') return d.split('T')[0];
+          return String(d);
+        };
+        const startStr = formatDate(order.startDate);
+        const endStr = formatDate(order.endDate);
+        return `Invoice for ${order.spaceName || 'space'} booking (${startStr} - ${endStr})`;
+      })(),
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: user ? user.uid : 'system',
