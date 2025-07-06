@@ -7,7 +7,6 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
     customerName: '',
     customerEmail: '',
     customerPhone: '',
-    customerAddress: '',
     items: [
       {
         description: '',
@@ -78,16 +77,34 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
   // Update form data when editing
   useEffect(() => {
     if (editingInvoice) {
+      // Create items from existing invoice data if not present
+      let items = editingInvoice.items;
+      if (!items || items.length === 0) {
+        // If no items exist, create a default item from the invoice amounts
+        // Use serviceName from invoice if available, otherwise fallback to default
+        const serviceDescription = editingInvoice.serviceName || 'Layanan Sewa Space';
+        items = [
+          {
+            description: serviceDescription,
+            quantity: 1,
+            unitPrice: editingInvoice.amountBase || 0,
+            amount: editingInvoice.amountBase || 0
+          }
+        ];
+      }
+      
       setFormData({
         ...editingInvoice,
-        items: editingInvoice.items || [
-          {
-            description: 'Layanan Sewa Space',
-            quantity: 1,
-            unitPrice: editingInvoice.amount || 0,
-            amount: editingInvoice.amount || 0
-          }
-        ]
+        items: items,
+        subtotal: editingInvoice.amountBase || 0,
+        taxRate: editingInvoice.taxRate || 11,
+        taxAmount: editingInvoice.taxAmount || 0,
+        discountRate: editingInvoice.discountRate || 0,
+        discountAmount: editingInvoice.discountAmount || 0,
+        total: editingInvoice.total || 0,
+        issueDate: editingInvoice.issuedDate ? editingInvoice.issuedDate.split('T')[0] : editingInvoice.issueDate,
+        dueDate: editingInvoice.dueDate ? editingInvoice.dueDate.split('T')[0] : '',
+        paymentTerms: editingInvoice.paymentTerms || 'Net 30'
       });
     } else {
       // Reset form for new invoice
@@ -99,7 +116,6 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
         customerName: '',
         customerEmail: '',
         customerPhone: '',
-        customerAddress: '',
         items: [
           {
             description: '',
@@ -335,20 +351,6 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
                   placeholder="Enter phone number"
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Address
-                </label>
-                <input
-                  type="text"
-                  name="customerAddress"
-                  value={formData.customerAddress}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                  placeholder="Enter address"
-                />
-              </div>
             </div>
           </div>
 
@@ -492,7 +494,7 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
                 onChange={handleInputChange}
                 min="0"
                 max="100"
-                step="0.1"
+                step="0.01"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               />
             </div>
@@ -508,7 +510,7 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
                 onChange={handleInputChange}
                 min="0"
                 max="100"
-                step="0.1"
+                step="0.01"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               />
             </div>

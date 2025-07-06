@@ -291,6 +291,41 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
       }
     }
 
+    // Get space and building data to fetch city information
+    console.log('🔍 DEBUG - Fetching space and building data...');
+    let spaceCityName = 'Unknown City';
+    let spaceProvinceName = 'Unknown Province';
+    let serviceName = order.spaceName || 'Layanan Sewa Space';
+    
+    if (order.spaceId) {
+      try {
+        const spaceDoc = await db.collection('spaces').doc(order.spaceId).get();
+        if (spaceDoc.exists) {
+          const spaceData = spaceDoc.data();
+          serviceName = spaceData.category || spaceData.name || serviceName;
+          
+          // Get building data for location
+          if (spaceData.buildingId) {
+            const buildingDoc = await db.collection('buildings').doc(spaceData.buildingId).get();
+            if (buildingDoc.exists) {
+              const buildingData = buildingDoc.data();
+              spaceCityName = buildingData.location?.city || spaceCityName;
+              spaceProvinceName = buildingData.location?.province || spaceProvinceName;
+              console.log('✅ DEBUG - Space and building data fetched:', { 
+                serviceName, 
+                city: spaceCityName, 
+                province: spaceProvinceName 
+              });
+            }
+          }
+        } else {
+          console.log('⚠️ DEBUG - Space document not found for ID:', order.spaceId);
+        }
+      } catch (spaceError) {
+        console.warn('⚠️ DEBUG - Error fetching space/building data:', spaceError.message);
+      }
+    }
+
     // Generate invoice from order data
     console.log('🔍 DEBUG - Generating invoice data...');
     const taxRate = 0.11; // 11% PPN
@@ -331,6 +366,31 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
       paidAmount: 0,
       paymentTerms: 30,
       paymentMethod: null,
+      // Add service and city information for reports
+      serviceName: serviceName,
+      cityName: spaceCityName,
+      provinceName: spaceProvinceName,
+      // Create items array with proper service description
+      items: [{
+        description: serviceName,
+        quantity: 1,
+        unitPrice: order.amountBase,
+        amount: order.amountBase,
+        // Additional item details
+        period: (() => {
+          const formatDate = (d) => {
+            if (!d) return '-';
+            if (d.toDate) return d.toDate().toISOString().split('T')[0]; // Firestore Timestamp
+            if (d instanceof Date) return d.toISOString().split('T')[0];
+            if (typeof d === 'string') return d.split('T')[0];
+            return String(d);
+          };
+          const startStr = formatDate(order.startDate);
+          const endStr = formatDate(order.endDate);
+          return `${startStr} - ${endStr}`;
+        })(),
+        spaceName: order.spaceName || 'Unknown Space'
+      }],
       // Format dates safely to YYYY-MM-DD
       notes: (() => {
         const formatDate = (d) => {

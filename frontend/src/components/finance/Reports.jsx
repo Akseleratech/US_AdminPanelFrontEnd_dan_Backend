@@ -47,13 +47,13 @@ const Reports = () => {
       try {
         setLoading(true);
         
-        // Fetch invoice stats and all invoices for detailed analysis
-        const [stats, allInvoices] = await Promise.all([
+        // Fetch all necessary data
+        const [invoiceStats, allInvoices] = await Promise.all([
           invoiceAPI.getInvoiceStats(),
           invoiceAPI.getAllInvoices()
         ]);
         
-        // Calculate actual monthly revenue based on invoice dates
+        // Calculate revenue data
         const now = new Date();
         const thisMonth = now.getMonth();
         const thisYear = now.getFullYear();
@@ -62,7 +62,10 @@ const Reports = () => {
         
         let thisMonthRevenue = 0;
         let lastMonthRevenue = 0;
+        const serviceRevenue = {};
+        const cityRevenue = {};
         
+        // Calculate revenue by month and collect service/city data
         allInvoices.forEach(invoice => {
           if (invoice.status === 'paid' && invoice.paidDate) {
             const paidDate = new Date(invoice.paidDate);
@@ -77,39 +80,156 @@ const Reports = () => {
           }
         });
         
+        // Get service and city data from paid invoices
+        allInvoices.forEach(invoice => {
+          if (invoice.status === 'paid') {
+            // Service revenue - use serviceName from invoice if available
+            const serviceName = invoice.serviceName || 'Unknown Service';
+            serviceRevenue[serviceName] = (serviceRevenue[serviceName] || 0) + invoice.total;
+            
+            // City revenue - use cityName from invoice if available
+            const cityName = invoice.cityName || 'Unknown City';
+            cityRevenue[cityName] = (cityRevenue[cityName] || 0) + invoice.total;
+          }
+        });
+        
+        // Convert service and city revenue to arrays with percentages
+        const totalPaidRevenue = thisMonthRevenue + lastMonthRevenue;
+        const byService = Object.entries(serviceRevenue)
+          .map(([name, amount]) => ({
+            name,
+            amount,
+            percentage: totalPaidRevenue > 0 ? ((amount / totalPaidRevenue) * 100).toFixed(1) : 0
+          }))
+          .sort((a, b) => b.amount - a.amount)
+          .slice(0, 5); // Top 5 services
+          
+        const byCity = Object.entries(cityRevenue)
+          .map(([name, amount]) => ({
+            name,
+            amount,
+            percentage: totalPaidRevenue > 0 ? ((amount / totalPaidRevenue) * 100).toFixed(1) : 0
+          }))
+          .sort((a, b) => b.amount - a.amount)
+          .slice(0, 5); // Top 5 cities
+        
         // Calculate growth percentage
         const growth = lastMonthRevenue > 0 ? 
           ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
+        
+        // Calculate outstanding aging
+        const outstandingInvoices = allInvoices.filter(invoice => 
+          invoice.status !== 'paid' && invoice.status !== 'cancelled'
+        );
+        
+        const aging = {
+          current: 0,
+          days30: 0,
+          days60: 0,
+          days90: 0,
+          over90: 0
+        };
+        
+        outstandingInvoices.forEach(invoice => {
+          const dueDate = new Date(invoice.dueDate);
+          const daysPastDue = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));
+          
+          if (daysPastDue <= 0) {
+            aging.current += invoice.total;
+          } else if (daysPastDue <= 30) {
+            aging.days30 += invoice.total;
+          } else if (daysPastDue <= 60) {
+            aging.days60 += invoice.total;
+          } else if (daysPastDue <= 90) {
+            aging.days90 += invoice.total;
+          } else {
+            aging.over90 += invoice.total;
+          }
+        });
+        
+        // Calculate monthly cash flow for the last 6 months
+        const monthlyData = [];
+        for (let i = 5; i >= 0; i--) {
+          const date = new Date(thisYear, thisMonth - i, 1);
+          const monthName = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+          
+          const monthlyInflow = allInvoices
+            .filter(invoice => {
+              if (invoice.status !== 'paid' || !invoice.paidDate) return false;
+              const paidDate = new Date(invoice.paidDate);
+              return paidDate.getMonth() === date.getMonth() && paidDate.getFullYear() === date.getFullYear();
+            })
+            .reduce((sum, invoice) => sum + invoice.total, 0);
+          
+          monthlyData.push({
+            month: monthName,
+            inflow: monthlyInflow,
+            outflow: 0, // No outflow data available
+            net: monthlyInflow
+          });
+        }
+        
+        // Calculate tax data
+        const totalTax = allInvoices.reduce((sum, invoice) => sum + (invoice.taxAmount || 0), 0);
+        const totalRevenue = allInvoices
+          .filter(invoice => invoice.status === 'paid')
+          .reduce((sum, invoice) => sum + invoice.total, 0);
+        
+        // Generate monthly tax details for the last 6 months
+        const taxDetails = [];
+        for (let i = 5; i >= 0; i--) {
+          const date = new Date(thisYear, thisMonth - i, 1);
+          const monthName = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+          
+          const monthlyRevenue = allInvoices
+            .filter(invoice => {
+              if (invoice.status !== 'paid' || !invoice.paidDate) return false;
+              const paidDate = new Date(invoice.paidDate);
+              return paidDate.getMonth() === date.getMonth() && paidDate.getFullYear() === date.getFullYear();
+            })
+            .reduce((sum, invoice) => sum + invoice.total, 0);
+          
+          const monthlyTax = allInvoices
+            .filter(invoice => {
+              if (invoice.status !== 'paid' || !invoice.paidDate) return false;
+              const paidDate = new Date(invoice.paidDate);
+              return paidDate.getMonth() === date.getMonth() && paidDate.getFullYear() === date.getFullYear();
+            })
+            .reduce((sum, invoice) => sum + (invoice.taxAmount || 0), 0);
+          
+          if (monthlyRevenue > 0) {
+            taxDetails.push({
+              period: monthName,
+              revenue: monthlyRevenue,
+              tax: monthlyTax,
+              status: 'Reported'
+            });
+          }
+        }
         
         setReportData({
           revenue: {
             thisMonth: thisMonthRevenue,
             lastMonth: lastMonthRevenue,
             growth: growth,
-            byService: [], // Service breakdown would need order data linked to invoices
-            byCity: [] // City breakdown would need location data from orders
+            byService: byService,
+            byCity: byCity
           },
           outstanding: {
-            total: stats.outstandingAmount,
-            aging: {
-              current: Math.round(stats.outstandingAmount * 0.43),
-              days30: Math.round(stats.outstandingAmount * 0.23),
-              days60: Math.round(stats.outstandingAmount * 0.20),
-              days90: Math.round(stats.outstandingAmount * 0.09),
-              over90: Math.round(stats.outstandingAmount * 0.05)
-            }
+            total: invoiceStats.outstandingAmount,
+            aging: aging
           },
           cashFlow: {
-            inflow: stats.paidAmount,
-            outflow: 0, // No outflow data available, would need separate expense tracking
-            net: stats.paidAmount,
-            monthly: [] // Monthly cash flow would need historical data analysis
+            inflow: invoiceStats.paidAmount,
+            outflow: 0, // No outflow data available
+            net: invoiceStats.paidAmount,
+            monthly: monthlyData
           },
           tax: {
-            totalTax: allInvoices.reduce((sum, invoice) => sum + (invoice.taxAmount || 0), 0),
-            totalRevenue: stats.totalRevenue,
+            totalTax: totalTax,
+            totalRevenue: totalRevenue,
             taxRate: 11,
-            details: [] // Tax period details would need historical analysis
+            details: taxDetails
           }
         });
       } catch (error) {
@@ -163,8 +283,80 @@ const Reports = () => {
   };
 
   const exportReport = (reportType) => {
-    // Implement export functionality
-    console.log(`Exporting ${reportType} report...`);
+    // Create CSV content based on report type
+    let csvContent = '';
+    let filename = '';
+    
+    switch (reportType) {
+      case 'revenue':
+        csvContent = 'data:text/csv;charset=utf-8,';
+        csvContent += 'Revenue Report\n';
+        csvContent += `This Month,${reportData.revenue.thisMonth}\n`;
+        csvContent += `Last Month,${reportData.revenue.lastMonth}\n`;
+        csvContent += `Growth,${reportData.revenue.growth.toFixed(1)}%\n\n`;
+        csvContent += 'Service,Amount,Percentage\n';
+        reportData.revenue.byService.forEach(service => {
+          csvContent += `${service.name},${service.amount},${service.percentage}%\n`;
+        });
+        csvContent += '\nCity,Amount,Percentage\n';
+        reportData.revenue.byCity.forEach(city => {
+          csvContent += `${city.name},${city.amount},${city.percentage}%\n`;
+        });
+        filename = 'revenue_report.csv';
+        break;
+      
+      case 'outstanding':
+        csvContent = 'data:text/csv;charset=utf-8,';
+        csvContent += 'Outstanding & Aging Report\n';
+        csvContent += `Total Outstanding,${reportData.outstanding.total}\n\n`;
+        csvContent += 'Aging Category,Amount\n';
+        csvContent += `Current,${reportData.outstanding.aging.current}\n`;
+        csvContent += `1-30 Days,${reportData.outstanding.aging.days30}\n`;
+        csvContent += `31-60 Days,${reportData.outstanding.aging.days60}\n`;
+        csvContent += `61-90 Days,${reportData.outstanding.aging.days90}\n`;
+        csvContent += `90+ Days,${reportData.outstanding.aging.over90}\n`;
+        filename = 'outstanding_report.csv';
+        break;
+      
+      case 'cashflow':
+        csvContent = 'data:text/csv;charset=utf-8,';
+        csvContent += 'Cash Flow Report\n';
+        csvContent += `Total Inflow,${reportData.cashFlow.inflow}\n`;
+        csvContent += `Total Outflow,${reportData.cashFlow.outflow}\n`;
+        csvContent += `Net Cash Flow,${reportData.cashFlow.net}\n\n`;
+        csvContent += 'Month,Inflow,Outflow,Net\n';
+        reportData.cashFlow.monthly.forEach(month => {
+          csvContent += `${month.month},${month.inflow},${month.outflow},${month.inflow - month.outflow}\n`;
+        });
+        filename = 'cashflow_report.csv';
+        break;
+      
+      case 'tax':
+        csvContent = 'data:text/csv;charset=utf-8,';
+        csvContent += 'Tax Report\n';
+        csvContent += `Total Revenue,${reportData.tax.totalRevenue}\n`;
+        csvContent += `Total Tax,${reportData.tax.totalTax}\n`;
+        csvContent += `Tax Rate,${reportData.tax.taxRate}%\n\n`;
+        csvContent += 'Period,Revenue,Tax,Status\n';
+        reportData.tax.details.forEach(detail => {
+          csvContent += `${detail.period},${detail.revenue},${detail.tax},${detail.status}\n`;
+        });
+        filename = 'tax_report.csv';
+        break;
+      
+      default:
+        console.log(`Exporting ${reportType} report...`);
+        return;
+    }
+    
+    // Create and download the file
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (loading) {
@@ -176,8 +368,8 @@ const Reports = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Financial Reports</h2>
-          <p className="text-sm text-gray-500">Comprehensive financial analytics and reports</p>
+          <h2 className="text-xl font-semibold text-gray-900">Laporan Keuangan</h2>
+          <p className="text-sm text-gray-500">Analisis dan laporan keuangan komprehensif</p>
         </div>
         
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
@@ -188,7 +380,7 @@ const Reports = () => {
               onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
               className="px-3 py-2 border border-gray-300 rounded-md text-sm"
             />
-            <span className="text-gray-500">to</span>
+            <span className="text-gray-500">sampai</span>
             <input
               type="date"
               value={dateRange.endDate}
@@ -202,7 +394,7 @@ const Reports = () => {
       {/* Revenue Report */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Revenue Report</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Laporan Pendapatan</h3>
           <button
             onClick={() => exportReport('revenue')}
             className="flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
@@ -217,7 +409,7 @@ const Reports = () => {
             <div className="flex items-center">
               <DollarSign className="w-8 h-8 text-green-600 mr-3" />
               <div>
-                <p className="text-sm font-medium text-green-800">This Month</p>
+                <p className="text-sm font-medium text-green-800">Bulan Ini</p>
                 <p className="text-2xl font-bold text-green-900">{formatCurrency(reportData.revenue.thisMonth)}</p>
               </div>
             </div>
@@ -227,7 +419,7 @@ const Reports = () => {
             <div className="flex items-center">
               <TrendingUp className="w-8 h-8 text-blue-600 mr-3" />
               <div>
-                <p className="text-sm font-medium text-blue-800">Last Month</p>
+                <p className="text-sm font-medium text-blue-800">Bulan Lalu</p>
                 <p className="text-2xl font-bold text-blue-900">{formatCurrency(reportData.revenue.lastMonth)}</p>
               </div>
             </div>
@@ -235,10 +427,16 @@ const Reports = () => {
 
           <div className="bg-purple-50 p-4 rounded-lg">
             <div className="flex items-center">
-              <TrendingUp className="w-8 h-8 text-purple-600 mr-3" />
+              {reportData.revenue.growth >= 0 ? (
+                <TrendingUp className="w-8 h-8 text-purple-600 mr-3" />
+              ) : (
+                <TrendingDown className="w-8 h-8 text-red-600 mr-3" />
+              )}
               <div>
-                <p className="text-sm font-medium text-purple-800">Growth</p>
-                <p className="text-2xl font-bold text-purple-900">+{formatPercentage(reportData.revenue.growth)}</p>
+                <p className="text-sm font-medium text-purple-800">Pertumbuhan</p>
+                <p className={`text-2xl font-bold ${reportData.revenue.growth >= 0 ? 'text-purple-900' : 'text-red-900'}`}>
+                  {reportData.revenue.growth >= 0 ? '+' : ''}{formatPercentage(reportData.revenue.growth)}
+                </p>
               </div>
             </div>
           </div>
@@ -247,39 +445,47 @@ const Reports = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue by Service */}
           <div>
-            <h4 className="text-md font-medium text-gray-900 mb-4">Revenue by Service</h4>
+            <h4 className="text-md font-medium text-gray-900 mb-4">Pendapatan per Layanan</h4>
             <div className="space-y-3">
-              {reportData.revenue.byService.map((service, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-primary rounded-full mr-3"></div>
-                    <span className="text-sm font-medium text-gray-700">{service.name}</span>
+              {reportData.revenue.byService.length > 0 ? (
+                reportData.revenue.byService.map((service, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-primary rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-gray-700">{service.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-gray-900">{formatCurrency(service.amount)}</div>
+                      <div className="text-xs text-gray-500">{service.percentage}%</div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-gray-900">{formatCurrency(service.amount)}</div>
-                    <div className="text-xs text-gray-500">{service.percentage}%</div>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-gray-500">Belum ada data pendapatan per layanan</p>
+              )}
             </div>
           </div>
 
           {/* Revenue by City */}
           <div>
-            <h4 className="text-md font-medium text-gray-900 mb-4">Revenue by City</h4>
+            <h4 className="text-md font-medium text-gray-900 mb-4">Pendapatan per Kota</h4>
             <div className="space-y-3">
-              {reportData.revenue.byCity.map((city, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
-                    <span className="text-sm font-medium text-gray-700">{city.name}</span>
+              {reportData.revenue.byCity.length > 0 ? (
+                reportData.revenue.byCity.map((city, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-gray-700">{city.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-gray-900">{formatCurrency(city.amount)}</div>
+                      <div className="text-xs text-gray-500">{city.percentage}%</div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-gray-900">{formatCurrency(city.amount)}</div>
-                    <div className="text-xs text-gray-500">{city.percentage}%</div>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-gray-500">Belum ada data pendapatan per kota</p>
+              )}
             </div>
           </div>
         </div>
@@ -288,7 +494,7 @@ const Reports = () => {
       {/* Outstanding & Aging Report */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Outstanding & Aging Receivables</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Piutang & Aging Receivables</h3>
           <button
             onClick={() => exportReport('outstanding')}
             className="flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
@@ -301,38 +507,38 @@ const Reports = () => {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-green-50 p-4 rounded-lg text-center">
             <Clock className="w-6 h-6 text-green-600 mx-auto mb-2" />
-            <p className="text-xs font-medium text-green-800">Current</p>
+            <p className="text-xs font-medium text-green-800">Belum Jatuh Tempo</p>
             <p className="text-lg font-bold text-green-900">{formatCurrency(reportData.outstanding.aging.current)}</p>
           </div>
 
           <div className="bg-yellow-50 p-4 rounded-lg text-center">
             <Clock className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
-            <p className="text-xs font-medium text-yellow-800">1-30 Days</p>
+            <p className="text-xs font-medium text-yellow-800">1-30 Hari</p>
             <p className="text-lg font-bold text-yellow-900">{formatCurrency(reportData.outstanding.aging.days30)}</p>
           </div>
 
           <div className="bg-orange-50 p-4 rounded-lg text-center">
             <Clock className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-            <p className="text-xs font-medium text-orange-800">31-60 Days</p>
+            <p className="text-xs font-medium text-orange-800">31-60 Hari</p>
             <p className="text-lg font-bold text-orange-900">{formatCurrency(reportData.outstanding.aging.days60)}</p>
           </div>
 
           <div className="bg-red-50 p-4 rounded-lg text-center">
             <AlertCircle className="w-6 h-6 text-red-600 mx-auto mb-2" />
-            <p className="text-xs font-medium text-red-800">61-90 Days</p>
+            <p className="text-xs font-medium text-red-800">61-90 Hari</p>
             <p className="text-lg font-bold text-red-900">{formatCurrency(reportData.outstanding.aging.days90)}</p>
           </div>
 
           <div className="bg-red-100 p-4 rounded-lg text-center">
             <AlertCircle className="w-6 h-6 text-red-700 mx-auto mb-2" />
-            <p className="text-xs font-medium text-red-900">90+ Days</p>
+            <p className="text-xs font-medium text-red-900">90+ Hari</p>
             <p className="text-lg font-bold text-red-900">{formatCurrency(reportData.outstanding.aging.over90)}</p>
           </div>
         </div>
 
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex justify-between items-center">
-            <span className="text-lg font-semibold text-gray-900">Total Outstanding:</span>
+            <span className="text-lg font-semibold text-gray-900">Total Piutang:</span>
             <span className="text-xl font-bold text-gray-900">{formatCurrency(reportData.outstanding.total)}</span>
           </div>
         </div>
@@ -341,7 +547,7 @@ const Reports = () => {
       {/* Cash Flow Report */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Cash Flow Report</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Laporan Arus Kas</h3>
           <button
             onClick={() => exportReport('cashflow')}
             className="flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
@@ -356,7 +562,7 @@ const Reports = () => {
             <div className="flex items-center">
               <TrendingUp className="w-8 h-8 text-green-600 mr-3" />
               <div>
-                <p className="text-sm font-medium text-green-800">Cash Inflow</p>
+                <p className="text-sm font-medium text-green-800">Kas Masuk</p>
                 <p className="text-2xl font-bold text-green-900">{formatCurrency(reportData.cashFlow.inflow)}</p>
               </div>
             </div>
@@ -366,7 +572,7 @@ const Reports = () => {
             <div className="flex items-center">
               <TrendingDown className="w-8 h-8 text-red-600 mr-3" />
               <div>
-                <p className="text-sm font-medium text-red-800">Cash Outflow</p>
+                <p className="text-sm font-medium text-red-800">Kas Keluar</p>
                 <p className="text-2xl font-bold text-red-900">{formatCurrency(reportData.cashFlow.outflow)}</p>
               </div>
             </div>
@@ -376,7 +582,7 @@ const Reports = () => {
             <div className="flex items-center">
               <DollarSign className="w-8 h-8 text-blue-600 mr-3" />
               <div>
-                <p className="text-sm font-medium text-blue-800">Net Cash Flow</p>
+                <p className="text-sm font-medium text-blue-800">Arus Kas Bersih</p>
                 <p className="text-2xl font-bold text-blue-900">{formatCurrency(reportData.cashFlow.net)}</p>
               </div>
             </div>
@@ -384,22 +590,22 @@ const Reports = () => {
         </div>
 
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">Monthly Cash Flow</h4>
+          <h4 className="text-md font-medium text-gray-900 mb-4">Arus Kas Bulanan</h4>
           <div className="space-y-3">
             {reportData.cashFlow.monthly.map((month, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="font-medium text-gray-900">{month.month}</span>
                 <div className="flex space-x-6">
                   <div className="text-right">
-                    <div className="text-sm text-gray-500">Inflow</div>
+                    <div className="text-sm text-gray-500">Masuk</div>
                     <div className="font-medium text-green-600">{formatCurrency(month.inflow)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-gray-500">Outflow</div>
+                    <div className="text-sm text-gray-500">Keluar</div>
                     <div className="font-medium text-red-600">{formatCurrency(month.outflow)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-gray-500">Net</div>
+                    <div className="text-sm text-gray-500">Bersih</div>
                     <div className="font-medium text-blue-600">{formatCurrency(month.inflow - month.outflow)}</div>
                   </div>
                 </div>
@@ -412,7 +618,7 @@ const Reports = () => {
       {/* Tax Report */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Tax Report</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Laporan Pajak</h3>
           <button
             onClick={() => exportReport('tax')}
             className="flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
@@ -427,7 +633,7 @@ const Reports = () => {
             <div className="flex items-center">
               <FileText className="w-8 h-8 text-blue-600 mr-3" />
               <div>
-                <p className="text-sm font-medium text-blue-800">Total Revenue</p>
+                <p className="text-sm font-medium text-blue-800">Total Pendapatan</p>
                 <p className="text-2xl font-bold text-blue-900">{formatCurrency(reportData.tax.totalRevenue)}</p>
               </div>
             </div>
@@ -437,7 +643,7 @@ const Reports = () => {
             <div className="flex items-center">
               <DollarSign className="w-8 h-8 text-green-600 mr-3" />
               <div>
-                <p className="text-sm font-medium text-green-800">Total Tax (PPN {reportData.tax.taxRate}%)</p>
+                <p className="text-sm font-medium text-green-800">Total Pajak (PPN {reportData.tax.taxRate}%)</p>
                 <p className="text-2xl font-bold text-green-900">{formatCurrency(reportData.tax.totalTax)}</p>
               </div>
             </div>
@@ -447,7 +653,7 @@ const Reports = () => {
             <div className="flex items-center">
               <FileText className="w-8 h-8 text-purple-600 mr-3" />
               <div>
-                <p className="text-sm font-medium text-purple-800">Effective Tax Rate</p>
+                <p className="text-sm font-medium text-purple-800">Tarif Pajak Efektif</p>
                 <p className="text-2xl font-bold text-purple-900">{formatPercentage(reportData.tax.taxRate)}</p>
               </div>
             </div>
@@ -455,19 +661,19 @@ const Reports = () => {
         </div>
 
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">Monthly Tax Details</h4>
+          <h4 className="text-md font-medium text-gray-900 mb-4">Detail Pajak Bulanan</h4>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Period
+                    Periode
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Revenue
+                    Pendapatan
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tax Amount
+                    Jumlah Pajak
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
