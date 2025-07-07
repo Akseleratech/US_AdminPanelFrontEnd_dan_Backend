@@ -101,6 +101,23 @@ const HalfDaySessionSelector = ({
     }
   ];
 
+  // Filter or mark sessions based on operational hours
+  const isSessionWithinOperationalHours = (session) => {
+    if (!spaceData?.operationalHours) return true; // assume open
+
+    const { operationalHours } = spaceData;
+    if (operationalHours.isAlwaysOpen) return true;
+
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const daySchedule = operationalHours.schedule[dayNames[selectedDate.getDay()]];
+    if (!daySchedule?.isOpen) return false;
+
+    const [openHour] = daySchedule.openTime.split(':').map(Number);
+    const [closeHour] = daySchedule.closeTime.split(':').map(Number);
+
+    return session.startHour >= openHour && session.endHour <= closeHour;
+  };
+
   // Check if a session has conflicts with booked hours
   const hasConflict = (session) => {
     if (!bookedHours || bookedHours.length === 0) return false;
@@ -186,7 +203,8 @@ const HalfDaySessionSelector = ({
             const isSelected = selectedSession?.id === session.id;
             const isConflicted = hasConflict(session);
             const conflictingBookings = getConflictingBookings(session);
-            const isDisabled = isConflicted;
+            const isOutOfHours = !isSessionWithinOperationalHours(session);
+            const isDisabled = isConflicted || isOutOfHours;
             
             return (
               <button
@@ -236,6 +254,9 @@ const HalfDaySessionSelector = ({
                       </div>
                     )}
                   </div>
+                )}
+                {isOutOfHours && (
+                  <div className="text-xs text-gray-500 mt-1">Di luar jam operasional</div>
                 )}
               </button>
             );

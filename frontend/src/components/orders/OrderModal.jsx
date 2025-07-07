@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Calendar, User, MapPin } from 'lucide-react';
+import { startOfMonth, endOfMonth } from 'date-fns';
 import useCustomers from '../../hooks/useCustomers';
 import useSpaces from '../../hooks/useSpaces';
 import AvailabilityCalendar from '../common/AvailabilityCalendar';
@@ -23,7 +24,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     startDate: '',
     endDate: '',
     status: 'pending',
-    notes: ''
+    notes: '',
+    numberOfMonths: 1 // For monthly pricing
   });
 
   const [errors, setErrors] = useState({});
@@ -32,8 +34,45 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedHalfDaySession, setSelectedHalfDaySession] = useState(null);
 
+  // Helper function to calculate end date for monthly pricing
+  const calculateEndDateForMonthly = (startDate, numberOfMonths) => {
+    if (!startDate || !numberOfMonths) return null;
+    const start = new Date(startDate);
+    if (isNaN(start.getTime())) return null;
+    
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + parseInt(numberOfMonths));
+    end.setDate(end.getDate() - 1); // End on the day before to make it inclusive
+    return end;
+  };
+
+  // Calculate availability date range to send to backend
+  const availabilityDateRange = useMemo(() => {
+    // jika belum ada tanggal terpilih, tampilkan bulan berjalan
+    if (!formData.startDate && !formData.endDate) {
+      const today = new Date();
+      return {
+        from: formatDateLocal(startOfMonth(today)),
+        to: formatDateLocal(endOfMonth(today))
+      };
+    }
+
+    // tentukan tanggal paling awal & paling akhir yang sudah terisi di form
+    const start = formData.startDate ? new Date(formData.startDate) : null;
+    const end = formData.endDate ? new Date(formData.endDate) : null;
+
+    const earliest = start && end ? (start < end ? start : end) : (start || end);
+    const latest = start && end ? (start > end ? start : end) : (start || end);
+
+    // bentangkan ke awal-bulan & akhir-bulan agar satu bulan penuh selalu termuat
+    return {
+      from: formatDateLocal(startOfMonth(earliest)),
+      to: formatDateLocal(endOfMonth(latest))
+    };
+  }, [formData.startDate, formData.endDate]);
+
   // Get availability data for the selected space
-  const { isDateAvailable, getBookingsForDate, getBookedHoursForDate, isDateFullyBooked } = useSpaceAvailability(formData.spaceId);
+  const { isDateAvailable, getBookingsForDate, getBookedHoursForDate, isDateFullyBooked } = useSpaceAvailability(formData.spaceId, availabilityDateRange);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -65,6 +104,14 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
         };
 
         const pricingType = editingOrder.pricingType || 'daily';
+        // Calculate numberOfMonths for existing monthly orders
+        let numberOfMonths = 1;
+        if (pricingType === 'monthly' && editingOrder.startDate && editingOrder.endDate) {
+          const start = new Date(editingOrder.startDate);
+          const end = new Date(editingOrder.endDate);
+          numberOfMonths = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 30)) || 1;
+        }
+
         setFormData({
           customerId: editingOrder.customerId || '',
           customerName: editingOrder.customerName || editingOrder.customer || '',
@@ -77,7 +124,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           startDate: formatDateForInput(editingOrder.startDate, pricingType),
           endDate: formatDateForInput(editingOrder.endDate, pricingType),
           status: editingOrder.status || 'pending',
-          notes: editingOrder.notes || ''
+          notes: editingOrder.notes || '',
+          numberOfMonths: numberOfMonths
         });
 
         // Initialize calendar and session states for editing
@@ -131,7 +179,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           startDate: '',
           endDate: '',
           status: 'pending',
-          notes: ''
+          notes: '',
+          numberOfMonths: 1
         });
         
         // Reset calendar and session states for new orders
@@ -167,7 +216,27 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           [name]: value
         }));
       }
-    } else {
+    } 
+    // Special handling for numberOfMonths changes in monthly pricing
+    else if (name === 'numberOfMonths' && formData.pricingType === 'monthly') {
+      const newEndDate = formData.startDate ? 
+        formatDateLocal(calculateEndDateForMonthly(formData.startDate, value)) : '';
+        
+      setFormData(prev => ({
+        ...prev,
+        [name]: parseInt(value) || 1,
+        endDate: newEndDate
+      }));
+      
+      // Update calendar selection if we have a start date
+      if (formData.startDate && newEndDate) {
+        setSelectedDateRange({
+          from: new Date(formData.startDate),
+          to: new Date(newEndDate)
+        });
+      }
+    } 
+    else {
       setFormData(prev => ({
         ...prev,
         [name]: value
@@ -242,6 +311,10 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
         }));
         // Reset session when date changes
         setSelectedHalfDaySession(null);
+      } else if (formData.pricingType === 'monthly') {
+        // Monthly pricing is handled by inline calendar in UI
+        // This branch shouldn't be reached for monthly pricing
+        return;
       } else {
         // For other pricing types, use formatDateLocal to avoid timezone issues
         setFormData(prev => ({
@@ -336,14 +409,9 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     
     // For monthly pricing
     if (pricingType === 'monthly') {
-      if (!startDate || !endDate) return rate;
-      
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return rate;
-      
-      const diffMonths = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 30)); // approximate months
-      return diffMonths * rate;
+      // Use numberOfMonths from formData if available, otherwise calculate from dates
+      const monthsToUse = formData.numberOfMonths || 1;
+      return monthsToUse * rate;
     }
     
     return rate;
@@ -356,7 +424,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       if (prev.amountBase === newAmountBase) return prev;
       return { ...prev, amountBase: newAmountBase };
     });
-  }, [formData.spaceId, formData.startDate, formData.endDate, formData.pricingType, spaces]);
+  }, [formData.spaceId, formData.startDate, formData.endDate, formData.pricingType, formData.numberOfMonths, spaces]);
 
   // Helper function to check if booking time is within operational hours
   const isWithinOperationalHours = (spaceId, startDate, endDate) => {
@@ -524,6 +592,10 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       }
     }
     
+    if (formData.pricingType === 'halfday' && !selectedHalfDaySession) {
+      newErrors.startDate = 'Pilih sesi (pagi/siang/sore)';
+    }
+
     if (!formData.amountBase || formData.amountBase <= 0) {
       newErrors.amountBase = 'Base amount must be greater than Rp. 0';
     }
@@ -594,7 +666,9 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       const requiresReset = (prev.pricingType === 'hourly' && pricingType !== 'hourly') ||
                             (prev.pricingType !== 'hourly' && pricingType === 'hourly') ||
                             (prev.pricingType === 'halfday' && pricingType !== 'halfday') ||
-                            (prev.pricingType !== 'halfday' && pricingType === 'halfday');
+                            (prev.pricingType !== 'halfday' && pricingType === 'halfday') ||
+                            (prev.pricingType === 'monthly' && pricingType !== 'monthly') ||
+                            (prev.pricingType !== 'monthly' && pricingType === 'monthly');
 
       if (requiresReset) {
         setSelectedDateRange(null); // Reset calendar selection when switching pricing types
@@ -606,6 +680,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
         pricingType,
         startDate: requiresReset ? '' : prev.startDate,
         endDate: requiresReset ? '' : prev.endDate,
+        numberOfMonths: pricingType === 'monthly' ? 1 : prev.numberOfMonths,
         amount: 0
       };
     });
@@ -781,7 +856,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                       {formData.pricingType === 'monthly' && formData.startDate && formData.endDate && (
                         <>
                           <div>📅 {new Date(formData.startDate).toLocaleDateString('id-ID')} - {new Date(formData.endDate).toLocaleDateString('id-ID')}</div>
-                          <div>({Math.ceil((new Date(formData.endDate) - new Date(formData.startDate)) / (1000 * 60 * 60 * 24 * 30))} bulan × {formatCurrency(selectedSpace.pricing.monthly)})</div>
+                          <div>({formData.numberOfMonths} bulan × {formatCurrency(selectedSpace.pricing.monthly)})</div>
                         </>
                       )}
                     </div>
@@ -791,10 +866,84 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
             );
           })()}
 
+          {/* Monthly Pricing Input */}
+          {showCalendar && formData.pricingType === 'monthly' && (
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Booking Bulanan
+              </h4>
+              
+              {/* Number of Months Dropdown */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Durasi (Bulan) *
+                </label>
+                <select
+                  name="numberOfMonths"
+                  value={formData.numberOfMonths}
+                  onChange={handleInputChange}
+                  className="w-full md:w-48 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  {[...Array(12)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      {i + 1} Bulan
+                    </option>
+                  ))}
+                </select>
+              </div>
 
+              {/* Calendar for Start Date Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Pilih Tanggal Mulai *
+                </label>
+                <AvailabilityCalendar
+                  spaceId={formData.spaceId}
+                  selectedRange={selectedDateRange}
+                  onDateRangeSelect={(range) => {
+                    if (range?.from) {
+                      // For monthly, we only need start date, then calculate end date
+                      const startDate = formatDateLocal(range.from);
+                      const endDate = calculateEndDateForMonthly(startDate, formData.numberOfMonths);
+                      
+                      setFormData(prev => ({
+                        ...prev,
+                        startDate: startDate,
+                        endDate: endDate ? formatDateLocal(endDate) : ''
+                      }));
+                      
+                      setSelectedDateRange({
+                        from: range.from,
+                        to: endDate || range.from
+                      });
+                    }
+                  }}
+                  pricingType="single" // Use single date selection for start date
+                  spaceData={spaces.find(s => s.id === formData.spaceId)}
+                  dateRange={availabilityDateRange}
+                />
+                {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
+              </div>
+
+              {/* End Date Display */}
+              {formData.startDate && formData.numberOfMonths && (
+                <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                  <p className="text-sm text-blue-700">
+                    <strong>Periode Booking:</strong> 
+                  </p>
+                  <div className="text-xs text-blue-600 mt-1 space-y-1">
+                    <div>📅 <strong>Mulai:</strong> {new Date(formData.startDate).toLocaleDateString('id-ID')}</div>
+                    <div>📅 <strong>Berakhir:</strong> {formData.endDate ? new Date(formData.endDate).toLocaleDateString('id-ID') : '-'}</div>
+                    <div>⏰ <strong>Durasi:</strong> {formData.numberOfMonths} bulan</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Availability Calendar */}
-          {showCalendar && (
+          {showCalendar && formData.pricingType !== 'monthly' && (
             <div className="border-t pt-4">
               <AvailabilityCalendar
                 spaceId={formData.spaceId}
@@ -802,6 +951,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                 onDateRangeSelect={handleDateRangeSelect}
                 pricingType={formData.pricingType === 'halfday' ? 'single' : formData.pricingType}
                 spaceData={spaces.find(s => s.id === formData.spaceId)}
+                dateRange={availabilityDateRange}
               />
             </div>
           )}

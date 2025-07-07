@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import useSpaceAvailability from '../../hooks/useSpaceAvailability';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 const AvailabilityCalendar = ({ 
   spaceId, 
@@ -13,7 +14,24 @@ const AvailabilityCalendar = ({
 }) => {
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('17:00');
-  const { availability, loading, error, getDisabledDates, getBookingsForDate, getBookedHoursForDate, isDateFullyBooked } = useSpaceAvailability(spaceId, dateRange);
+
+  // If parent does not supply explicit dateRange, manage our own based on visible month
+  const [internalRange, setInternalRange] = useState(() => {
+    if (dateRange) return dateRange;
+    const today = new Date();
+    return {
+      from: startOfMonth(today).toISOString().substring(0, 10), // YYYY-MM-DD
+      to: endOfMonth(today).toISOString().substring(0, 10)
+    };
+  });
+
+  // Controlled month for DayPicker
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+
+  // Use whichever range is available
+  const effectiveRange = dateRange || internalRange;
+
+  const { availability, loading, error, getDisabledDates, getBookingsForDate, getBookedHoursForDate, isDateFullyBooked, refreshAvailability } = useSpaceAvailability(spaceId, effectiveRange);
 
   if (loading) {
     return (
@@ -221,6 +239,25 @@ const AvailabilityCalendar = ({
             formatDay: renderDayContent,
           }}
           className="mx-auto"
+          month={currentMonth}
+          onMonthChange={(month) => {
+            const newRange = {
+              from: startOfMonth(month).toISOString().substring(0, 10),
+              to: endOfMonth(month).toISOString().substring(0, 10)
+            };
+
+            // If component manages its own range, update it so DayPicker still knows disabled dates for that month
+            if (!dateRange) {
+              setInternalRange(newRange);
+            }
+
+            // Selalu fetch availability untuk bulan baru
+            if (spaceId) {
+              refreshAvailability(spaceId, newRange);
+            }
+
+            setCurrentMonth(month);
+          }}
         />
 
         {/* Time picker for hourly bookings */}
