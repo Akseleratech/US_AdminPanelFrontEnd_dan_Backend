@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Edit, Trash2, LayoutGrid, Building, Users, Tag, CheckSquare, DollarSign, Clock, Power, Calendar, User, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Edit, Trash2, LayoutGrid, Building, Users, Tag, CheckSquare, DollarSign, Clock, Power, Calendar, User, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye } from 'lucide-react';
 import LoadingSpinner from '../common/LoadingSpinner';
+import SpaceDetailModal from './SpaceDetailModal';
 
 const SpacesGrid = ({ 
   spaces, 
@@ -15,6 +16,10 @@ const SpacesGrid = ({
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+
+  // Modal state
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedSpace, setSelectedSpace] = useState(null);
 
   // Calculate pagination values
   const totalItems = spaces?.length || 0;
@@ -228,6 +233,18 @@ const SpacesGrid = ({
     }
   };
 
+  // Handle view space details
+  const handleViewSpace = (space) => {
+    setSelectedSpace(space);
+    setIsDetailModalOpen(true);
+  };
+
+  // Close detail modal
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedSpace(null);
+  };
+
   // Helper function to get booking information for a space
   const getSpaceBookings = (spaceId) => {
     if (!orders || !Array.isArray(orders)) {
@@ -371,6 +388,7 @@ const SpacesGrid = ({
       </div>
     );
   };
+
 
   return (
     <div className="space-y-4">
@@ -549,6 +567,13 @@ const SpacesGrid = ({
               </div>
               <div className="flex space-x-1">
                 <button 
+                  onClick={() => handleViewSpace(space)} 
+                  className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded" 
+                  title="View Details"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+                <button 
                   onClick={() => onToggleActive && onToggleActive(space)} 
                   className={`p-1.5 rounded transition-colors ${
                     space.isActive 
@@ -582,6 +607,19 @@ const SpacesGrid = ({
 
       {/* Pagination Controls */}
       <PaginationControls />
+
+      {/* Space Detail Modal */}
+      <SpaceDetailModal 
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+        space={selectedSpace}
+        orders={orders}
+        formatPrice={formatPrice}
+        formatBookingDateRange={formatBookingDateRange}
+        getEffectiveStatus={getEffectiveStatus}
+        getCategoryDisplayName={getCategoryDisplayName}
+        getBuildingDisplayName={getBuildingDisplayName}
+      />
     </div>
   );
 };
