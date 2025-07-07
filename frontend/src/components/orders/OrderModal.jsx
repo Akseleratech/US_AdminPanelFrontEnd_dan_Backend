@@ -20,12 +20,13 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     spaceName: '',
     amountBase: 0, // Base price before tax
     invoiceId: null, // Link to invoice
-    pricingType: 'daily', // hourly, halfday, daily, monthly
+    pricingType: 'daily', // hourly, halfday, daily, monthly, yearly
     startDate: '',
     endDate: '',
     status: 'pending',
     notes: '',
-    numberOfMonths: 1 // For monthly pricing
+    numberOfMonths: 1, // For monthly pricing
+    numberOfYears: 1 // For yearly pricing
   });
 
   const [errors, setErrors] = useState({});
@@ -42,6 +43,18 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     
     const end = new Date(start);
     end.setMonth(end.getMonth() + parseInt(numberOfMonths));
+    end.setDate(end.getDate() - 1); // End on the day before to make it inclusive
+    return end;
+  };
+
+  // Helper function to calculate end date for yearly pricing
+  const calculateEndDateForYearly = (startDate, numberOfYears) => {
+    if (!startDate || !numberOfYears) return null;
+    const start = new Date(startDate);
+    if (isNaN(start.getTime())) return null;
+    
+    const end = new Date(start);
+    end.setFullYear(end.getFullYear() + parseInt(numberOfYears));
     end.setDate(end.getDate() - 1); // End on the day before to make it inclusive
     return end;
   };
@@ -112,6 +125,14 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           numberOfMonths = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 30)) || 1;
         }
 
+        // Calculate numberOfYears for existing yearly orders
+        let numberOfYears = 1;
+        if (pricingType === 'yearly' && editingOrder.startDate && editingOrder.endDate) {
+          const start = new Date(editingOrder.startDate);
+          const end = new Date(editingOrder.endDate);
+          numberOfYears = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 365)) || 1;
+        }
+
         setFormData({
           customerId: editingOrder.customerId || '',
           customerName: editingOrder.customerName || editingOrder.customer || '',
@@ -125,7 +146,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           endDate: formatDateForInput(editingOrder.endDate, pricingType),
           status: editingOrder.status || 'pending',
           notes: editingOrder.notes || '',
-          numberOfMonths: numberOfMonths
+          numberOfMonths: numberOfMonths,
+          numberOfYears: numberOfYears
         });
 
         // Initialize calendar and session states for editing
@@ -180,7 +202,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           endDate: '',
           status: 'pending',
           notes: '',
-          numberOfMonths: 1
+          numberOfMonths: 1,
+          numberOfYears: 1
         });
         
         // Reset calendar and session states for new orders
@@ -221,6 +244,25 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     else if (name === 'numberOfMonths' && formData.pricingType === 'monthly') {
       const newEndDate = formData.startDate ? 
         formatDateLocal(calculateEndDateForMonthly(formData.startDate, value)) : '';
+        
+      setFormData(prev => ({
+        ...prev,
+        [name]: parseInt(value) || 1,
+        endDate: newEndDate
+      }));
+      
+      // Update calendar selection if we have a start date
+      if (formData.startDate && newEndDate) {
+        setSelectedDateRange({
+          from: new Date(formData.startDate),
+          to: new Date(newEndDate)
+        });
+      }
+    }
+    // Special handling for numberOfYears changes in yearly pricing
+    else if (name === 'numberOfYears' && formData.pricingType === 'yearly') {
+      const newEndDate = formData.startDate ? 
+        formatDateLocal(calculateEndDateForYearly(formData.startDate, value)) : '';
         
       setFormData(prev => ({
         ...prev,
@@ -314,6 +356,10 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       } else if (formData.pricingType === 'monthly') {
         // Monthly pricing is handled by inline calendar in UI
         // This branch shouldn't be reached for monthly pricing
+        return;
+      } else if (formData.pricingType === 'yearly') {
+        // Yearly pricing is handled by inline calendar in UI
+        // This branch shouldn't be reached for yearly pricing
         return;
       } else {
         // For other pricing types, use formatDateLocal to avoid timezone issues
@@ -414,6 +460,13 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       return monthsToUse * rate;
     }
     
+    // For yearly pricing
+    if (pricingType === 'yearly') {
+      // Use numberOfYears from formData if available, otherwise calculate from dates
+      const yearsToUse = formData.numberOfYears || 1;
+      return yearsToUse * rate;
+    }
+    
     return rate;
   };
 
@@ -424,7 +477,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       if (prev.amountBase === newAmountBase) return prev;
       return { ...prev, amountBase: newAmountBase };
     });
-  }, [formData.spaceId, formData.startDate, formData.endDate, formData.pricingType, formData.numberOfMonths, spaces]);
+  }, [formData.spaceId, formData.startDate, formData.endDate, formData.pricingType, formData.numberOfMonths, formData.numberOfYears, spaces]);
 
   // Helper function to check if booking time is within operational hours
   const isWithinOperationalHours = (spaceId, startDate, endDate) => {
@@ -518,6 +571,13 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       return { valid: true };
     }
     
+    // Yearly pricing: Allow booking even with closed days (long-term rental flexibility)
+    if (formData.pricingType === 'yearly') {
+      // No operational hours validation for yearly pricing
+      // Customer can use space on operational days within the yearly period
+      return { valid: true };
+    }
+    
     return { valid: true };
   };
 
@@ -539,8 +599,8 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
         if (startDate >= endDate) {
           newErrors.endDate = 'End time must be after start time';
         }
-      } else if (formData.pricingType === 'daily' || formData.pricingType === 'monthly') {
-        // For daily and monthly pricing, end date can be same as start date (for 1-day booking)
+      } else if (formData.pricingType === 'daily' || formData.pricingType === 'monthly' || formData.pricingType === 'yearly') {
+        // For daily, monthly, and yearly pricing, end date can be same as start date (for 1-day booking)
         if (startDate > endDate) {
           newErrors.endDate = 'End date cannot be before start date';
         }
@@ -569,9 +629,9 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       }
 
       // Additional check for closed days (to be safe)
-      // Skip this validation for monthly pricing to allow flexibility
+      // Skip this validation for monthly and yearly pricing to allow flexibility
       const selectedSpace = spaces.find(s => s.id === formData.spaceId);
-      if (selectedSpace?.operationalHours && !selectedSpace.operationalHours.isAlwaysOpen && formData.pricingType !== 'monthly') {
+      if (selectedSpace?.operationalHours && !selectedSpace.operationalHours.isAlwaysOpen && formData.pricingType !== 'monthly' && formData.pricingType !== 'yearly') {
         const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         
         // Check if start date is on a closed day
@@ -668,7 +728,9 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                             (prev.pricingType === 'halfday' && pricingType !== 'halfday') ||
                             (prev.pricingType !== 'halfday' && pricingType === 'halfday') ||
                             (prev.pricingType === 'monthly' && pricingType !== 'monthly') ||
-                            (prev.pricingType !== 'monthly' && pricingType === 'monthly');
+                            (prev.pricingType !== 'monthly' && pricingType === 'monthly') ||
+                            (prev.pricingType === 'yearly' && pricingType !== 'yearly') ||
+                            (prev.pricingType !== 'yearly' && pricingType === 'yearly');
 
       if (requiresReset) {
         setSelectedDateRange(null); // Reset calendar selection when switching pricing types
@@ -681,6 +743,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
         startDate: requiresReset ? '' : prev.startDate,
         endDate: requiresReset ? '' : prev.endDate,
         numberOfMonths: pricingType === 'monthly' ? 1 : prev.numberOfMonths,
+        numberOfYears: pricingType === 'yearly' ? 1 : prev.numberOfYears,
         amount: 0
       };
     });
@@ -772,7 +835,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
             return (
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Informasi Pricing:</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
                   <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('hourly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'hourly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
                     <p className="text-gray-600">Per Jam</p>
                     <p className="font-medium">{formatCurrency(selectedSpace.pricing.hourly)}</p>
@@ -788,6 +851,11 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                   <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('monthly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'monthly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
                     <p className="text-gray-600">Per Bulan</p>
                     <p className="font-medium">{formatCurrency(selectedSpace.pricing.monthly)}</p>
+                    <p className="text-xs text-green-600 mt-1">*Mengabaikan hari tutup</p>
+                  </button>
+                  <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('yearly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'yearly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
+                    <p className="text-gray-600">Per Tahun</p>
+                    <p className="font-medium">{formatCurrency(selectedSpace.pricing.yearly)}</p>
                     <p className="text-xs text-green-600 mt-1">*Mengabaikan hari tutup</p>
                   </button>
                 </div>
@@ -820,6 +888,16 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                       <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
                         <p className="text-xs text-blue-700">
                           📅 <strong>Catatan Booking Bulanan:</strong> Anda dapat memilih tanggal mulai dan berakhir kapan saja. 
+                          Space hanya dapat digunakan pada hari dan jam operasional yang tercantum di atas.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Yearly pricing note */}
+                    {formData.pricingType === 'yearly' && !selectedSpace.operationalHours.isAlwaysOpen && (
+                      <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <p className="text-xs text-blue-700">
+                          📅 <strong>Catatan Booking Tahunan:</strong> Anda dapat memilih tanggal mulai dan berakhir kapan saja. 
                           Space hanya dapat digunakan pada hari dan jam operasional yang tercantum di atas.
                         </p>
                       </div>
@@ -857,6 +935,12 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                         <>
                           <div>📅 {new Date(formData.startDate).toLocaleDateString('id-ID')} - {new Date(formData.endDate).toLocaleDateString('id-ID')}</div>
                           <div>({formData.numberOfMonths} bulan × {formatCurrency(selectedSpace.pricing.monthly)})</div>
+                        </>
+                      )}
+                      {formData.pricingType === 'yearly' && formData.startDate && formData.endDate && (
+                        <>
+                          <div>📅 {new Date(formData.startDate).toLocaleDateString('id-ID')} - {new Date(formData.endDate).toLocaleDateString('id-ID')}</div>
+                          <div>({formData.numberOfYears} tahun × {formatCurrency(selectedSpace.pricing.yearly)})</div>
                         </>
                       )}
                     </div>
@@ -942,8 +1026,84 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
             </div>
           )}
 
+          {/* Yearly Pricing Input */}
+          {showCalendar && formData.pricingType === 'yearly' && (
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Booking Tahunan
+              </h4>
+              
+              {/* Number of Years Dropdown */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Durasi (Tahun) *
+                </label>
+                <select
+                  name="numberOfYears"
+                  value={formData.numberOfYears}
+                  onChange={handleInputChange}
+                  className="w-full md:w-48 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  {[...Array(10)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      {i + 1} Tahun
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Calendar for Start Date Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Pilih Tanggal Mulai *
+                </label>
+                <AvailabilityCalendar
+                  spaceId={formData.spaceId}
+                  selectedRange={selectedDateRange}
+                  onDateRangeSelect={(range) => {
+                    if (range?.from) {
+                      // For yearly, we only need start date, then calculate end date
+                      const startDate = formatDateLocal(range.from);
+                      const endDate = calculateEndDateForYearly(startDate, formData.numberOfYears);
+                      
+                      setFormData(prev => ({
+                        ...prev,
+                        startDate: startDate,
+                        endDate: endDate ? formatDateLocal(endDate) : ''
+                      }));
+                      
+                      setSelectedDateRange({
+                        from: range.from,
+                        to: endDate || range.from
+                      });
+                    }
+                  }}
+                  pricingType="single" // Use single date selection for start date
+                  spaceData={spaces.find(s => s.id === formData.spaceId)}
+                  dateRange={availabilityDateRange}
+                />
+                {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
+              </div>
+
+              {/* End Date Display */}
+              {formData.startDate && formData.numberOfYears && (
+                <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                  <p className="text-sm text-blue-700">
+                    <strong>Periode Booking:</strong> 
+                  </p>
+                  <div className="text-xs text-blue-600 mt-1 space-y-1">
+                    <div>📅 <strong>Mulai:</strong> {new Date(formData.startDate).toLocaleDateString('id-ID')}</div>
+                    <div>📅 <strong>Berakhir:</strong> {formData.endDate ? new Date(formData.endDate).toLocaleDateString('id-ID') : '-'}</div>
+                    <div>⏰ <strong>Durasi:</strong> {formData.numberOfYears} tahun</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Availability Calendar */}
-          {showCalendar && formData.pricingType !== 'monthly' && (
+          {showCalendar && formData.pricingType !== 'monthly' && formData.pricingType !== 'yearly' && (
             <div className="border-t pt-4">
               <AvailabilityCalendar
                 spaceId={formData.spaceId}

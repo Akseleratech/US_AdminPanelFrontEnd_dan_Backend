@@ -457,6 +457,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
           halfday: formData.pricing.halfday ? parseFloat(formData.pricing.halfday) : null,
           daily: formData.pricing.daily ? parseFloat(formData.pricing.daily) : null,
           monthly: formData.pricing.monthly ? parseFloat(formData.pricing.monthly) : null,
+          yearly: formData.pricing.yearly ? parseFloat(formData.pricing.yearly) : null,
           currency: formData.pricing.currency
         },
         amenities: formData.amenities,

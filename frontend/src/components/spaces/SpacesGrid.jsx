@@ -207,6 +207,7 @@ const SpacesGrid = ({
               {pricingType === 'halfday' && '🌅 Half Day'}
               {pricingType === 'daily' && '📅 Full Day'}
               {pricingType === 'monthly' && '📆 Monthly'}
+              {pricingType === 'yearly' && '🗓️ Yearly'}
             </div>
           </div>
         );
@@ -219,6 +220,7 @@ const SpacesGrid = ({
               {pricingType === 'halfday' && '🌅 Half Day'}
               {pricingType === 'daily' && '📅 Full Day'}
               {pricingType === 'monthly' && '📆 Monthly'}
+              {pricingType === 'yearly' && '🗓️ Yearly'}
             </div>
           </div>
         );

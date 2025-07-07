@@ -100,9 +100,9 @@ const useSpaceAvailability = (spaceId, dateRange = null) => {
     
     if (!dayInfo) return false;
     
-    // Check if there are any full-day bookings (daily, monthly) - halfday allows multiple bookings
+    // Check if there are any full-day bookings (daily, monthly, yearly) - halfday allows multiple bookings
     const hasFullDayBookings = dayInfo.bookings.some(booking => 
-      ['daily', 'monthly'].includes(booking.pricingType)
+      ['daily', 'monthly', 'yearly'].includes(booking.pricingType)
     );
     
     if (hasFullDayBookings) return true;
