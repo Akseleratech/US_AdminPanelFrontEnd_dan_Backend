@@ -420,8 +420,9 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       }
     }
     
-    // For daily and monthly pricing, check if any day in the range is closed
-    if (formData.pricingType === 'daily' || formData.pricingType === 'monthly') {
+    // For daily pricing, check if any day in the range is closed
+    // Monthly pricing ignores closed days (assumes long-term rental with flexibility)
+    if (formData.pricingType === 'daily') {
       const current = new Date(start);
       const closedDays = [];
       
@@ -440,6 +441,13 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           message: `Space tutup pada: ${closedDays.join(', ')}` 
         };
       }
+    }
+    
+    // Monthly pricing: Allow booking even with closed days (long-term rental flexibility)
+    if (formData.pricingType === 'monthly') {
+      // No operational hours validation for monthly pricing
+      // Customer can use space on operational days within the monthly period
+      return { valid: true };
     }
     
     return { valid: true };
@@ -490,6 +498,29 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       const operationalCheck = isWithinOperationalHours(formData.spaceId, formData.startDate, formData.endDate);
       if (!operationalCheck.valid) {
         newErrors.startDate = operationalCheck.message;
+      }
+
+      // Additional check for closed days (to be safe)
+      // Skip this validation for monthly pricing to allow flexibility
+      const selectedSpace = spaces.find(s => s.id === formData.spaceId);
+      if (selectedSpace?.operationalHours && !selectedSpace.operationalHours.isAlwaysOpen && formData.pricingType !== 'monthly') {
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        
+        // Check if start date is on a closed day
+        const startDay = dayNames[startDate.getDay()];
+        if (!selectedSpace.operationalHours.schedule?.[startDay]?.isOpen) {
+          const dayLabel = startDay === 'sunday' ? 'Minggu' : startDay === 'monday' ? 'Senin' : startDay === 'tuesday' ? 'Selasa' : startDay === 'wednesday' ? 'Rabu' : startDay === 'thursday' ? 'Kamis' : startDay === 'friday' ? 'Jumat' : 'Sabtu';
+          newErrors.startDate = `Space tutup pada hari ${dayLabel}`;
+        }
+        
+        // For multi-day bookings, check if end date is on a closed day
+        if (formData.pricingType !== 'hourly' && startDate.toDateString() !== endDate.toDateString()) {
+          const endDay = dayNames[endDate.getDay()];
+          if (!selectedSpace.operationalHours.schedule?.[endDay]?.isOpen) {
+            const dayLabel = endDay === 'sunday' ? 'Minggu' : endDay === 'monday' ? 'Senin' : endDay === 'tuesday' ? 'Selasa' : endDay === 'wednesday' ? 'Rabu' : endDay === 'thursday' ? 'Kamis' : endDay === 'friday' ? 'Jumat' : 'Sabtu';
+            newErrors.endDate = `Space tutup pada hari ${dayLabel}`;
+          }
+        }
       }
     }
     
@@ -682,6 +713,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                   <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('monthly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'monthly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
                     <p className="text-gray-600">Per Bulan</p>
                     <p className="font-medium">{formatCurrency(selectedSpace.pricing.monthly)}</p>
+                    <p className="text-xs text-green-600 mt-1">*Mengabaikan hari tutup</p>
                   </button>
                 </div>
                 
@@ -707,6 +739,16 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                         </div>
                       )}
                     </div>
+                    
+                    {/* Monthly pricing note */}
+                    {formData.pricingType === 'monthly' && !selectedSpace.operationalHours.isAlwaysOpen && (
+                      <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <p className="text-xs text-blue-700">
+                          📅 <strong>Catatan Booking Bulanan:</strong> Anda dapat memilih tanggal mulai dan berakhir kapan saja. 
+                          Space hanya dapat digunakan pada hari dan jam operasional yang tercantum di atas.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
                 
@@ -759,6 +801,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                 selectedRange={selectedDateRange}
                 onDateRangeSelect={handleDateRangeSelect}
                 pricingType={formData.pricingType === 'halfday' ? 'single' : formData.pricingType}
+                spaceData={spaces.find(s => s.id === formData.spaceId)}
               />
             </div>
           )}
@@ -772,6 +815,7 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                 onSessionSelect={handleHalfDaySessionSelect}
                 bookedHours={getBookedHoursForDate(selectedDateRange.from)}
                 getBookingsForDate={getBookingsForDate}
+                spaceData={spaces.find(s => s.id === formData.spaceId)}
               />
             </div>
           )}

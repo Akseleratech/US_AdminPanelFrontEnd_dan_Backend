@@ -8,7 +8,8 @@ const {
   sanitizeString,
   generateSequentialId,
   verifyAuthToken,
-  getUserFromToken 
+  getUserFromToken,
+  getCurrentTaxRate 
 } = require("./utils/helpers");
 const admin = require("firebase-admin");
 
@@ -164,7 +165,7 @@ const createInvoice = async (req, res) => {
       customerPhone,
       customerAddress,
       amountBase,
-      taxRate = 0.11,
+      taxRate,
       discountRate = 0,
       paymentTerms = 30,
       notes = ''
@@ -173,8 +174,11 @@ const createInvoice = async (req, res) => {
     // Validate required fields
     validateRequired(req.body, ['customerName', 'customerEmail', 'amountBase']);
 
+    // Get current tax rate if not provided
+    const finalTaxRate = taxRate !== undefined ? taxRate : await getCurrentTaxRate();
+
     // Calculate amounts
-    const taxAmount = amountBase * taxRate;
+    const taxAmount = amountBase * finalTaxRate;
     const discountAmount = amountBase * discountRate;
     const total = amountBase + taxAmount - discountAmount;
 
@@ -197,7 +201,7 @@ const createInvoice = async (req, res) => {
       customerPhone: customerPhone ? sanitizeString(customerPhone) : null,
       customerAddress: customerAddress ? sanitizeString(customerAddress) : null,
       amountBase: parseFloat(amountBase),
-      taxRate: parseFloat(taxRate),
+      taxRate: parseFloat(finalTaxRate),
       taxAmount: parseFloat(taxAmount),
       discountRate: parseFloat(discountRate),
       discountAmount: parseFloat(discountAmount),
@@ -328,7 +332,7 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
 
     // Generate invoice from order data
     console.log('🔍 DEBUG - Generating invoice data...');
-    const taxRate = 0.11; // 11% PPN
+    const taxRate = await getCurrentTaxRate(); // Get current tax rate from settings
     const taxAmount = order.amountBase * taxRate;
     const total = order.amountBase + taxAmount;
 

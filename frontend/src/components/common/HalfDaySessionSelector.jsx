@@ -6,12 +6,48 @@ const HalfDaySessionSelector = ({
   selectedSession, 
   onSessionSelect,
   bookedHours = [],
-  getBookingsForDate // Add this prop to get detailed booking info
+  getBookingsForDate, // Add this prop to get detailed booking info
+  spaceData = null // Add space data to check operational hours
 }) => {
   if (!selectedDate) {
     return (
       <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
         <p className="text-gray-600 text-sm">Pilih tanggal terlebih dahulu untuk memilih sesi half-day</p>
+      </div>
+    );
+  }
+
+  // Check if the selected date is a closed day
+  const isClosedDay = () => {
+    if (!spaceData?.operationalHours) return false;
+    
+    const { operationalHours } = spaceData;
+    
+    // If always open, never closed
+    if (operationalHours.isAlwaysOpen) return false;
+    
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[selectedDate.getDay()];
+    
+    // Check if the day is marked as closed
+    return !operationalHours.schedule?.[dayName]?.isOpen;
+  };
+
+  // If the day is closed, show closed message
+  if (isClosedDay()) {
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[selectedDate.getDay()];
+    const dayLabel = dayName === 'sunday' ? 'Minggu' : dayName === 'monday' ? 'Senin' : dayName === 'tuesday' ? 'Selasa' : dayName === 'wednesday' ? 'Rabu' : dayName === 'thursday' ? 'Kamis' : dayName === 'friday' ? 'Jumat' : 'Sabtu';
+    
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+        <div className="flex items-center text-red-600">
+          <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 mr-2">
+            <path d="M11.354 4.646a.5.5 0 0 0-.708 0L8 7.293 5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0 0-.708z"/>
+          </svg>
+          <span className="text-sm font-medium">Space tutup pada hari {dayLabel}</span>
+        </div>
+        <p className="text-red-500 text-xs mt-1">Tidak ada sesi half-day yang tersedia pada hari ini.</p>
       </div>
     );
   }

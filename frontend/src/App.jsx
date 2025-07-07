@@ -18,6 +18,7 @@ const Promo = React.lazy(() => import('./components/promo/Promo.jsx'));
 const Article = React.lazy(() => import('./components/article/Article.jsx'));
 const Customers = React.lazy(() => import('./components/customers/Customers.jsx'));
 const Finance = React.lazy(() => import('./components/finance/Finance.jsx'));
+const Settings = React.lazy(() => import('./components/settings/Settings.jsx'));
 const Login = React.lazy(() => import('./components/auth/Login.jsx'));
 
 // Contexts
@@ -59,6 +60,7 @@ const PrivateRoutes = () => {
           <Route path="/articles" element={<Article />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/finance/*" element={<Finance />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>

@@ -297,6 +297,27 @@ const parseOrderId = (orderId) => {
   return null;
 };
 
+// Get current tax rate from settings
+const getCurrentTaxRate = async () => {
+  try {
+    const db = getDb();
+    const docSnap = await db.collection('settings').doc('global').get();
+    
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      // Convert percentage to decimal (e.g., 11% -> 0.11)
+      return (data.taxRate || 11) / 100;
+    }
+    
+    // Fallback to 11% if no settings found
+    return 0.11;
+  } catch (error) {
+    console.error('Error getting tax rate:', error);
+    // Fallback to 11% on error
+    return 0.11;
+  }
+};
+
 module.exports = {
   getDb,
   handleResponse,
@@ -316,5 +337,6 @@ module.exports = {
   getServiceTypeCode,
   getServiceTypeLabel,
   generateStructuredOrderId,
-  parseOrderId
+  parseOrderId,
+  getCurrentTaxRate
 }; 

@@ -38,12 +38,12 @@ const Sidebar = () => {
       icon: Building2
     },
     {
-      name: 'Buildings',
+      name: 'Gedung',
       path: '/buildings',
       icon: Building2
     },
     {
-      name: 'Cities',
+      name: 'Kota',
       path: '/cities',
       icon: Map
     },
@@ -63,19 +63,24 @@ const Sidebar = () => {
       icon: Ticket
     },
     {
-      name: 'Article',
+      name: 'Artikel',
       path: '/articles',
       icon: Newspaper
     },
     {
-      name: 'Customers',
+      name: 'Pelanggan',
       path: '/customers',
       icon: Users
     },
     {
-      name: 'Finance',
+      name: 'Keuangan',
       path: '/finance',
       icon: CreditCard
+    },
+    {
+      name: 'Pengaturan',
+      path: '/settings',
+      icon: Settings
     }
   ];
 

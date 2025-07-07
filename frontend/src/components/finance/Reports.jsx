@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Download, Calendar, TrendingUp, TrendingDown, DollarSign, FileText, Clock, AlertCircle } from 'lucide-react';
 import LoadingSpinner from '../common/LoadingSpinner';
 import * as invoiceAPI from '../../services/invoiceApi';
+import { useTaxRate } from '../../contexts/TaxRateContext.jsx';
 
 const Reports = () => {
+  const currentTaxRate = useTaxRate();
   const [reportData, setReportData] = useState({
     revenue: {
       thisMonth: 0,
@@ -31,7 +33,7 @@ const Reports = () => {
     tax: {
       totalTax: 0,
       totalRevenue: 0,
-      taxRate: 11,
+      taxRate: currentTaxRate,
       details: []
     }
   });
@@ -228,7 +230,7 @@ const Reports = () => {
           tax: {
             totalTax: totalTax,
             totalRevenue: totalRevenue,
-            taxRate: 11,
+            taxRate: currentTaxRate,
             details: taxDetails
           }
         });
@@ -262,7 +264,7 @@ const Reports = () => {
           tax: {
             totalTax: 0,
             totalRevenue: 0,
-            taxRate: 11,
+            taxRate: currentTaxRate,
             details: []
           }
         });

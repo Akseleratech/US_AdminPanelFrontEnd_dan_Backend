@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Plus, Minus } from 'lucide-react';
+import { useTaxRate } from '../../contexts/TaxRateContext.jsx';
 
 const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
+  const defaultTaxRate = useTaxRate();
   const [formData, setFormData] = useState({
     orderId: '',
     customerName: '',
@@ -16,7 +18,7 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
       }
     ],
     subtotal: 0,
-    taxRate: 11, // PPN 11%
+    taxRate: defaultTaxRate, // Dynamic tax rate
     taxAmount: 0,
     discountRate: 0,
     discountAmount: 0,
@@ -97,7 +99,7 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
         ...editingInvoice,
         items: items,
         subtotal: editingInvoice.amountBase || 0,
-        taxRate: editingInvoice.taxRate || 11,
+        taxRate: editingInvoice.taxRate || defaultTaxRate,
         taxAmount: editingInvoice.taxAmount || 0,
         discountRate: editingInvoice.discountRate || 0,
         discountAmount: editingInvoice.discountAmount || 0,
@@ -125,7 +127,7 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
           }
         ],
         subtotal: 0,
-        taxRate: 11,
+        taxRate: defaultTaxRate,
         taxAmount: 0,
         discountRate: 0,
         discountAmount: 0,

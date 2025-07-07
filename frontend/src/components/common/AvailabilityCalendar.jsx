@@ -8,7 +8,8 @@ const AvailabilityCalendar = ({
   selectedRange,
   onDateRangeSelect, 
   pricingType = 'daily',
-  dateRange = null 
+  dateRange = null,
+  spaceData = null // Add space data to check operational hours
 }) => {
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('17:00');
@@ -42,29 +43,86 @@ const AvailabilityCalendar = ({
   const disabledDates = getDisabledDates();
   const today = new Date();
 
+  // Function to check if a day is closed based on operational hours
+  const isClosedDay = (date) => {
+    if (!spaceData?.operationalHours) return false;
+    
+    const { operationalHours } = spaceData;
+    
+    // If always open, never closed
+    if (operationalHours.isAlwaysOpen) return false;
+    
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[date.getDay()];
+    
+    // Check if the day is marked as closed
+    return !operationalHours.schedule?.[dayName]?.isOpen;
+  };
+
+  // Function to get all closed days for the current month view
+  const getClosedDaysInMonth = (date) => {
+    const closedDays = [];
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    
+    // Get first and last day of the month
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    const current = new Date(firstDay);
+    while (current <= lastDay) {
+      if (isClosedDay(current)) {
+        closedDays.push(new Date(current));
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return closedDays;
+  };
+
   // Custom day content to show booking indicators
   const renderDayContent = (day) => {
     const bookings = getBookingsForDate(day);
     const hasBookings = bookings.length > 0;
     const bookedHours = getBookedHoursForDate(day);
     const isFullyBooked = isDateFullyBooked(day);
+    const isClosed = isClosedDay(day);
     
     // Calculate percentage of hours booked (for progress bar)
     const bookedPercentage = bookedHours.length / 24; // 24 hours in a day
     
     return (
-      <div className="relative w-full h-full flex items-center justify-center">
+      <div className={`relative w-full h-full flex items-center justify-center ${
+        isClosed && pricingType !== 'monthly' ? 'text-gray-400' : ''
+      }`}>
         <span>{day.getDate()}</span>
         
-        {/* Dot indicator for any bookings */}
-        {hasBookings && (
+        {/* Closed indicator - different display for monthly vs other pricing types */}
+        {isClosed && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            {pricingType === 'monthly' ? (
+              // For monthly: Show small dot indicator instead of X
+              <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-orange-400 rounded-full" title="Tutup (dapat dipilih untuk booking bulanan)"></div>
+            ) : (
+              // For other pricing types: Show X mark
+              <div className="w-4 h-4 text-gray-400">
+                <svg viewBox="0 0 16 16" fill="currentColor" className="w-full h-full">
+                  <path d="M11.354 4.646a.5.5 0 0 0-.708 0L8 7.293 5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0 0-.708z"/>
+                </svg>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Dot indicator for any bookings - only show if not closed */}
+        {!isClosed && hasBookings && (
           <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
             isFullyBooked ? 'bg-red-500' : 'bg-yellow-500'
           }`}></div>
         )}
         
-        {/* Progress bar for hourly bookings */}
-        {bookedHours.length > 0 && (
+        {/* Progress bar for hourly bookings - only show if not closed */}
+        {!isClosed && bookedHours.length > 0 && (
           <div
             className={`absolute bottom-0 left-0 h-0.5 ${
               isFullyBooked ? 'bg-red-500' : 'bg-yellow-500/70'
@@ -76,10 +134,16 @@ const AvailabilityCalendar = ({
     );
   };
 
+  // Get closed days for current month to add to modifiers
+  const closedDays = spaceData ? getClosedDaysInMonth(today) : [];
+
   // Custom modifiers for styling
+  // For monthly pricing, don't disable closed days to allow flexibility
+  const shouldDisableClosedDays = pricingType !== 'monthly';
   const modifiers = {
-    disabled: disabledDates,
+    disabled: shouldDisableClosedDays ? [...disabledDates, ...closedDays] : disabledDates, // Don't disable closed days for monthly
     fullyBooked: disabledDates,
+    closed: closedDays,
     today: today,
   };
 
@@ -88,6 +152,12 @@ const AvailabilityCalendar = ({
       backgroundColor: '#fee2e2',
       color: '#dc2626',
       fontWeight: 'bold',
+    },
+    closed: {
+      backgroundColor: '#f3f4f6',
+      color: '#9ca3af',
+      fontWeight: 'normal',
+      textDecoration: 'line-through',
     },
     today: {
       backgroundColor: '#3b82f6',
@@ -216,6 +286,25 @@ const AvailabilityCalendar = ({
             <div className="w-4 h-4 bg-blue-500 rounded mr-2"></div>
             <span>Today</span>
           </div>
+          
+          {/* Closed day indicator - different for monthly vs other pricing */}
+          {pricingType === 'monthly' ? (
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded mr-2 relative">
+                <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-orange-400 rounded-full"></div>
+              </div>
+              <span>Closed (selectable for monthly)</span>
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded mr-2 relative text-gray-400 flex items-center justify-center">
+                <svg viewBox="0 0 16 16" fill="currentColor" className="w-2 h-2">
+                  <path d="M11.354 4.646a.5.5 0 0 0-.708 0L8 7.293 5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0 0-.708z"/>
+                </svg>
+              </div>
+              <span>Closed</span>
+            </div>
+          )}
           <div className="flex items-center">
             <div className="w-4 h-4 bg-red-200 border border-red-300 rounded mr-2 relative">
               <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
@@ -294,6 +383,20 @@ const AvailabilityCalendar = ({
               // For hourly, check the specific date
               const bookings = getBookingsForDate(selectedRange.from);
               const bookedHours = getBookedHoursForDate(selectedRange.from);
+              const isClosed = isClosedDay(selectedRange.from);
+              
+              if (isClosed) {
+                return (
+                  <div className="bg-red-50 p-2 rounded border border-red-200">
+                    <p className="text-red-600 text-sm flex items-center">
+                      <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 mr-1">
+                        <path d="M11.354 4.646a.5.5 0 0 0-.708 0L8 7.293 5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0 0-.708z"/>
+                      </svg>
+                      ❌ Space tutup pada hari ini
+                    </p>
+                  </div>
+                );
+              }
               
               if (bookings.length === 0) {
                 return (
@@ -363,30 +466,85 @@ const AvailabilityCalendar = ({
                 currentDate.setDate(currentDate.getDate() + 1);
               }
               
-              if (conflictDates.length === 0) {
+              // Check for closed days in the range
+              const closedDatesInRange = [];
+              const rangeCurrent = new Date(selectedRange.from);
+              const rangeEnd = new Date(selectedRange.to);
+              
+              while (rangeCurrent <= rangeEnd) {
+                if (isClosedDay(rangeCurrent)) {
+                  closedDatesInRange.push(new Date(rangeCurrent));
+                }
+                rangeCurrent.setDate(rangeCurrent.getDate() + 1);
+              }
+
+              if (conflictDates.length === 0 && (closedDatesInRange.length === 0 || pricingType === 'monthly')) {
                 return (
-                  <p className="text-green-600 text-sm">✅ Selected date range appears to be available</p>
+                  <div className="space-y-1">
+                    <p className="text-green-600 text-sm">✅ Selected date range appears to be available</p>
+                    {pricingType === 'monthly' && closedDatesInRange.length > 0 && (
+                      <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                        <p className="text-blue-700 text-xs">
+                          ℹ️ <strong>Monthly Booking:</strong> Space akan tutup pada {closedDatesInRange.length} hari dalam periode ini, 
+                          namun Anda tetap dapat menggunakan space pada hari operasional lainnya.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 );
               } else {
                 return (
                   <div className="space-y-2">
-                    <p className="text-red-600 text-sm">❌ Selected date range has booking conflicts:</p>
-                    {conflictDates.map((conflict, index) => (
-                      <div key={index} className="bg-white p-2 rounded border text-sm">
-                        <div className="font-medium text-red-700">
-                          {conflict.date.toLocaleDateString('id-ID', { 
-                            weekday: 'short', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
-                        </div>
-                        {conflict.bookings.map((booking, bookingIndex) => (
-                          <div key={bookingIndex} className="text-xs text-gray-600 ml-2">
-                            • {booking.customerName} ({booking.pricingType})
+                    {closedDatesInRange.length > 0 && pricingType !== 'monthly' && (
+                      <>
+                        <p className="text-red-600 text-sm">❌ Selected date range includes closed days:</p>
+                        {closedDatesInRange.map((closedDate, index) => (
+                          <div key={index} className="bg-red-50 p-2 rounded border border-red-200 text-sm">
+                            <div className="font-medium text-red-700 flex items-center">
+                              <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 mr-1">
+                                <path d="M11.354 4.646a.5.5 0 0 0-.708 0L8 7.293 5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0 0-.708z"/>
+                              </svg>
+                              {closedDate.toLocaleDateString('id-ID', { 
+                                weekday: 'long', 
+                                month: 'short', 
+                                day: 'numeric' 
+                              })} - Space Tutup
+                            </div>
                           </div>
                         ))}
+                      </>
+                    )}
+                    
+                    {closedDatesInRange.length > 0 && pricingType === 'monthly' && (
+                      <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                        <p className="text-blue-700 text-sm flex items-center">
+                          ℹ️ <strong>Monthly Booking:</strong> Space akan tutup pada {closedDatesInRange.length} hari dalam periode ini, 
+                          namun Anda tetap dapat menggunakan space pada hari operasional lainnya.
+                        </p>
                       </div>
-                    ))}
+                    )}
+                    
+                    {conflictDates.length > 0 && (
+                      <>
+                        <p className="text-red-600 text-sm">❌ Selected date range has booking conflicts:</p>
+                        {conflictDates.map((conflict, index) => (
+                          <div key={index} className="bg-white p-2 rounded border text-sm">
+                            <div className="font-medium text-red-700">
+                              {conflict.date.toLocaleDateString('id-ID', { 
+                                weekday: 'short', 
+                                month: 'short', 
+                                day: 'numeric' 
+                              })}
+                            </div>
+                            {conflict.bookings.map((booking, bookingIndex) => (
+                              <div key={bookingIndex} className="text-xs text-gray-600 ml-2">
+                                • {booking.customerName} ({booking.pricingType})
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </>
+                    )}
                   </div>
                 );
               }

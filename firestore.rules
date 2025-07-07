@@ -47,6 +47,11 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     
+    // Settings collection - Admin only
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
+    }
+    
     // Helper functions
     function isAuthenticated() {
       return request.auth != null;
