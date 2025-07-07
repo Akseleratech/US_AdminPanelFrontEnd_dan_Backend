@@ -7,7 +7,8 @@ const {
   validateRequired, 
   sanitizeString,
   parseQueryParams,
-  generateSequentialId 
+  generateSequentialId,
+  verifyAdminAuth
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
 
@@ -206,6 +207,12 @@ const cities = onRequest(async (req, res) => {
           return await getCityById(pathParts[0], req, res);
         }
       } else if (method === 'POST') {
+        // Require admin auth for all POST operations
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
+        
         if (pathParts.length === 0) {
           // POST /cities
           return await createCity(req, res);
@@ -214,10 +221,18 @@ const cities = onRequest(async (req, res) => {
           return await uploadCityImage(pathParts[0], req, res);
         }
       } else if (method === 'PUT' && pathParts.length === 1) {
-        // PUT /cities/:id
+        // PUT /cities/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await updateCity(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
-        // DELETE /cities/:id
+        // DELETE /cities/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await deleteCity(pathParts[0], req, res);
       }
 

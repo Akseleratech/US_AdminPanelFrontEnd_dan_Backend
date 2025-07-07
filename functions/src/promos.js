@@ -5,7 +5,8 @@ const {
   handleResponse, 
   handleError, 
   validateRequired, 
-  sanitizeString
+  sanitizeString,
+  verifyAdminAuth
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
 
@@ -179,14 +180,30 @@ const promos = onRequest(async (req, res) => {
           return await getPromoById(pathParts[0], req, res);
         }
       } else if (method === 'POST') {
+        // Require admin auth for all POST operations
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
+        
         if (pathParts.length === 0) {
           return await createPromo(req, res);
         } else if (pathParts.length === 2 && pathParts[1] === 'upload-image') {
           return await uploadPromoImage(pathParts[0], req, res);
         }
       } else if (method === 'PUT' && pathParts.length === 1) {
+        // PUT /promos/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await updatePromo(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
+        // DELETE /promos/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await deletePromo(pathParts[0], req, res);
       }
 

@@ -8,8 +8,8 @@ import { getStorage, connectStorageEmulator } from 'firebase/storage';
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-key",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "demo-unionspace-crm.firebaseapp.com",
-  projectId: "demo-unionspace-crm", // Force use demo project
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "demo-unionspace-crm.appspot.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-unionspace-crm",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "demo-unionspace-crm.appspot.com",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789:web:demo",
@@ -39,8 +39,8 @@ if ((import.meta.env.DEV || window.location.hostname === 'localhost') && !emulat
     emulatorsConnected = true;
     console.log('✅ Connected to Firebase emulators');
     console.log('   - Auth: http://127.0.0.1:9099');
-    console.log('   - Firestore: 127.0.0.1:8088');
-    console.log('   - Storage: 127.0.0.1:9199');
+    console.log('   - Firestore: 127.0.0.1:8888');
+    console.log('   - Storage: 127.0.0.1:9999');
   } catch (error) {
     console.warn('⚠️ Emulators already connected or failed to connect:', error.message);
   }

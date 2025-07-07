@@ -258,90 +258,125 @@ const Customers = () => {
         </div>
       </div>
 
-      {/* Search and Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* Search */}
-        <div className="flex-1">
+      {/* Action Bar */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search customers by name, email, or phone..."
               value={searchFilter}
               onChange={(e) => {
                 setSearchFilter(e.target.value);
                 setSearchTerm(e.target.value);
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
+              placeholder="Search customers by name, email, or phone..."
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
             />
           </div>
-        </div>
-
-        {/* Filter Button */}
-        <div className="relative">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center space-x-2 px-4 py-2 border rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
-              getActiveFilterCount() > 0
-                ? 'bg-primary text-white border-primary'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            className={`flex items-center px-4 py-2 border rounded-lg transition-colors duration-200 ${
+              showFilters || getActiveFilterCount() > 0
+                ? 'bg-primary-50 border-primary-300 text-primary-700' 
+                : 'border-gray-300 hover:bg-gray-50'
             }`}
           >
-            <Filter className="w-4 h-4" />
-            <span>Filters</span>
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
             {getActiveFilterCount() > 0 && (
-              <span className="bg-white text-primary rounded-full px-2 py-0.5 text-xs">
+              <span className="ml-2 px-2 py-1 text-xs bg-primary-600 text-white rounded-full">
                 {getActiveFilterCount()}
               </span>
             )}
-            <ChevronDown className={`w-4 h-4 transform transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 ml-1 transition-transform duration-200 ${
+              showFilters ? 'rotate-180' : ''
+            }`} />
           </button>
+        </div>
+        <button
+          onClick={handleAddNew}
+          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Customer
+        </button>
+      </div>
 
-          {/* Filter Dropdown */}
-          {showFilters && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium text-gray-900">Filter Customers</h3>
-                  <button
-                    onClick={clearAllFilters}
-                    className="text-xs text-primary hover:text-primary-dark"
-                  >
-                    Clear All
-                  </button>
-                </div>
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">Filter Customers</h3>
+            <div className="flex items-center space-x-2">
+              {getActiveFilterCount() > 0 && (
+                <button
+                  onClick={clearAllFilters}
+                  className="text-sm text-red-600 hover:text-red-800 flex items-center"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Clear All
+                </button>
+              )}
+              <button
+                onClick={() => setShowFilters(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
 
-                {/* Status Filter */}
-                <div className="mb-4">
-                  <h4 className="text-xs font-medium text-gray-700 mb-2">Status</h4>
-                  <div className="space-y-2">
-                    {filterOptions.statuses.map(status => (
-                      <label key={status} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedStatuses.has(status)}
-                          onChange={() => handleFilterToggle('status', status)}
-                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{status}</span>
-                      </label>
-                    ))}
-                  </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Status Filter */}
+            <div className="space-y-2">
+              <h4 className="font-medium text-gray-700 flex items-center">
+                Status
+                {selectedStatuses.size > 0 && (
+                  <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                    {selectedStatuses.size}
+                  </span>
+                )}
+              </h4>
+              <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2 space-y-1">
+                {filterOptions.statuses.map(status => (
+                  <label key={status} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedStatuses.has(status)}
+                      onChange={() => handleFilterToggle('status', status)}
+                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-gray-700">{status}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Summary */}
+          {getActiveFilterCount() > 0 && (
+            <div className="bg-gray-50 rounded-md p-3">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Active Filters:</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {Array.from(selectedStatuses).map(status => (
+                    <span key={`status-${status}`} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      {status}
+                      <button
+                        onClick={() => handleFilterToggle('status', status)}
+                        className="ml-1 hover:text-blue-600"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
           )}
         </div>
-
-        {/* Add New Button */}
-        <button
-          onClick={handleAddNew}
-          className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-md shadow-sm hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Customer</span>
-        </button>
-      </div>
+      )}
 
       {/* Error Message */}
       {error && (

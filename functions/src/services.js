@@ -1,12 +1,13 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const cors = require("cors")({ origin: true });
+const cors = require("./utils/corsConfig");
 const { 
   getDb, 
   handleResponse, 
   handleError, 
   validateRequired, 
   sanitizeString,
-  generateSequentialId 
+  generateSequentialId,
+  verifyAdminAuth
 } = require("./utils/helpers");
 
 // Main services function that handles all service routes
@@ -27,13 +28,25 @@ const services = onRequest(async (req, res) => {
           return await getServiceById(pathParts[0], req, res);
         }
       } else if (method === 'POST' && pathParts.length === 0) {
-        // POST /services
+        // POST /services - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await createService(req, res);
       } else if (method === 'PUT' && pathParts.length === 1) {
-        // PUT /services/:id
+        // PUT /services/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await updateService(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
-        // DELETE /services/:id
+        // DELETE /services/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await deleteService(pathParts[0], req, res);
       }
 

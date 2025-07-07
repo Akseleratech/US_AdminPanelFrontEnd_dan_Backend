@@ -97,7 +97,7 @@
     ]
   },
   "firestore": {
-    "rules": "firestore.rules",
+    "rules": "firestore-open.rules",
     "indexes": "firestore.indexes.json"
   },
   "storage": {

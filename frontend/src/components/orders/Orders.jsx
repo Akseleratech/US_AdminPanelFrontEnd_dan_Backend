@@ -137,29 +137,31 @@ const Orders = () => {
         </div>
       )}
 
-      {/* Search and Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* Search */}
-        <div className="flex-1">
+      {/* Action Bar */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search orders by ID, customer, service, or space..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
+              placeholder="Search orders by ID, customer, service, or space..."
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
             />
           </div>
-        </div>
-
-        {/* Filter Button */}
-        <div className="relative">
-          <button className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-            <Filter className="w-4 h-4" />
-            <span>Filters</span>
+          <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
           </button>
         </div>
+        <button
+          onClick={handleAddOrder}
+          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Manual Order
+        </button>
       </div>
 
       {/* Results Summary */}

@@ -8,7 +8,8 @@ const {
   validateRequired, 
   sanitizeString,
   parseQueryParams,
-  generateSequentialId 
+  generateSequentialId,
+  verifyAdminAuth
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
 
@@ -258,24 +259,41 @@ const customers = onRequest(async (req, res) => {
           }
         }
       } else if (method === 'POST') {
+        // Require admin auth for all POST operations
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
+        
         if (pathParts.length === 0) {
           // POST /customers
           return await createCustomer(req, res);
+        } else if (pathParts.length === 1 && pathParts[0] === 'migrate') {
+          // POST /customers/migrate
+          return await migrateCustomers(req, res);
         }
       } else if (method === 'PUT') {
+        // PUT /customers/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
+        
         if (pathParts.length === 1) {
-          // PUT /customers/:id
           const customerId = pathParts[0];
           return await updateCustomer(customerId, req, res);
         }
       } else if (method === 'DELETE') {
+        // DELETE /customers/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
+        
         if (pathParts.length === 1) {
-          // DELETE /customers/:id
           const customerId = pathParts[0];
           return await deleteCustomer(customerId, req, res);
         }
-      } else if (method === 'POST' && pathParts.length === 1 && pathParts[0] === 'migrate') {
-        return await migrateCustomers(req, res);
       }
 
       // If no route matches

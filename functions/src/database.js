@@ -1,6 +1,6 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const cors = require("cors")({ origin: true });
-const { getDb, handleResponse, handleError } = require("./utils/helpers");
+const { getDb, handleResponse, handleError, verifyAdminAuth } = require("./utils/helpers");
 
 // Main database function
 const database = onRequest(async (req, res) => {
@@ -19,6 +19,12 @@ const database = onRequest(async (req, res) => {
           return await getDatabaseHealth(req, res);
         }
       } else if (method === 'POST') {
+        // Require admin auth for all POST operations (dangerous operations)
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
+        
         if (pathParts.length === 1 && pathParts[0] === 'cleanup') {
           return await cleanupDatabase(req, res);
         } else if (pathParts.length === 1 && pathParts[0] === 'seed') {

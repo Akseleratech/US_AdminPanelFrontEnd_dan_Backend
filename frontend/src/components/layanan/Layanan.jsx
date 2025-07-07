@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, AlertCircle, Trash2 } from 'lucide-react';
+import { Search, Plus, AlertCircle, Trash2, Filter } from 'lucide-react';
 import LayananTable from './LayananTable.jsx';
 import LayananModal from './LayananModal.jsx';
 import useLayanan from '../../hooks/useLayanan.js';
@@ -142,6 +142,10 @@ const Layanan = () => {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
             />
           </div>
+          <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </button>
         </div>
         <button
           onClick={handleAddNew}

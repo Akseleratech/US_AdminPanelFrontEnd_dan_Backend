@@ -9,7 +9,8 @@ const {
   generateSequentialId,
   verifyAuthToken,
   getUserFromToken,
-  getCurrentTaxRate 
+  getCurrentTaxRate,
+  verifyAdminAuth
 } = require("./utils/helpers");
 const admin = require("firebase-admin");
 
@@ -28,14 +29,30 @@ const invoices = onRequest(async (req, res) => {
           return await getInvoiceById(pathParts[0], req, res);
         }
       } else if (method === 'POST') {
+        // Require admin auth for all POST operations
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
+        
         if (pathParts.length === 0) {
           return await createInvoice(req, res);
         } else if (pathParts.length === 2 && pathParts[1] === 'generate-from-order') {
           return await generateInvoiceFromOrder(pathParts[0], req, res);
         }
       } else if (method === 'PUT' && pathParts.length === 1) {
+        // PUT /invoices/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await updateInvoice(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
+        // DELETE /invoices/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await deleteInvoice(pathParts[0], req, res);
       }
 

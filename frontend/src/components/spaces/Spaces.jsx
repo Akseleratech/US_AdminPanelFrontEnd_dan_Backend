@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye, Calendar, RefreshCw, Filter as FilterIcon, ChevronDown } from 'lucide-react';
+import { Search, Plus, LayoutGrid, MapPin, Users, Clock, Edit, Trash2, Eye, Calendar, RefreshCw, Filter as FilterIcon, ChevronDown, X } from 'lucide-react';
 import useSpaces from '../../hooks/useSpaces';
 import useLayanan from '../../hooks/useLayanan';
 import useBuildings from '../../hooks/useBuildings';
@@ -363,28 +363,25 @@ const Spaces = () => {
         </div>
       </div>
 
-      {/* Action Bar & Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          {/* Search */}
-          <div className="relative w-full md:w-auto">
+      {/* Action Bar */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <div className="relative">
             <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari nama, gedung..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full md:w-64 focus:outline-none focus:ring-2 ring-primary"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
             />
           </div>
-
-          {/* Filter Toggle Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center px-4 py-2 border rounded-lg transition-colors duration-200 w-full md:w-auto text-sm font-semibold ${
+            className={`flex items-center px-4 py-2 border rounded-lg transition-colors duration-200 ${
               showFilters || getActiveFilterCount() > 0
                 ? 'bg-primary-50 border-primary-300 text-primary-700' 
-                : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+                : 'border-gray-300 hover:bg-gray-50'
             }`}
           >
             <FilterIcon className="w-4 h-4 mr-2" />
@@ -398,64 +395,74 @@ const Spaces = () => {
               showFilters ? 'rotate-180' : ''
             }`} />
           </button>
-
-          {/* Add Button */}
-          <button
-            onClick={handleAddSpace}
-            className="flex-shrink-0 flex items-center px-4 py-2 bg-gradient-primary text-white text-sm font-semibold rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200 w-full md:w-auto"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add New Space
-          </button>
         </div>
-
-        {/* Filter Dropdowns */}
-        {showFilters && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Gedung</label>
-            <select
-              name="buildingId"
-              value={filters.buildingId}
-              onChange={handleFilterChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
-            >
-              <option value="all">Semua Gedung</option>
-              {Array.isArray(buildings) && buildings.map(building => (
-                <option key={building.id} value={building.id}>{building.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Layanan</label>
-            <select
-              name="layanan"
-              value={filters.layanan}
-              onChange={handleFilterChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
-            >
-              <option value="all">Semua Layanan</option>
-              {Array.isArray(layananList) && layananList.map(layanan => (
-                <option key={layanan.id} value={layanan.id}>{layanan.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Status</label>
-            <select
-              name="status"
-              value={filters.status}
-              onChange={handleFilterChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
-            >
-              <option value="all">Semua Status</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Tidak Aktif</option>
-            </select>
-          </div>
-        </div>
-        )}
+        <button
+          onClick={handleAddSpace}
+          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add New Space
+        </button>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">Filter Spaces</h3>
+            <button
+              onClick={() => setShowFilters(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Gedung</label>
+              <select
+                name="buildingId"
+                value={filters.buildingId}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+              >
+                <option value="all">Semua Gedung</option>
+                {Array.isArray(buildings) && buildings.map(building => (
+                  <option key={building.id} value={building.id}>{building.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Layanan</label>
+              <select
+                name="layanan"
+                value={filters.layanan}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+              >
+                <option value="all">Semua Layanan</option>
+                {Array.isArray(layananList) && layananList.map(layanan => (
+                  <option key={layanan.id} value={layanan.id}>{layanan.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Status</label>
+              <select
+                name="status"
+                value={filters.status}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+              >
+                <option value="all">Semua Status</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Tidak Aktif</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Spaces Grid */}
       <SpacesGrid

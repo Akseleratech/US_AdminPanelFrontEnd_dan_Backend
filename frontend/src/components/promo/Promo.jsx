@@ -301,77 +301,31 @@ const Promo = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Search */}
-          <div className="md:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Cari promo..."
-                value={filters.search}
-                onChange={handleSearch}
-                className="pl-10 w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+      {/* Action Bar */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={filters.search}
+              onChange={handleSearch}
+              placeholder="Cari promo..."
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
+            />
           </div>
-
-          {/* Type Filter */}
-          <div>
-            <select
-              value={filters.type}
-              onChange={(e) => handleFilterChange('type', e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Semua Tipe</option>
-              <option value="banner">Banner</option>
-              <option value="section">Section</option>
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <select
-              value={filters.isActive}
-              onChange={(e) => handleFilterChange('isActive', e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Semua Status</option>
-              <option value="true">Aktif</option>
-              <option value="false">Nonaktif</option>
-            </select>
-          </div>
+          <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </button>
         </div>
-
-        {/* Active Filters */}
-        {(filters.search || filters.type || filters.isActive) && (
-          <div className="mt-4 flex items-center space-x-2">
-            <span className="text-sm text-gray-500">Filter aktif:</span>
-            {filters.search && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                Search: {filters.search}
-              </span>
-            )}
-            {filters.type && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Type: {filters.type}
-              </span>
-            )}
-            {filters.isActive && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                Status: {filters.isActive === 'true' ? 'Aktif' : 'Nonaktif'}
-              </span>
-            )}
-            <button
-              onClick={clearFilters}
-              className="text-sm text-gray-500 hover:text-gray-700 underline"
-            >
-              Clear all
-            </button>
-          </div>
-        )}
+        <button
+          onClick={handleCreateNew}
+          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Tambah Promo
+        </button>
       </div>
 
       {/* Content */}

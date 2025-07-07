@@ -5,7 +5,8 @@ const {
   handleResponse, 
   handleError, 
   validateRequired, 
-  sanitizeString
+  sanitizeString,
+  verifyAdminAuth
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
 
@@ -352,12 +353,32 @@ const buildings = onRequest(async (req, res) => {
           return await getBuildingById(pathParts[0], req, res);
         }
       } else if (method === 'POST' && pathParts.length === 0) {
+        // POST /buildings - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await createBuilding(req, res);
       } else if (method === 'POST' && pathParts.length === 2 && pathParts[1] === 'upload-image') {
+        // POST /buildings/:id/upload-image - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await uploadBuildingImage(pathParts[0], req, res);
       } else if (method === 'PUT' && pathParts.length === 1) {
+        // PUT /buildings/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await updateBuilding(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
+        // DELETE /buildings/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await deleteBuilding(pathParts[0], req, res);
       }
 

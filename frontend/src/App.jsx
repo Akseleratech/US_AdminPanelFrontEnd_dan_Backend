@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 
 // General Components
 import Sidebar from './components/layout/Sidebar.jsx';
@@ -38,13 +38,49 @@ const Layout = ({ children }) => (
 );
 
 const PrivateRoutes = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin, logout } = useAuth();
+  const navigate = useNavigate();
 
   if (loading) {
     return <LoadingSpinner />;
   }
 
-  return user ? (
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full space-y-8 text-center">
+          <div>
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+              Access Denied
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              You don't have admin access to this system.
+            </p>
+            <button
+              onClick={async () => {
+                try {
+                  await logout();
+                } catch (err) {
+                  console.error('Logout error:', err);
+                } finally {
+                  navigate('/login', { replace: true });
+                }
+              }}
+              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
     <Layout>
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>
@@ -63,11 +99,9 @@ const PrivateRoutes = () => {
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-      </Suspense>
-    </Layout>
-  ) : (
-    <Navigate to="/login" replace />
-  );
+              </Suspense>
+      </Layout>
+    );
 };
 
 const App = () => {

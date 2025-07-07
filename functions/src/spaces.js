@@ -7,7 +7,8 @@ const {
   handleError, 
   validateRequired, 
   sanitizeString,
-  generateSequentialId 
+  generateSequentialId,
+  verifyAdminAuth
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
 const { 
@@ -43,6 +44,12 @@ const spaces = onRequest(async (req, res) => {
           return await updateAllOperationalStatusEndpoint(req, res);
         }
       } else if (method === 'POST') {
+        // Require admin auth for all POST operations
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
+        
         if (pathParts.length === 0) {
           // POST /spaces
           return await createSpace(req, res);
@@ -51,10 +58,18 @@ const spaces = onRequest(async (req, res) => {
           return await uploadSpaceImages(pathParts[0], req, res);
         }
       } else if (method === 'PUT' && pathParts.length === 1) {
-        // PUT /spaces/:id
+        // PUT /spaces/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await updateSpace(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
-        // DELETE /spaces/:id
+        // DELETE /spaces/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await deleteSpace(pathParts[0], req, res);
       }
 

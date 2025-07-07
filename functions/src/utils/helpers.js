@@ -183,6 +183,67 @@ const getUserFromToken = async (token) => {
   }
 };
 
+// Check if user is admin by looking up in Firestore
+const checkIsAdmin = async (uid) => {
+  try {
+    const db = getDb();
+    const adminDoc = await db.collection('admins').doc(uid).get();
+    return adminDoc.exists && adminDoc.data()?.role === 'admin';
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    return false;
+  }
+};
+
+// Middleware to require admin authentication
+const requireAdmin = async (req, res, next) => {
+  try {
+    const token = verifyAuthToken(req);
+    if (!token) {
+      return handleResponse(res, { message: 'Authentication required' }, 401);
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return handleResponse(res, { message: 'Invalid authentication token' }, 401);
+    }
+
+    const isAdmin = await checkIsAdmin(user.uid);
+    if (!isAdmin) {
+      return handleResponse(res, { message: 'Admin access required' }, 403);
+    }
+
+    // Attach user info to request for use in handlers
+    req.user = user;
+    req.isAdmin = true;
+    
+    if (next) {
+      next();
+    } else {
+      return true; // For non-express usage
+    }
+  } catch (error) {
+    console.error('Error in requireAdmin middleware:', error);
+    return handleResponse(res, { message: 'Authentication error' }, 500);
+  }
+};
+
+// Simpler version that just returns boolean for inline usage
+const verifyAdminAuth = async (req) => {
+  try {
+    const token = verifyAuthToken(req);
+    if (!token) return false;
+
+    const user = await getUserFromToken(token);
+    if (!user) return false;
+
+    return await checkIsAdmin(user.uid);
+  } catch (error) {
+    console.error('Error verifying admin auth:', error);
+    return false;
+  }
+};
+
 // Helper function to get service type code
 const getServiceTypeCode = (serviceName) => {
   if (!serviceName) return 'GEN';
@@ -334,6 +395,9 @@ module.exports = {
   parseQueryParams,
   verifyAuthToken,
   getUserFromToken,
+  checkIsAdmin,
+  requireAdmin,
+  verifyAdminAuth,
   getServiceTypeCode,
   getServiceTypeLabel,
   generateStructuredOrderId,

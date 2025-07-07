@@ -1,11 +1,9 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // TEMPORARY DEVELOPMENT RULES - OPEN ACCESS
-    // TODO: Restore proper rules after admin setup
+    // OPEN RULES FOR DEVELOPMENT - ALLOWS ALL OPERATIONS
     match /{document=**} {
       allow read, write: if true;
     }
   }
-} 
+}

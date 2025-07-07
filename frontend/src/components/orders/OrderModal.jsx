@@ -833,32 +833,38 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
             };
             
             return (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Informasi Pricing:</h4>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
-                  <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('hourly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'hourly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
-                    <p className="text-gray-600">Per Jam</p>
-                    <p className="font-medium">{formatCurrency(selectedSpace.pricing.hourly)}</p>
-                  </button>
-                  <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('halfday')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'halfday' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
-                    <p className="text-gray-600">Per 1/2 Hari</p>
-                    <p className="font-medium">{formatCurrency(selectedSpace.pricing.halfday)}</p>
-                  </button>
-                  <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('daily')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'daily' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
-                    <p className="text-gray-600">Per Hari</p>
-                    <p className="font-medium">{formatCurrency(selectedSpace.pricing.daily)}</p>
-                  </button>
-                  <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('monthly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'monthly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
-                    <p className="text-gray-600">Per Bulan</p>
-                    <p className="font-medium">{formatCurrency(selectedSpace.pricing.monthly)}</p>
-                    <p className="text-xs text-green-600 mt-1">*Mengabaikan hari tutup</p>
-                  </button>
-                  <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('yearly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'yearly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
-                    <p className="text-gray-600">Per Tahun</p>
-                    <p className="font-medium">{formatCurrency(selectedSpace.pricing.yearly)}</p>
-                    <p className="text-xs text-green-600 mt-1">*Mengabaikan hari tutup</p>
-                  </button>
-                </div>
+                              <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Informasi Pricing:</h4>
+                  
+                  {/* Row 1: Per Jam, Per 1/2 Hari, Per Hari */}
+                  <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+                    <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('hourly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'hourly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
+                      <p className="text-gray-600">Per Jam</p>
+                      <p className="font-medium">{formatCurrency(selectedSpace.pricing.hourly)}</p>
+                    </button>
+                    <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('halfday')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'halfday' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
+                      <p className="text-gray-600">Per 1/2 Hari</p>
+                      <p className="font-medium">{formatCurrency(selectedSpace.pricing.halfday)}</p>
+                    </button>
+                    <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('daily')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'daily' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
+                      <p className="text-gray-600">Per Hari</p>
+                      <p className="font-medium">{formatCurrency(selectedSpace.pricing.daily)}</p>
+                    </button>
+                  </div>
+                  
+                  {/* Row 2: Per Bulan, Per Tahun */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('monthly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'monthly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
+                      <p className="text-gray-600">Per Bulan</p>
+                      <p className="font-medium">{formatCurrency(selectedSpace.pricing.monthly)}</p>
+                      <p className="text-xs text-green-600 mt-1">*Mengabaikan hari tutup</p>
+                    </button>
+                    <button type="button" role="button" tabIndex="0" onClick={() => handlePricingTypeSelect('yearly')} className={`text-center p-2 rounded cursor-pointer focus:outline-none ${formData.pricingType === 'yearly' ? 'bg-blue-100 border border-blue-300 ring-2 ring-primary' : 'bg-white hover:bg-gray-100'}`}>
+                      <p className="text-gray-600">Per Tahun</p>
+                      <p className="font-medium">{formatCurrency(selectedSpace.pricing.yearly)}</p>
+                      <p className="text-xs text-green-600 mt-1">*Mengabaikan hari tutup</p>
+                    </button>
+                  </div>
                 
                 {/* Operational Hours Info */}
                 {selectedSpace.operationalHours && (

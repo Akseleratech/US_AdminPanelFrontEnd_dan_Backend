@@ -4,6 +4,7 @@ import CitiesTable from './CitiesTable.jsx';
 import SimpleCityModal from './SimpleCityModal.jsx';
 import useCities from '../../hooks/useCities.js';
 import useBuildings from '../../hooks/useBuildings.js';
+import useSpaces from '../../hooks/useSpaces.js';
 
 const Cities = () => {
   const {
@@ -20,6 +21,7 @@ const Cities = () => {
   } = useCities();
 
   const { buildings, loading: buildingsLoading } = useBuildings();
+  const { spaces, loading: spacesLoading } = useSpaces();
 
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
@@ -36,24 +38,51 @@ const Cities = () => {
   const [selectedProvinces, setSelectedProvinces] = useState(new Set());
   const [selectedCountries, setSelectedCountries] = useState(new Set());
 
-  const usedCityIds = useMemo(() => {
-    if (!buildings || !cities || cities.length === 0) return new Set();
+  // Calculate spaces count per city and used city IDs
+  const { usedCityIds, citiesWithSpaceCount } = useMemo(() => {
+    if (!buildings || !cities || cities.length === 0) {
+      return { 
+        usedCityIds: new Set(), 
+        citiesWithSpaceCount: cities || [] 
+      };
+    }
 
     // Create a map from city name to city ID for efficient lookup
     const cityNameToIdMap = new Map(cities.map(city => [city.name.toLowerCase(), city.id]));
 
+    // Count spaces per city
+    const spacesCountPerCity = new Map();
     const usedIds = new Set();
-    buildings.forEach(building => {
-      const cityName = building.location?.city;
-      if (cityName) {
-        const cityId = cityNameToIdMap.get(cityName.toLowerCase());
-        if (cityId) {
-          usedIds.add(cityId);
+
+    // Count spaces through buildings
+    if (spaces && buildings) {
+      buildings.forEach(building => {
+        const cityName = building.location?.city;
+        if (cityName) {
+          const cityId = cityNameToIdMap.get(cityName.toLowerCase());
+          if (cityId) {
+            usedIds.add(cityId);
+            
+            // Count spaces in this building
+            const spacesInBuilding = spaces.filter(space => space.buildingId === building.id);
+            const currentCount = spacesCountPerCity.get(cityId) || 0;
+            spacesCountPerCity.set(cityId, currentCount + spacesInBuilding.length);
+          }
         }
-      }
-    });
-    return usedIds;
-  }, [buildings, cities]);
+      });
+    }
+
+    // Enhance cities data with spaces count
+    const enhancedCities = cities.map(city => ({
+      ...city,
+      totalSpaces: spacesCountPerCity.get(city.id) || 0
+    }));
+
+    return { 
+      usedCityIds: usedIds, 
+      citiesWithSpaceCount: enhancedCities 
+    };
+  }, [buildings, cities, spaces]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -138,7 +167,7 @@ const Cities = () => {
     const provincesSet = new Set();
     const countriesSet = new Set();
 
-    cities.forEach(city => {
+    citiesWithSpaceCount.forEach(city => {
       if (city.name) citiesSet.add(city.name);
       if (city.province) provincesSet.add(city.province);
       if (city.country) {
@@ -152,7 +181,7 @@ const Cities = () => {
       provinces: Array.from(provincesSet).sort(),
       countries: Array.from(countriesSet).sort()
     };
-  }, [cities]);
+  }, [citiesWithSpaceCount]);
 
   // Filter helper functions
   const handleFilterToggle = (type, value) => {
@@ -190,7 +219,7 @@ const Cities = () => {
   };
 
   // Filter data based on search and checkboxes
-  const filteredCities = cities.filter(city => {
+  const filteredCities = citiesWithSpaceCount.filter(city => {
     // Text search filter
     if (searchFilter) {
       const searchLower = searchFilter.toLowerCase();
@@ -504,7 +533,7 @@ const Cities = () => {
             {filteredCities.length}
             {getActiveFilterCount() > 0 && (
               <span className="text-sm font-normal text-gray-500 ml-1">
-                of {cities.length}
+                of {citiesWithSpaceCount.length}
               </span>
             )}
           </div>
@@ -517,7 +546,7 @@ const Cities = () => {
             {new Set(filteredCities.map(city => city.province).filter(Boolean)).size}
             {getActiveFilterCount() > 0 && (
               <span className="text-sm font-normal text-gray-500 ml-1">
-                of {new Set(cities.map(city => city.province).filter(Boolean)).size}
+                of {new Set(citiesWithSpaceCount.map(city => city.province).filter(Boolean)).size}
               </span>
             )}
           </div>
@@ -533,7 +562,7 @@ const Cities = () => {
             }).filter(Boolean)).size}
             {getActiveFilterCount() > 0 && (
               <span className="text-sm font-normal text-gray-500 ml-1">
-                of {new Set(cities.map(city => {
+                of {new Set(citiesWithSpaceCount.map(city => {
                   const countryName = typeof city.country === 'object' ? city.country.name : city.country;
                   return countryName;
                 }).filter(Boolean)).size}
@@ -558,7 +587,7 @@ const Cities = () => {
           onEdit={handleEdit} 
           onDelete={handleDelete}
           onUploadImage={handleUploadImage}
-          loading={loading || buildingsLoading}
+          loading={loading || buildingsLoading || spacesLoading}
           usedCityIds={usedCityIds}
         />
       )}

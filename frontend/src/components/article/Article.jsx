@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, RefreshCw, FileText, Star, User, FolderOpen, Calendar, Eye } from 'lucide-react';
+import { Plus, Search, RefreshCw, FileText, Star, User, FolderOpen, Calendar, Eye, Filter } from 'lucide-react';
 import { articlesAPI } from '../../services/api';
 import ArticleModal from './ArticleModal';
 import ArticlesTable from './ArticlesTable';
@@ -259,120 +259,31 @@ const Article = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-          {/* Search */}
-          <div className="md:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Cari article..."
-                value={filters.search}
-                onChange={handleSearch}
-                className="pl-10 w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+      {/* Action Bar */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={filters.search}
+              onChange={handleSearch}
+              placeholder="Cari article..."
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary"
+            />
           </div>
-
-          {/* Status Filter */}
-          <div>
-            <select
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Semua Status</option>
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
-              <option value="archived">Archived</option>
-            </select>
-          </div>
-
-          {/* Category Filter */}
-          <div>
-            <select
-              value={filters.category}
-              onChange={(e) => handleFilterChange('category', e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Semua Kategori</option>
-              {getCategories().map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Author Filter */}
-          <div>
-            <select
-              value={filters.author}
-              onChange={(e) => handleFilterChange('author', e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Semua Penulis</option>
-              {getAuthors().map((author) => (
-                <option key={author} value={author}>
-                  {author}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Featured Filter */}
-          <div>
-            <select
-              value={filters.isFeatured}
-              onChange={(e) => handleFilterChange('isFeatured', e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Semua</option>
-              <option value="true">Featured</option>
-              <option value="false">Not Featured</option>
-            </select>
-          </div>
+          <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </button>
         </div>
-
-        {/* Active Filters */}
-        {(filters.search || filters.status || filters.category || filters.author || filters.isFeatured) && (
-          <div className="mt-4 flex items-center space-x-2">
-            <span className="text-sm text-gray-500">Filter aktif:</span>
-            {filters.search && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                Search: {filters.search}
-              </span>
-            )}
-            {filters.status && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Status: {filters.status}
-              </span>
-            )}
-            {filters.category && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                Category: {filters.category}
-              </span>
-            )}
-            {filters.author && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                Author: {filters.author}
-              </span>
-            )}
-            {filters.isFeatured && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                Featured: {filters.isFeatured === 'true' ? 'Ya' : 'Tidak'}
-              </span>
-            )}
-            <button
-              onClick={clearFilters}
-              className="text-sm text-gray-500 hover:text-gray-700 underline"
-            >
-              Clear all
-            </button>
-          </div>
-        )}
+        <button
+          onClick={handleCreateNew}
+          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Tambah Article
+        </button>
       </div>
 
       {/* Content */}

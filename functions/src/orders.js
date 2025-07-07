@@ -9,7 +9,8 @@ const {
   generateSequentialId,
   generateStructuredOrderId,
   verifyAuthToken,
-  getUserFromToken 
+  getUserFromToken,
+  verifyAdminAuth
 } = require("./utils/helpers");
 const admin = require("firebase-admin");
 
@@ -118,12 +119,32 @@ const orders = onRequest(async (req, res) => {
           return await getOrderById(pathParts[0], req, res);
         }
       } else if (method === 'POST' && pathParts.length === 0) {
+        // POST /orders - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await createOrder(req, res);
       } else if (method === 'PUT' && pathParts.length === 1) {
+        // PUT /orders/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await updateOrder(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
+        // DELETE /orders/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await deleteOrder(pathParts[0], req, res);
       } else if (method === 'POST' && pathParts.length === 1 && pathParts[0] === 'migrate') {
+        // POST /orders/migrate - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await migrateOrders(req, res);
       }
 

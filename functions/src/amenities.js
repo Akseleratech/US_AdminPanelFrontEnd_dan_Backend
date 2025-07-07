@@ -11,7 +11,8 @@ const {
   handleError, 
   validateRequired, 
   sanitizeString,
-  generateId 
+  generateId,
+  verifyAdminAuth
 } = require("./utils/helpers");
 
 // Main amenities function
@@ -29,12 +30,32 @@ const amenities = onRequest(async (req, res) => {
           return await getAmenityById(pathParts[0], req, res);
         }
       } else if (method === 'POST' && pathParts.length === 0) {
+        // POST /amenities - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await createAmenity(req, res);
       } else if (method === 'PUT' && pathParts.length === 1) {
+        // PUT /amenities/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await updateAmenity(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
+        // DELETE /amenities/:id - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await deleteAmenity(pathParts[0], req, res);
       } else if (method === 'PATCH' && pathParts.length === 2 && pathParts[1] === 'toggle') {
+        // PATCH /amenities/:id/toggle - Require admin auth
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleResponse(res, { message: 'Admin access required' }, 403);
+        }
         return await toggleAmenityStatus(pathParts[0], req, res);
       }
 
