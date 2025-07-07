@@ -358,6 +358,93 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     });
   }, [formData.spaceId, formData.startDate, formData.endDate, formData.pricingType, spaces]);
 
+  // Helper function to check if booking time is within operational hours
+  const isWithinOperationalHours = (spaceId, startDate, endDate) => {
+    if (!spaceId || !startDate || !endDate) return { valid: true };
+    
+    const selectedSpace = spaces.find(s => s.id === spaceId);
+    if (!selectedSpace || !selectedSpace.operationalHours) return { valid: true };
+    
+    const { operationalHours } = selectedSpace;
+    
+    // If the space is always open, no need to check
+    if (operationalHours.isAlwaysOpen) return { valid: true };
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Get day names for checking
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    
+    // For hourly and halfday pricing, check specific times
+    if (formData.pricingType === 'hourly' || formData.pricingType === 'halfday') {
+      const startDay = dayNames[start.getDay()];
+      const endDay = dayNames[end.getDay()];
+      
+      // Check if the day is open
+      if (!operationalHours.schedule[startDay]?.isOpen) {
+        return { 
+          valid: false, 
+          message: `Space tutup pada hari ${startDay === 'sunday' ? 'Minggu' : startDay === 'monday' ? 'Senin' : startDay === 'tuesday' ? 'Selasa' : startDay === 'wednesday' ? 'Rabu' : startDay === 'thursday' ? 'Kamis' : startDay === 'friday' ? 'Jumat' : 'Sabtu'}` 
+        };
+      }
+      
+      // Get operational hours for the day
+      const daySchedule = operationalHours.schedule[startDay];
+      const [openHour, openMinute] = daySchedule.openTime.split(':').map(Number);
+      const [closeHour, closeMinute] = daySchedule.closeTime.split(':').map(Number);
+      
+      // Create time objects for comparison
+      const openTime = new Date(start);
+      openTime.setHours(openHour, openMinute, 0, 0);
+      
+      const closeTime = new Date(start);
+      closeTime.setHours(closeHour, closeMinute, 0, 0);
+      
+      // Check if booking time is within operational hours
+      if (start < openTime || end > closeTime) {
+        return { 
+          valid: false, 
+          message: `Booking harus dalam jam operasional: ${daySchedule.openTime} - ${daySchedule.closeTime}` 
+        };
+      }
+      
+      // For multi-day hourly bookings, check end day too
+      if (startDay !== endDay) {
+        if (!operationalHours.schedule[endDay]?.isOpen) {
+          return { 
+            valid: false, 
+            message: `Space tutup pada hari ${endDay === 'sunday' ? 'Minggu' : endDay === 'monday' ? 'Senin' : endDay === 'tuesday' ? 'Selasa' : endDay === 'wednesday' ? 'Rabu' : endDay === 'thursday' ? 'Kamis' : endDay === 'friday' ? 'Jumat' : 'Sabtu'}` 
+          };
+        }
+      }
+    }
+    
+    // For daily and monthly pricing, check if any day in the range is closed
+    if (formData.pricingType === 'daily' || formData.pricingType === 'monthly') {
+      const current = new Date(start);
+      const closedDays = [];
+      
+      while (current <= end) {
+        const dayName = dayNames[current.getDay()];
+        if (!operationalHours.schedule[dayName]?.isOpen) {
+          const dayLabel = dayName === 'sunday' ? 'Minggu' : dayName === 'monday' ? 'Senin' : dayName === 'tuesday' ? 'Selasa' : dayName === 'wednesday' ? 'Rabu' : dayName === 'thursday' ? 'Kamis' : dayName === 'friday' ? 'Jumat' : 'Sabtu';
+          closedDays.push(dayLabel);
+        }
+        current.setDate(current.getDate() + 1);
+      }
+      
+      if (closedDays.length > 0) {
+        return { 
+          valid: false, 
+          message: `Space tutup pada: ${closedDays.join(', ')}` 
+        };
+      }
+    }
+    
+    return { valid: true };
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -370,10 +457,22 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       const startDate = new Date(formData.startDate);
       const endDate = new Date(formData.endDate);
       
-      if (startDate >= endDate) {
-        newErrors.endDate = formData.pricingType === 'hourly' 
-          ? 'End time must be after start time' 
-          : 'End date must be after start date';
+      // Different validation rules for different pricing types
+      if (formData.pricingType === 'hourly') {
+        // For hourly pricing, end time must be after start time
+        if (startDate >= endDate) {
+          newErrors.endDate = 'End time must be after start time';
+        }
+      } else if (formData.pricingType === 'daily' || formData.pricingType === 'monthly') {
+        // For daily and monthly pricing, end date can be same as start date (for 1-day booking)
+        if (startDate > endDate) {
+          newErrors.endDate = 'End date cannot be before start date';
+        }
+      } else {
+        // For halfday and other pricing types, end date must be after start date
+        if (startDate >= endDate) {
+          newErrors.endDate = 'End date must be after start date';
+        }
       }
       
       // Additional validation for hourly pricing
@@ -385,6 +484,12 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
         if (diffHours < 1) {
           newErrors.endDate = 'Durasi minimal 1 jam';
         }
+      }
+      
+      // Check operational hours
+      const operationalCheck = isWithinOperationalHours(formData.spaceId, formData.startDate, formData.endDate);
+      if (!operationalCheck.valid) {
+        newErrors.startDate = operationalCheck.message;
       }
     }
     
@@ -579,6 +684,31 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
                     <p className="font-medium">{formatCurrency(selectedSpace.pricing.monthly)}</p>
                   </button>
                 </div>
+                
+                {/* Operational Hours Info */}
+                {selectedSpace.operationalHours && (
+                  <div className="mt-3 p-2 bg-green-50 rounded border border-green-200">
+                    <p className="text-sm text-green-700 font-medium mb-1">
+                      🕐 Jam Operasional:
+                    </p>
+                    <div className="text-xs text-green-600">
+                      {selectedSpace.operationalHours.isAlwaysOpen ? (
+                        <div>24 Jam (Selalu Buka)</div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-1">
+                          {Object.entries(selectedSpace.operationalHours.schedule).map(([day, schedule]) => {
+                            const dayLabel = day === 'sunday' ? 'Minggu' : day === 'monday' ? 'Senin' : day === 'tuesday' ? 'Selasa' : day === 'wednesday' ? 'Rabu' : day === 'thursday' ? 'Kamis' : day === 'friday' ? 'Jumat' : 'Sabtu';
+                            return (
+                              <div key={day} className={`text-xs ${schedule.isOpen ? 'text-green-600' : 'text-red-500'}`}>
+                                <strong>{dayLabel}:</strong> {schedule.isOpen ? `${schedule.openTime} - ${schedule.closeTime}` : 'Tutup'}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 
                 {/* Current calculation info */}
                 {formData.startDate && formData.endDate && (

@@ -34,6 +34,8 @@ const amenities = onRequest(async (req, res) => {
         return await updateAmenity(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         return await deleteAmenity(pathParts[0], req, res);
+      } else if (method === 'PATCH' && pathParts.length === 2 && pathParts[1] === 'toggle') {
+        return await toggleAmenityStatus(pathParts[0], req, res);
       }
 
       handleResponse(res, { message: 'Amenity route not found' }, 404);
@@ -239,6 +241,17 @@ const deleteAmenity = async (amenityId, req, res) => {
       return handleResponse(res, { message: 'Amenity not found' }, 404);
     }
 
+    // Check if amenity is being used by any spaces
+    const spacesSnapshot = await db.collection('spaces')
+      .where('amenities', 'array-contains', amenityId)
+      .get();
+    
+    if (!spacesSnapshot.empty) {
+      return handleResponse(res, { 
+        message: 'Cannot delete amenity because it is being used by one or more spaces' 
+      }, 400);
+    }
+
     // Delete icon from storage
     const iconUrl = amenityDoc.data().icon;
     if (iconUrl) {
@@ -253,6 +266,29 @@ const deleteAmenity = async (amenityId, req, res) => {
 
     await db.collection('amenities').doc(amenityId).delete();
     handleResponse(res, { message: 'Amenity deleted successfully' });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+// PATCH /amenities/:id/toggle
+const toggleAmenityStatus = async (amenityId, req, res) => {
+  try {
+    const db = getDb();
+    const amenityDoc = await db.collection('amenities').doc(amenityId).get();
+    if (!amenityDoc.exists) {
+      return handleResponse(res, { message: 'Amenity not found' }, 404);
+    }
+
+    const currentStatus = amenityDoc.data().isActive;
+    const updateData = {
+      isActive: !currentStatus,
+      updatedAt: new Date()
+    };
+
+    await db.collection('amenities').doc(amenityId).update(updateData);
+    const updatedDoc = await db.collection('amenities').doc(amenityId).get();
+    handleResponse(res, { id: amenityId, ...updatedDoc.data() });
   } catch (error) {
     handleError(res, error);
   }
