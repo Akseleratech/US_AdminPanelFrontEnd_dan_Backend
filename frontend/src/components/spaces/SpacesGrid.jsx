@@ -447,7 +447,7 @@ const SpacesGrid = ({
               )}
 
               {/* Pricing */}
-              <div className="grid grid-cols-4 gap-2 py-2 border-y border-primary-50">
+              <div className="grid grid-cols-5 gap-2 py-2 border-y border-primary-50">
                 <div className="text-center">
                   <p className="text-xs text-primary-600 mb-1">Per Jam</p>
                   <p className="text-sm font-medium text-primary-800">{formatPrice(space.pricing?.hourly)}</p>
@@ -460,9 +460,13 @@ const SpacesGrid = ({
                   <p className="text-xs text-primary-600 mb-1">Per Hari</p>
                   <p className="text-sm font-medium text-primary-800">{formatPrice(space.pricing?.daily)}</p>
                 </div>
-                <div className="text-center">
+                <div className="text-center border-r border-primary-50">
                   <p className="text-xs text-primary-600 mb-1">Per Bulan</p>
                   <p className="text-sm font-medium text-primary-800">{formatPrice(space.pricing?.monthly)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-primary-600 mb-1">Per Tahun</p>
+                  <p className="text-sm font-medium text-primary-800">{formatPrice(space.pricing?.yearly)}</p>
                 </div>
               </div>
 
