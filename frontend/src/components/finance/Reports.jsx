@@ -374,7 +374,7 @@ const Reports = () => {
           <p className="text-sm text-gray-500">Analisis dan laporan keuangan komprehensif</p>
         </div>
         
-        <div className="mt-4 sm:mt-0 flex items-center space-x-3">
+        <div className="mt-4 sm:mt-0 flex items-center space-x-3 bg-white rounded-lg p-4 shadow-sm border border-gray-200">
           <div className="flex items-center space-x-2">
             <input
               type="date"

@@ -7,6 +7,53 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import useInvoices from '../../hooks/useInvoices';
 import * as invoiceAPI from '../../services/invoiceApi';
 
+// Utility to download selected invoices as an Excel-compatible file (.xls)
+const downloadInvoicesAsExcel = (invoices) => {
+  if (!invoices || invoices.length === 0) return;
+
+  // Define columns we want to export
+  const columns = [
+    'Invoice ID',
+    'Order ID',
+    'Customer Name',
+    'Customer Email',
+    'Status',
+    'Amount',
+    'Issued Date',
+    'Due Date',
+  ];
+
+  // Build TSV (tab-separated) which Excel opens nicely
+  const rows = invoices.map((inv) => [
+    inv.id,
+    inv.orderId || inv.orderIds?.join(', ') || '',
+    inv.customerName || '',
+    inv.customerEmail || '',
+    inv.status || '',
+    inv.total ?? inv.amountBase ?? '',
+    inv.issuedDate ? new Date(inv.issuedDate).toLocaleDateString('id-ID') : '',
+    inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('id-ID') : '',
+  ]);
+
+  const tsvContent = [columns, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join('\t'))
+    .join('\n');
+
+  const blob = new Blob([tsvContent], {
+    type: 'application/vnd.ms-excel;charset=utf-8',
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  link.download = `invoices-${ts}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
 const Invoices = () => {
   const { 
     invoices, 
@@ -81,8 +128,8 @@ const Invoices = () => {
           alert(`Successfully sent ${selectedInvoices.length} invoices`);
           break;
         case 'download':
-          await invoiceAPI.bulkDownloadInvoices(selectedInvoices);
-          alert(`Successfully downloaded ${selectedInvoices.length} invoices`);
+          const invoicesToDownload = invoices.filter((inv) => selectedInvoices.includes(inv.id));
+          downloadInvoicesAsExcel(invoicesToDownload);
           break;
         case 'delete':
           if (window.confirm(`Are you sure you want to delete ${selectedInvoices.length} invoices?`)) {

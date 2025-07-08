@@ -251,15 +251,7 @@ const InvoicesTable = ({
                           <Send className="w-4 h-4" />
                         </button>
                       )}
-                      
-                      <button 
-                        onClick={() => onDownload && onDownload(invoice)}
-                        className="text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Download Invoice"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-                      
+                                           
                       {invoice.status !== 'paid' && (
                         <button 
                           onClick={() => handleRecordPayment(invoice)}
