@@ -523,7 +523,7 @@ export default function Settings() {
                       >
                         <option value="admin">Admin</option>
                         <option value="staff">Staff</option>
-                        <option value="viewer">Viewer</option>
+                        <option value="finance">Finance</option>
                       </select>
                     </div>
 

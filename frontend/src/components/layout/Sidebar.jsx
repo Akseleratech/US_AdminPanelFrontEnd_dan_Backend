@@ -84,10 +84,15 @@ const Sidebar = () => {
     }
   ];
 
+  // Restrict certain nav items based on role
   const restrictedForStaff = ['/promo', '/articles', '/finance', '/settings'];
+  const restrictedForFinance = ['/promo', '/articles', '/settings'];
 
   const filteredLinks = navLinks.filter(link => {
     if (userRole === 'staff' && restrictedForStaff.includes(link.path)) {
+      return false;
+    }
+    if (userRole === 'finance' && restrictedForFinance.includes(link.path)) {
       return false;
     }
     return true;

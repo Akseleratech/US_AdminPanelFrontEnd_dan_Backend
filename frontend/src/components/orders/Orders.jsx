@@ -6,6 +6,7 @@ import InvoiceViewModal from '../finance/InvoiceViewModal.jsx';
 import useInvoices from '../../hooks/useInvoices.js';
 import { ordersAPI } from '../../services/api.jsx';
 import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -19,6 +20,8 @@ const Orders = () => {
 
   // Global refresh context
   const { triggerRefresh } = useGlobalRefresh();
+  // current user role
+  const { userRole } = useAuth();
 
   // Access invoices list to find invoice by order id
   const { invoices } = useInvoices();
@@ -154,13 +157,15 @@ const Orders = () => {
             Filter
           </button>
         </div>
-        <button
-          onClick={handleAddOrder}
-          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Manual Order
-        </button>
+        {(userRole === 'admin' || userRole === 'staff') && (
+          <button
+            onClick={handleAddOrder}
+            className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Manual Order
+          </button>
+        )}
       </div>
 
       {/* Results Summary */}

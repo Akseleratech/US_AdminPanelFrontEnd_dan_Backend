@@ -251,7 +251,7 @@ const InvoicesTable = ({
                           <Send className="w-4 h-4" />
                         </button>
                       )}
-                                           
+
                       {invoice.status !== 'paid' && (
                         <button 
                           onClick={() => handleRecordPayment(invoice)}
