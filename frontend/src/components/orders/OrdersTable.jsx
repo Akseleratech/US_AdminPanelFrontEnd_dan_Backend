@@ -13,7 +13,7 @@ import useInvoices from '../../hooks/useInvoices';
 import { ordersAPI } from '../../services/api.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 
-const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice }) => {
+const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRefresh }) => {
   const { spaces, loading: spacesLoading } = useSpaces();
   const { layananList } = useLayanan();
   const { generateInvoiceFromOrder } = useInvoices();
@@ -224,9 +224,9 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice }) => {
           // Mark as processed no matter success/fail to prevent infinite loops on permanent errors
           setProcessedOrders((prev) => new Set(prev).add(order.id));
 
-          // Inform parent so orders list can refresh / display invoice badge
-          if (invoice && invoice.id && typeof onEdit === 'function') {
-            onEdit({ ...order, invoiceId: invoice.id });
+          // Inform parent so orders list can refresh without reopening modal
+          if (invoice && invoice.id && typeof onOrdersRefresh === 'function') {
+            onOrdersRefresh();
           }
         } catch (err) {
           console.error('❌ Auto-generate invoice failed for order', order.id, err);

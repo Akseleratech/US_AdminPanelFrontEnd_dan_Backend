@@ -180,6 +180,7 @@ const Orders = () => {
         onEdit={handleEditOrder}
         onDelete={handleDeleteOrder}
         onViewInvoice={handleViewInvoice}
+        onOrdersRefresh={fetchOrders}
       />
 
       {/* Modal */}
