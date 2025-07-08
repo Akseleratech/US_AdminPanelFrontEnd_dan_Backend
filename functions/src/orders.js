@@ -170,6 +170,7 @@ const autoGenerateInvoiceForOrder = async (db, orderId) => {
           amount: order.amountBase
         }
       ],
+      notes: `Invoice for ${order.spaceName || 'space'} booking (${order.startDate ? new Date(order.startDate).toISOString().split('T')[0] : ''} - ${order.endDate ? new Date(order.endDate).toISOString().split('T')[0] : ''})`,
       status: 'draft',
       issuedDate,
       dueDate,
