@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { doc, getDoc, setDoc, collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, getDocs, query, where, deleteDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { db, auth } from '../../config/firebase';
 import { useAuth } from '../auth/AuthContext';
-import { Save, Percent, AlertCircle, Users, Key, UserPlus, Shield, Settings as SettingsIcon } from 'lucide-react';
+import { Save, Percent, AlertCircle, Users, Key, UserPlus, Shield, Trash2, Settings as SettingsIcon } from 'lucide-react';
 
 export default function Settings() {
   const { user, isAdmin } = useAuth();
@@ -175,6 +175,28 @@ export default function Settings() {
       } else {
         setError('Gagal menambahkan admin: ' + err.message);
       }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (admin) => {
+    if (!window.confirm(`Hapus admin ${admin.name || admin.email}?`)) return;
+
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      // Remove Firestore document (ID == uid)
+      await deleteDoc(doc(db, 'admins', admin.id));
+      setSuccess(`Admin ${admin.name || admin.email} berhasil dihapus!`);
+      // Refresh list
+      await loadAdmins();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      console.error('Error deleting admin:', err);
+      setError('Gagal menghapus admin: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -541,6 +563,9 @@ export default function Settings() {
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Dibuat
                               </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Aksi
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -565,6 +590,15 @@ export default function Settings() {
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                                   {admin.createdAt ? new Date(admin.createdAt.seconds * 1000).toLocaleDateString('id-ID') : '-'}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <button
+                                    onClick={() => handleDeleteAdmin(admin)}
+                                    disabled={saving}
+                                    className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
                                 </td>
                               </tr>
                             ))}

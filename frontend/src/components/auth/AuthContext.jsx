@@ -33,6 +33,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState(null); // 'admin' | 'staff' | 'viewer'
 
   const signup = async (email, password, displayName) => {
     try {
@@ -79,22 +80,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Check if user is admin by looking up in Firestore
-  const checkAdminStatus = async (user) => {
+  // Check user role (admin/staff/viewer) by looking up in Firestore
+  const fetchUserRole = async (user) => {
     if (!user) {
       setIsAdmin(false);
-      return false;
+      setUserRole(null);
+      return null;
     }
-    
+
     try {
       const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-      const adminStatus = adminDoc.exists() && adminDoc.data()?.role === 'admin';
-      setIsAdmin(adminStatus);
-      return adminStatus;
-    } catch (error) {
-      console.error('Error checking admin status:', error);
+      if (adminDoc.exists()) {
+        const role = adminDoc.data()?.role || 'admin';
+        setUserRole(role);
+        setIsAdmin(role === 'admin');
+        return role;
+      }
+      // No doc means no access
+      setUserRole(null);
       setIsAdmin(false);
-      return false;
+      return null;
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+      setUserRole(null);
+      setIsAdmin(false);
+      return null;
     }
   };
 
@@ -109,7 +119,7 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        await checkAdminStatus(currentUser);
+        await fetchUserRole(currentUser);
       } else {
         setIsAdmin(false);
       }
@@ -123,11 +133,12 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     isAdmin,
+    userRole,
     signup,
     login,
     logout,
     resetPassword,
-    checkAdminStatus
+    fetchUserRole
   };
 
   return (

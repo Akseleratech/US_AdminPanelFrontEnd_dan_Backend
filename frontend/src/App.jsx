@@ -38,7 +38,7 @@ const Layout = ({ children }) => (
 );
 
 const PrivateRoutes = () => {
-  const { user, loading, isAdmin, logout } = useAuth();
+  const { user, loading, isAdmin, userRole, logout } = useAuth();
   const navigate = useNavigate();
 
   if (loading) {
@@ -49,7 +49,7 @@ const PrivateRoutes = () => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!isAdmin) {
+  if (!userRole) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full space-y-8 text-center">
@@ -58,7 +58,7 @@ const PrivateRoutes = () => {
               Access Denied
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              You don't have admin access to this system.
+              Your account does not have access to this system.
             </p>
             <button
               onClick={async () => {
@@ -99,9 +99,9 @@ const PrivateRoutes = () => {
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-              </Suspense>
-      </Layout>
-    );
+      </Suspense>
+    </Layout>
+  );
 };
 
 const App = () => {
