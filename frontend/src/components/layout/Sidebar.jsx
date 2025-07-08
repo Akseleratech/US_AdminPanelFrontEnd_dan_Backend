@@ -18,7 +18,7 @@ import {
 import { useAuth } from '../auth/AuthContext.jsx';
 
 const Sidebar = () => {
-  const { user, logout } = useAuth();
+  const { user, userRole, logout } = useAuth();
   const location = useLocation();
 
   const navLinks = [
@@ -84,6 +84,15 @@ const Sidebar = () => {
     }
   ];
 
+  const restrictedForStaff = ['/promo', '/articles', '/finance', '/settings'];
+
+  const filteredLinks = navLinks.filter(link => {
+    if (userRole === 'staff' && restrictedForStaff.includes(link.path)) {
+      return false;
+    }
+    return true;
+  });
+
   const NavItem = ({ to, icon: Icon, children }) => {
     const isActive = location.pathname === to;
     return (
@@ -119,7 +128,7 @@ const Sidebar = () => {
       </div>
       
       <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
-        {navLinks.map((link) => (
+        {filteredLinks.map((link) => (
           <NavItem key={link.path} to={link.path} icon={link.icon}>
             {link.name}
           </NavItem>
