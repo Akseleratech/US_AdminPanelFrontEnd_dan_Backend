@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, updatePassword, reauthenticateWithCrede
 import { db, auth } from '../../config/firebase';
 import { useAuth } from '../auth/AuthContext';
 import { Save, Percent, AlertCircle, Users, Key, UserPlus, Shield, Trash2, Settings as SettingsIcon } from 'lucide-react';
+import useCities from '../../hooks/useCities.js';
 
 export default function Settings() {
   const { user, isAdmin } = useAuth();
@@ -28,8 +29,12 @@ export default function Settings() {
     email: '',
     password: '',
     name: '',
-    role: 'admin'
+    role: 'admin',
+    cityId: ''
   });
+
+  // Cities list for dropdown
+  const { cities } = useCities();
 
   // Tab configuration
   const tabs = [
@@ -144,6 +149,11 @@ export default function Settings() {
       return;
     }
 
+    if (newAdminData.role === 'staff' && !newAdminData.cityId) {
+      setError('Pilih kota yang akan dikelola');
+      return;
+    }
+
     setSaving(true);
     setError('');
     setSuccess('');
@@ -156,12 +166,13 @@ export default function Settings() {
         email: newAdminData.email,
         name: newAdminData.name,
         role: newAdminData.role,
+        cityId: newAdminData.role === 'staff' ? newAdminData.cityId : null,
         createdAt: new Date(),
         updatedAt: new Date()
       });
 
       setSuccess(`Admin ${newAdminData.name} berhasil ditambahkan!`);
-      setNewAdminData({ email: '', password: '', name: '', role: 'admin' });
+      setNewAdminData({ email: '', password: '', name: '', role: 'admin', cityId: '' });
       setShowAddAdmin(false);
       loadAdmins();
       
@@ -507,7 +518,7 @@ export default function Settings() {
                       </label>
                       <select
                         value={newAdminData.role}
-                        onChange={e => setNewAdminData({...newAdminData, role: e.target.value})}
+                        onChange={e => setNewAdminData({...newAdminData, role: e.target.value, cityId: ''})}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                       >
                         <option value="admin">Admin</option>
@@ -515,6 +526,26 @@ export default function Settings() {
                         <option value="viewer">Viewer</option>
                       </select>
                     </div>
+
+                    {/* City Selector (only when staff) */}
+                    {newAdminData.role === 'staff' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Kota yang Dikelola
+                        </label>
+                        <select
+                          value={newAdminData.cityId}
+                          onChange={e => setNewAdminData({...newAdminData, cityId: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                        >
+                          <option value="">-- pilih kota --</option>
+                          {cities.map(city => (
+                            <option key={city.id} value={city.id}>{city.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     <div className="flex justify-end">
                       <button
                         onClick={handleAddAdmin}
@@ -561,6 +592,9 @@ export default function Settings() {
                                 Role
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Kota
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Dibuat
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -587,6 +621,9 @@ export default function Settings() {
                                   }`}>
                                     {admin.role}
                                   </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                  {admin.cityId || '-'}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                                   {admin.createdAt ? new Date(admin.createdAt.seconds * 1000).toLocaleDateString('id-ID') : '-'}

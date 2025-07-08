@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Edit, Trash2, Calendar, MapPin, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { 
   getStatusColor, 
@@ -197,16 +197,40 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
     return `Rp ${Number(amount).toLocaleString('id-ID')}`;
   };
 
-  const handleGenerateInvoice = async (order) => {
-    try {
-      const invoice = await generateInvoiceFromOrder(order);
-      alert(`Invoice ${invoice.id} generated successfully!`);
-      // TODO: Update order with invoiceId
-      // onEdit && onEdit({ ...order, invoiceId: invoice.id });
-    } catch (error) {
-      alert(`Error generating invoice: ${error.message}`);
-    }
-  };
+  // Keep track of orders we have already processed to avoid duplicate invoice creation
+  const [processedOrders, setProcessedOrders] = useState(new Set());
+
+  // Auto-generate invoice when an order moves to "confirmed" and has no invoice yet
+  useEffect(() => {
+    if (!Array.isArray(orders)) return;
+
+    const unprocessedConfirmed = orders.filter(
+      (o) => o.status === 'confirmed' && !o.invoiceId && !processedOrders.has(o.id)
+    );
+
+    if (unprocessedConfirmed.length === 0) return;
+
+    const runGeneration = async () => {
+      for (const order of unprocessedConfirmed) {
+        try {
+          const invoice = await generateInvoiceFromOrder(order);
+
+          // Mark as processed no matter success/fail to prevent infinite loops on permanent errors
+          setProcessedOrders((prev) => new Set(prev).add(order.id));
+
+          // Inform parent so orders list can refresh / display invoice badge
+          if (invoice && invoice.id && typeof onEdit === 'function') {
+            onEdit({ ...order, invoiceId: invoice.id });
+          }
+        } catch (err) {
+          console.error('❌ Auto-generate invoice failed for order', order.id, err);
+        }
+      }
+    };
+
+    runGeneration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders]);
 
   // Component for displaying structured OrderID
   const StructuredOrderId = ({ orderId }) => {

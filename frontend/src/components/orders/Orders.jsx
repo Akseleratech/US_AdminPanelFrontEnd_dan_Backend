@@ -100,25 +100,7 @@ const Orders = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-            <p className="text-sm text-gray-500">Manage your order database</p>
-          </div>
-          
-          <div className="mt-4 sm:mt-0 flex items-center space-x-3">
-            <button
-              onClick={handleRefresh}
-              className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>Refresh</span>
-            </button>
-            
-            <button
-              onClick={handleAddOrder}
-              className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-md shadow-sm text-sm font-medium hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Manual Order</span>
-            </button>
+            <p className="text-sm text-gray-500">Order Management</p>
           </div>
         </div>
       </div>

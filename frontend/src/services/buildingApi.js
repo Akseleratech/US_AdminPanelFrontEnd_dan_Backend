@@ -1,4 +1,22 @@
 // Building API service
+// NOTE: These endpoints require admin authorization on the backend. We need to
+// include the Firebase ID token in the Authorization header for every request
+// so that `verifyAdminAuth` in Cloud Functions can validate the user.
+
+import { auth } from '../config/firebase.jsx';
+
+const getAuthToken = async () => {
+  try {
+    if (auth.currentUser) {
+      return await auth.currentUser.getIdToken();
+    }
+    return null;
+  } catch (e) {
+    console.error('⚠️  buildingApi: failed to get auth token', e);
+    return null;
+  }
+};
+
 const API_BASE_URL = '/api/buildings'; // Use relative path for Vite proxy
 
 class BuildingApiService {
@@ -33,7 +51,10 @@ class BuildingApiService {
 
       console.log('🏢 Fetching buildings from:', url);
 
-      const response = await fetch(url);
+      const token = await getAuthToken();
+      const response = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -56,7 +77,10 @@ class BuildingApiService {
     try {
       console.log(`🏢 Fetching building with ID: ${id}`);
       
-      const response = await fetch(`${this.baseURL}/${id}`);
+      const token = await getAuthToken();
+      const response = await fetch(`${this.baseURL}/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -78,11 +102,15 @@ class BuildingApiService {
     try {
       console.log('🏢 Creating building:', buildingData);
 
+      const token = await getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
       const response = await fetch(this.baseURL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(buildingData),
       });
 
@@ -106,11 +134,15 @@ class BuildingApiService {
     try {
       console.log(`🏢 Updating building ${id}:`, buildingData);
 
+      const token = await getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
       const response = await fetch(`${this.baseURL}/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(buildingData),
       });
 
@@ -134,8 +166,10 @@ class BuildingApiService {
     try {
       console.log(`🏢 Deleting building with ID: ${id}`);
 
+      const token = await getAuthToken();
       const response = await fetch(`${this.baseURL}/${id}`, {
         method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
       if (!response.ok) {
@@ -208,11 +242,15 @@ class BuildingApiService {
       };
       
       console.log('📤 BuildingAPI: Sending image upload request');
+      const token = await getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
       const response = await fetch(`${this.baseURL}/${buildingId}/upload-image`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(payload)
       });
       

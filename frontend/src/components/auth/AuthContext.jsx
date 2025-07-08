@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState(null); // 'admin' | 'staff' | 'viewer'
+  const [userCity, setUserCity] = useState(null); // cityId managed by staff
 
   const signup = async (email, password, displayName) => {
     try {
@@ -85,25 +86,31 @@ export const AuthProvider = ({ children }) => {
     if (!user) {
       setIsAdmin(false);
       setUserRole(null);
+      setUserCity(null);
       return null;
     }
 
     try {
       const adminDoc = await getDoc(doc(db, 'admins', user.uid));
       if (adminDoc.exists()) {
-        const role = adminDoc.data()?.role || 'admin';
+        const data = adminDoc.data();
+        const role = data?.role || 'admin';
+        const cityId = data?.cityId || null;
         setUserRole(role);
         setIsAdmin(role === 'admin');
+        setUserCity(role === 'staff' ? cityId : null);
         return role;
       }
       // No doc means no access
       setUserRole(null);
       setIsAdmin(false);
+      setUserCity(null);
       return null;
     } catch (error) {
       console.error('Error fetching user role:', error);
       setUserRole(null);
       setIsAdmin(false);
+      setUserCity(null);
       return null;
     }
   };
@@ -122,6 +129,7 @@ export const AuthProvider = ({ children }) => {
         await fetchUserRole(currentUser);
       } else {
         setIsAdmin(false);
+        setUserCity(null);
       }
       setLoading(false);
     });
@@ -134,6 +142,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAdmin,
     userRole,
+    userCity,
     signup,
     login,
     logout,

@@ -1,7 +1,31 @@
 // Invoice API Service
 import { API_BASE_URL } from './api.jsx';
+import { auth } from '../config/firebase.jsx';
 
 const INVOICE_API_URL = `${API_BASE_URL}/invoices`;
+
+// Helper to get auth token
+const getAuthToken = async () => {
+  try {
+    if (auth.currentUser) {
+      return await auth.currentUser.getIdToken();
+    }
+    return null;
+  } catch (err) {
+    console.error('⚠️ invoiceApi: Failed to get auth token', err);
+    return null;
+  }
+};
+
+// Build headers with optional token
+const buildHeaders = async (extra = {}) => {
+  const token = await getAuthToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...extra,
+  };
+};
 
 // Helper function to handle API responses
 const handleResponse = async (response) => {
@@ -31,9 +55,7 @@ export const getAllInvoices = async (params = {}) => {
     
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await buildHeaders(),
     });
 
     const data = await handleResponse(response);
@@ -49,9 +71,7 @@ export const getInvoiceById = async (invoiceId) => {
   try {
     const response = await fetch(`${INVOICE_API_URL}/${invoiceId}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await buildHeaders(),
     });
 
     const data = await handleResponse(response);
@@ -67,9 +87,7 @@ export const createInvoice = async (invoiceData) => {
   try {
     const response = await fetch(INVOICE_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await buildHeaders(),
       body: JSON.stringify(invoiceData),
     });
 
@@ -86,9 +104,7 @@ export const generateInvoiceFromOrder = async (orderId) => {
   try {
     const response = await fetch(`${INVOICE_API_URL}/${orderId}/generate-from-order`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await buildHeaders(),
     });
 
     const data = await handleResponse(response);
@@ -104,9 +120,7 @@ export const updateInvoice = async (invoiceId, updateData) => {
   try {
     const response = await fetch(`${INVOICE_API_URL}/${invoiceId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await buildHeaders(),
       body: JSON.stringify(updateData),
     });
 
@@ -123,9 +137,7 @@ export const deleteInvoice = async (invoiceId) => {
   try {
     const response = await fetch(`${INVOICE_API_URL}/${invoiceId}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await buildHeaders(),
     });
 
     const data = await handleResponse(response);
