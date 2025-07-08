@@ -185,7 +185,9 @@ const createInvoice = async (req, res) => {
       taxRate,
       discountRate = 0,
       paymentTerms = 30,
-      notes = ''
+      notes = '',
+      serviceName = null,
+      cityName = null
     } = req.body;
 
     // Validate required fields
@@ -217,6 +219,8 @@ const createInvoice = async (req, res) => {
       customerEmail: sanitizeString(customerEmail),
       customerPhone: customerPhone ? sanitizeString(customerPhone) : null,
       customerAddress: customerAddress ? sanitizeString(customerAddress) : null,
+      serviceName: serviceName ? sanitizeString(serviceName) : null,
+      cityName: cityName ? sanitizeString(cityName) : null,
       amountBase: parseFloat(amountBase),
       taxRate: parseFloat(finalTaxRate),
       taxAmount: parseFloat(taxAmount),
@@ -374,6 +378,8 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
       customerEmail: order.customerEmail,
       customerPhone: customerPhone,
       customerAddress: customerAddress,
+      serviceName: serviceName,
+      cityName: spaceCityName,
       amountBase: order.amountBase,
       taxRate: taxRate,
       taxAmount: taxAmount,
@@ -388,8 +394,6 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
       paymentTerms: 30,
       paymentMethod: null,
       // Add service and city information for reports
-      serviceName: serviceName,
-      cityName: spaceCityName,
       provinceName: spaceProvinceName,
       // Create items array with proper service description
       items: [{

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Plus, Minus } from 'lucide-react';
 import { useTaxRate } from '../../contexts/TaxRateContext.jsx';
+import useLayanan from '../../hooks/useLayanan.js';
 
 const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
   const defaultTaxRate = useTaxRate();
+  const { layananList } = useLayanan();
   const [formData, setFormData] = useState({
     orderId: '',
     customerName: '',
@@ -83,8 +85,22 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
       let items = editingInvoice.items;
       if (!items || items.length === 0) {
         // If no items exist, create a default item from the invoice amounts
-        // Use serviceName from invoice if available, otherwise fallback to default
-        const serviceDescription = editingInvoice.serviceName || 'Layanan Sewa Space';
+        // Use spaceName and serviceName from invoice if available, otherwise fallback to default
+        const spaceName = editingInvoice.spaceName || '';
+        let serviceName = editingInvoice.serviceName || '';
+        // If serviceName looks like an ID, replace with actual name
+        if (serviceName) {
+          const found = layananList.find(l => l.id === serviceName);
+          if (found) serviceName = found.name || serviceName;
+        }
+        let serviceDescription = 'Layanan Sewa Space';
+        if (spaceName && serviceName && spaceName !== serviceName) {
+          serviceDescription = `${spaceName} - ${serviceName}`;
+        } else if (spaceName) {
+          serviceDescription = spaceName;
+        } else if (serviceName) {
+          serviceDescription = serviceName;
+        }
         items = [
           {
             description: serviceDescription,
@@ -139,7 +155,7 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
         status: 'draft'
       });
     }
-  }, [editingInvoice, isOpen]);
+  }, [editingInvoice, isOpen, layananList]);
 
   // Update calculations when items, tax, or discount change
   useEffect(() => {
@@ -248,7 +264,7 @@ const InvoiceModal = ({ isOpen, onClose, onSave, editingInvoice }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">

@@ -86,7 +86,7 @@ const Reports = () => {
         allInvoices.forEach(invoice => {
           if (invoice.status === 'paid') {
             // Service revenue - use serviceName from invoice if available
-            const serviceName = invoice.serviceName || 'Unknown Service';
+            const serviceName = invoice.serviceName || invoice.spaceName || 'Unknown Service';
             serviceRevenue[serviceName] = (serviceRevenue[serviceName] || 0) + invoice.total;
             
             // City revenue - use cityName from invoice if available

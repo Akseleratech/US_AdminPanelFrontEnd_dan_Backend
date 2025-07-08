@@ -123,9 +123,26 @@ const autoGenerateInvoiceForOrder = async (db, orderId) => {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const invoiceId = await generateSequentialId(`invoices_${year}_${month}`, 'INV', 4);
 
+    // --- Fetch customer phone if not present ---
+    let customerPhone = order.customerPhone || null;
+    if (!customerPhone && order.customerId) {
+      try {
+        const customerDoc = await db.collection('customers').doc(order.customerId).get();
+        if (customerDoc.exists) {
+          customerPhone = customerDoc.data().phone || null;
+        }
+      } catch (custErr) {
+        console.warn('⚠️ Unable to fetch customer phone:', custErr.message);
+      }
+    }
+
     const taxRate = await getCurrentTaxRate();
     const taxAmount = order.amountBase * taxRate;
     const total = order.amountBase + taxAmount;
+
+    // Derive service and city names for reporting
+    const serviceName = order.serviceName || order.spaceName || 'Unknown Service';
+    const cityName = order.cityName || 'Unknown City';
 
     const issuedDate = now;
     const dueDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -133,15 +150,26 @@ const autoGenerateInvoiceForOrder = async (db, orderId) => {
     const invoiceData = {
       orderId: orderId,
       orderIds: [orderId],
+      spaceName: order.spaceName || serviceName,
+      serviceName,
+      cityName,
       customerName: order.customerName,
       customerEmail: order.customerEmail,
-      customerPhone: order.customerPhone || null,
+      customerPhone,
       amountBase: order.amountBase,
       taxRate,
       taxAmount,
       discountRate: 0,
       discountAmount: 0,
       total,
+      items: [
+        {
+          description: serviceName,
+          quantity: 1,
+          unitPrice: order.amountBase,
+          amount: order.amountBase
+        }
+      ],
       status: 'draft',
       issuedDate,
       dueDate,
@@ -402,6 +430,8 @@ const createOrder = async (req, res, requesterRole) => {
         const spaceDoc = await db.collection('spaces').doc(spaceId).get();
         if (spaceDoc.exists) {
           const spaceData = spaceDoc.data();
+          // Store service/layanan name for reporting (use space category when available)
+          orderData.serviceName = spaceData.category || spaceData.serviceName || spaceData.name || '';
           const buildingIdFromSpace = spaceData.buildingId;
           if (buildingIdFromSpace) {
             const buildingDoc = await db.collection('buildings').doc(buildingIdFromSpace).get();
@@ -409,6 +439,10 @@ const createOrder = async (req, res, requesterRole) => {
               const buildingData = buildingDoc.data();
               if (buildingData.cityId) {
                 orderData.cityId = buildingData.cityId;
+              }
+              // Store readable city name for reporting
+              if (buildingData.location && buildingData.location.city) {
+                orderData.cityName = buildingData.location.city;
               }
             }
           }

@@ -35,6 +35,12 @@ export default function Settings() {
 
   // Cities list for dropdown
   const { cities } = useCities();
+  // Helper to map cityId to city name
+  const getCityName = (id) => {
+    if (!id) return null;
+    const cityObj = cities.find((c) => c.id === id);
+    return cityObj ? cityObj.name : null;
+  };
 
   // Tab configuration
   const tabs = [
@@ -623,7 +629,7 @@ export default function Settings() {
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                  {admin.cityId || '-'}
+                                  {getCityName(admin.cityId) || '-'}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                                   {admin.createdAt ? new Date(admin.createdAt.seconds * 1000).toLocaleDateString('id-ID') : '-'}
