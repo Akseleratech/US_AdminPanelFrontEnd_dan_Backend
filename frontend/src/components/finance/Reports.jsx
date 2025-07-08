@@ -3,6 +3,8 @@ import { Download, Calendar, TrendingUp, TrendingDown, DollarSign, FileText, Clo
 import LoadingSpinner from '../common/LoadingSpinner';
 import * as invoiceAPI from '../../services/invoiceApi';
 import { useTaxRate } from '../../contexts/TaxRateContext.jsx';
+import useLayanan from '../../hooks/useLayanan.js';
+import useSpaces from '../../hooks/useSpaces.js';
 
 const Reports = () => {
   const currentTaxRate = useTaxRate();
@@ -43,6 +45,10 @@ const Reports = () => {
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0]
   });
+
+  // Fetch layanan list for ID→name mapping
+  const { layananList } = useLayanan();
+  const { spaces } = useSpaces();
 
   useEffect(() => {
     const fetchReportData = async () => {
@@ -97,9 +103,51 @@ const Reports = () => {
         
         // Convert service and city revenue to arrays with percentages
         const totalPaidRevenue = thisMonthRevenue + lastMonthRevenue;
+        
+        // Helper to map service ID to readable name
+        const mapServiceName = (raw) => {
+          console.log('🔍 mapServiceName input:', raw);
+          console.log('🔍 layananList available:', layananList?.length || 0, 'items');
+          console.log('🔍 spaces available:', spaces?.length || 0, 'items');
+          
+          // 1) Direct match to layanan ID
+          if (Array.isArray(layananList)) {
+            const found = layananList.find((l) => l.id === raw);
+            if (found && found.name) {
+              console.log('✅ Direct layanan match:', found.name);
+              return found.name;
+            }
+          }
+
+          // 2) Interpret as spaceId, resolve to space.category then layanan name
+          if (Array.isArray(spaces)) {
+            const sp = spaces.find((s) => s.id === raw);
+            if (sp) {
+              console.log('🔍 Found space:', sp.name, 'category:', sp.category);
+              const catId = sp.category || sp.serviceName;
+              if (catId && Array.isArray(layananList)) {
+                const lay = layananList.find((l) => l.id === catId);
+                if (lay && lay.name) {
+                  console.log('✅ Space->layanan match:', lay.name);
+                  return lay.name;
+                }
+              }
+              // fallback to readable space name without codes
+              if (sp.name) {
+                console.log('✅ Using space name:', sp.name);
+                return sp.name;
+              }
+            }
+          }
+
+          // 3) Fallback original
+          console.log('⚠️ No match found, using original:', raw);
+          return raw;
+        };
+
         const byService = Object.entries(serviceRevenue)
-          .map(([name, amount]) => ({
-            name,
+          .map(([rawName, amount]) => ({
+            name: mapServiceName(rawName),
             amount,
             percentage: totalPaidRevenue > 0 ? ((amount / totalPaidRevenue) * 100).toFixed(1) : 0
           }))
@@ -274,7 +322,7 @@ const Reports = () => {
     };
 
     fetchReportData();
-  }, [dateRange]);
+  }, [dateRange, layananList, spaces]);
 
   const formatCurrency = (amount) => {
     return `Rp ${Number(amount).toLocaleString('id-ID')}`;

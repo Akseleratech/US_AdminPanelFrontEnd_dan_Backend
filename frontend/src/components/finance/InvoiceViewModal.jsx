@@ -1,7 +1,12 @@
 import React from 'react';
 import { X, Download, Send, Printer, Calendar, User, Mail, Phone, MapPin, DollarSign, Receipt, Clock } from 'lucide-react';
+import useLayanan from '../../hooks/useLayanan.js';
+import useSpaces from '../../hooks/useSpaces.js';
 
 const InvoiceViewModal = ({ isOpen, onClose, invoice }) => {
+  const { layananList } = useLayanan();
+  const { spaces } = useSpaces();
+
   if (!isOpen || !invoice) return null;
 
   const formatDate = (dateString) => {
@@ -61,12 +66,42 @@ const InvoiceViewModal = ({ isOpen, onClose, invoice }) => {
     return diffDays > 0 ? diffDays : 0;
   };
 
+  // Helper to enhance notes with service name
+  const enhanceInvoiceNotes = (notes) => {
+    if (!notes) return notes;
+    
+    // Check if notes match the pattern "Invoice for [space] booking [date range]"
+    const pattern = /Invoice for (.+?) booking (.+)/;
+    const match = notes.match(pattern);
+    
+    if (match) {
+      const spaceName = match[1];
+      const dateRange = match[2];
+      
+      // Try to find the space and get its service/layanan name
+      if (Array.isArray(spaces)) {
+        const space = spaces.find(s => s.name === spaceName);
+        if (space && space.category && Array.isArray(layananList)) {
+          const layanan = layananList.find(l => l.id === space.category);
+          if (layanan && layanan.name) {
+            return `Invoice for ${spaceName} ${layanan.name} booking ${dateRange}`;
+          }
+        }
+      }
+    }
+    
+    return notes;
+  };
+
   // Print functionality
   const handlePrint = () => {
     // Hide the modal temporarily
     const modal = document.querySelector('.invoice-modal');
     const originalDisplay = modal.style.display;
     modal.style.display = 'none';
+
+    // Get enhanced notes for print
+    const enhancedNotes = enhanceInvoiceNotes(invoice.notes);
 
     // Create a new window for printing
     const printWindow = window.open('', '_blank');
@@ -149,7 +184,7 @@ const InvoiceViewModal = ({ isOpen, onClose, invoice }) => {
             <tbody>
               <tr>
                 <td>
-                  <strong>${invoice.notes || 'Space Booking Service'}</strong><br>
+                  <strong>${enhancedNotes || 'Space Booking Service'}</strong><br>
                   <small>Order ID: ${invoice.orderId}</small>
                 </td>
                 <td style="text-align: right;">${formatCurrency(invoice.amountBase)}</td>
@@ -191,10 +226,10 @@ const InvoiceViewModal = ({ isOpen, onClose, invoice }) => {
             ` : ''}
           </div>
 
-          ${invoice.notes ? `
+          ${enhancedNotes ? `
           <div class="notes">
             <h3>Catatan</h3>
-            <p>${invoice.notes}</p>
+            <p>${enhancedNotes}</p>
           </div>
           ` : ''}
 
@@ -389,7 +424,7 @@ const InvoiceViewModal = ({ isOpen, onClose, invoice }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div>
                         <div className="font-medium">
-                          {invoice.notes || 'Space Booking Service'}
+                          {enhanceInvoiceNotes(invoice.notes) || 'Space Booking Service'}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
                           Order ID: {invoice.orderId}
@@ -458,7 +493,7 @@ const InvoiceViewModal = ({ isOpen, onClose, invoice }) => {
             <div className="mt-8">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Catatan</h3>
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{enhanceInvoiceNotes(invoice.notes)}</p>
               </div>
             </div>
           )}
