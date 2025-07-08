@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, RefreshCw } from 'lucide-react';
 import OrdersTable from './OrdersTable';
 import OrderModal from './OrderModal';
+import InvoiceViewModal from '../finance/InvoiceViewModal.jsx';
+import useInvoices from '../../hooks/useInvoices.js';
 import { ordersAPI } from '../../services/api.jsx';
 import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext';
 
@@ -12,9 +14,14 @@ const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
+  const [viewInvoiceModalOpen, setViewInvoiceModalOpen] = useState(false);
+  const [invoiceToView, setInvoiceToView] = useState(null);
 
   // Global refresh context
   const { triggerRefresh } = useGlobalRefresh();
+
+  // Access invoices list to find invoice by order id
+  const { invoices } = useInvoices();
 
   // Fetch orders
   const fetchOrders = async () => {
@@ -76,6 +83,16 @@ const Orders = () => {
         console.error('Error deleting order:', error);
         alert('Failed to delete order');
       }
+    }
+  };
+
+  const handleViewInvoice = (order) => {
+    const inv = invoices.find((i) => i.orderId === order.id || (i.orderIds && i.orderIds.includes(order.id)));
+    if (inv) {
+      setInvoiceToView(inv);
+      setViewInvoiceModalOpen(true);
+    } else {
+      alert('Invoice tidak ditemukan untuk order ini');
     }
   };
 
@@ -157,6 +174,7 @@ const Orders = () => {
         orders={filteredOrders} 
         onEdit={handleEditOrder}
         onDelete={handleDeleteOrder}
+        onViewInvoice={handleViewInvoice}
       />
 
       {/* Modal */}
@@ -165,6 +183,13 @@ const Orders = () => {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveOrder}
         editingOrder={editingOrder}
+      />
+
+      {/* Invoice View Modal */}
+      <InvoiceViewModal
+        isOpen={viewInvoiceModalOpen}
+        onClose={() => setViewInvoiceModalOpen(false)}
+        invoice={invoiceToView}
       />
     </div>
   );

@@ -193,7 +193,7 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
   return (
     <div className="bg-white border border-primary-200 table-green-theme rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full table-auto divide-y divide-primary-200">
+        <table className=" w-full divide-y">
           <thead className="bg-primary-50">
             <tr>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Thumbnail</th>
@@ -201,7 +201,7 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Provinsi</th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Negara</th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Lokasi</th>
-              <th className="px-3 md:px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider">Spaces</th>
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Spaces</th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>

@@ -8,7 +8,8 @@ const {
   sanitizeString,
   parseQueryParams,
   generateSequentialId,
-  verifyAdminAuth
+  verifyAdminAuth,
+  getUserRoleAndCity
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
 
@@ -274,10 +275,18 @@ const getAllCities = async (req, res) => {
     const snapshot = await query.get();
     let cities = [];
 
-    // Process each city and add frontend-compatible fields
+    // Role-based restriction
+    const { role: requesterRole, cityId: requesterCityId } = await getUserRoleAndCity(req);
+
+    // Iterate through docs
     for (const doc of snapshot.docs) {
       const data = doc.data();
-      
+
+      // If staff, skip cities not managed
+      if (requesterRole === 'staff' && requesterCityId && doc.id !== requesterCityId) {
+        continue;
+      }
+
       // Calculate real-time statistics
       const statistics = await calculateCityStatistics(data.name);
       

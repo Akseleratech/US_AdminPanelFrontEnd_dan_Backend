@@ -1,12 +1,38 @@
 import axios from 'axios';
+import { auth } from '../config/firebase.jsx';
 
 const API_BASE_URL = '/api/cities';
+
+// Helper to get Firebase ID token
+const getAuthToken = async () => {
+  try {
+    if (auth.currentUser) {
+      return await auth.currentUser.getIdToken();
+    }
+    return null;
+  } catch (e) {
+    console.error('⚠️ CityAPI: failed to get auth token', e);
+    return null;
+  }
+};
+
+// Build headers with token
+const buildHeaders = async (extra = {}) => {
+  const token = await getAuthToken();
+  return {
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...extra,
+  };
+};
 
 class CityAPI {
   // GET all cities
   async getCities(params = {}) {
     try {
-      const response = await axios.get(API_BASE_URL, { params });
+      const response = await axios.get(API_BASE_URL, {
+        params,
+        headers: await buildHeaders(),
+      });
       return response.data;
     } catch (error) {
       console.error('Error fetching cities:', error);
@@ -17,7 +43,9 @@ class CityAPI {
   // GET single city by ID
   async getCity(id) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/${id}`);
+      const response = await axios.get(`${API_BASE_URL}/${id}`, {
+        headers: await buildHeaders(),
+      });
       return response.data;
     } catch (error) {
       console.error('Error fetching city:', error);
@@ -36,9 +64,7 @@ class CityAPI {
       }
 
       const response = await axios.post(API_BASE_URL, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: await buildHeaders({ 'Content-Type': 'application/json' }),
       });
 
       const createdCity = response.data;
@@ -66,9 +92,7 @@ class CityAPI {
       }
 
       const response = await axios.put(`${API_BASE_URL}/${id}`, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: await buildHeaders({ 'Content-Type': 'application/json' }),
       });
 
       const updatedCity = response.data;
@@ -100,9 +124,7 @@ class CityAPI {
       
       console.log('📤 CityAPI: Sending image upload request');
       const response = await axios.post(`${API_BASE_URL}/${cityId}/upload-image`, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: await buildHeaders({ 'Content-Type': 'application/json' }),
       });
       
       console.log('✅ CityAPI: Image uploaded successfully:', response.data);
@@ -126,7 +148,9 @@ class CityAPI {
   // DELETE city
   async deleteCity(id) {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/${id}`);
+      const response = await axios.delete(`${API_BASE_URL}/${id}`, {
+        headers: await buildHeaders(),
+      });
       return response.data;
     } catch (error) {
       console.error('Error deleting city:', error);

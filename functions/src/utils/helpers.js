@@ -379,6 +379,30 @@ const getCurrentTaxRate = async () => {
   }
 };
 
+// Helper to get user role and managed city for the authenticated user
+const getUserRoleAndCity = async (req) => {
+  try {
+    const token = verifyAuthToken(req);
+    if (!token) return { role: null, cityId: null };
+
+    const user = await getUserFromToken(token);
+    if (!user) return { role: null, cityId: null };
+
+    const db = getDb();
+    const adminDoc = await db.collection('admins').doc(user.uid).get();
+    if (!adminDoc.exists) return { role: null, cityId: null };
+
+    const data = adminDoc.data();
+    return {
+      role: data.role || null,
+      cityId: data.cityId || null
+    };
+  } catch (error) {
+    console.error('Error in getUserRoleAndCity:', error);
+    return { role: null, cityId: null };
+  }
+};
+
 module.exports = {
   getDb,
   handleResponse,
@@ -402,5 +426,6 @@ module.exports = {
   getServiceTypeLabel,
   generateStructuredOrderId,
   parseOrderId,
-  getCurrentTaxRate
+  getCurrentTaxRate,
+  getUserRoleAndCity
 }; 

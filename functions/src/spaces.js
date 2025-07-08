@@ -8,7 +8,8 @@ const {
   validateRequired, 
   sanitizeString,
   generateSequentialId,
-  verifyAdminAuth
+  verifyAdminAuth,
+  getUserRoleAndCity
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
 const { 
@@ -321,6 +322,13 @@ const getAllSpaces = async (req, res) => {
     const { search, city, brand, status, limit, category } = req.query;
     let spacesRef = db.collection('spaces');
 
+    // Role-based restriction: limit staff to their city
+    const { role: requesterRole, cityId: requesterCityId } = await getUserRoleAndCity(req);
+    const enforceCityRestriction = requesterRole === 'staff' && requesterCityId;
+
+    // If staff and cityId known, we cannot directly query by cityId (not stored), but we can narrow by city name if provided via query params later.
+    // We'll filter after data retrieval.
+
     // Build query
     if (city) {
       spacesRef = spacesRef.where('location.city', '==', city);
@@ -347,15 +355,41 @@ const getAllSpaces = async (req, res) => {
     const snapshot = await spacesRef.get();
     let spaces = [];
 
-    snapshot.forEach(doc => {
+    const buildingCityCache = {};
+
+    for (const doc of snapshot.docs) {
       const data = doc.data();
+
+      // Role-based filtering for staff
+      if (enforceCityRestriction) {
+        let spaceCityId = null;
+
+        if (data.cityId) {
+          spaceCityId = data.cityId;
+        } else if (data.buildingId) {
+          if (buildingCityCache[data.buildingId] === undefined) {
+            try {
+              const bDoc = await db.collection('buildings').doc(data.buildingId).get();
+              buildingCityCache[data.buildingId] = bDoc.exists ? (bDoc.data().cityId || null) : null;
+            } catch (err) {
+              buildingCityCache[data.buildingId] = null;
+            }
+          }
+          spaceCityId = buildingCityCache[data.buildingId];
+        }
+
+        if (!spaceCityId || spaceCityId !== requesterCityId) {
+          continue; // Skip space not in staff city
+        }
+      }
+
       const operationalStatus = getOperationalStatus(data);
       spaces.push({
         id: doc.id,
         ...data,
         operationalStatus
       });
-    });
+    }
 
     // Apply client-side filtering for search
     if (search) {
@@ -472,6 +506,7 @@ const createSpace = async (req, res) => {
       search: {
         keywords: searchKeywords
       },
+      cityId: buildingData.cityId || null,
       isActive: sanitizedData.isActive !== undefined ? sanitizedData.isActive : true,
       createdBy: req.body.createdBy || 'system',
       createdAt: new Date(),

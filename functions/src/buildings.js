@@ -6,7 +6,8 @@ const {
   handleError, 
   validateRequired, 
   sanitizeString,
-  verifyAdminAuth
+  verifyAdminAuth,
+  getUserRoleAndCity
 } = require("./utils/helpers");
 const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
 
@@ -408,6 +409,12 @@ const getAllBuildings = async (req, res) => {
 
     // Build query
     let query = db.collection('buildings');
+
+    // Role-based restriction: if requester is staff, force city filter
+    const { role: requesterRole, cityId: requesterCityId } = await getUserRoleAndCity(req);
+    if (requesterRole === 'staff' && requesterCityId) {
+      query = query.where('cityId', '==', requesterCityId);
+    }
 
     // Apply filters
     if (brand) {

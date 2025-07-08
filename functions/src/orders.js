@@ -10,7 +10,8 @@ const {
   generateStructuredOrderId,
   verifyAuthToken,
   getUserFromToken,
-  verifyAdminAuth
+  verifyAdminAuth,
+  getUserRoleAndCity
 } = require("./utils/helpers");
 const admin = require("firebase-admin");
 
@@ -162,6 +163,12 @@ const getAllOrders = async (req, res) => {
     const { status, limit, offset = 0, search, customerEmail, customerId, spaceId, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
     let ordersRef = db.collection('orders');
 
+    // Role-based restriction: if requester is staff, restrict orders to their city
+    const { role: requesterRole, cityId: requesterCityId } = await getUserRoleAndCity(req);
+    if (requesterRole === 'staff' && requesterCityId) {
+      // Orders currently don't store cityId directly. We'll filter later after fetching.
+    }
+
     // Apply filters
     if (status) {
       ordersRef = ordersRef.where('status', '==', status);
@@ -192,6 +199,13 @@ const getAllOrders = async (req, res) => {
       const startDate = data.startDate && data.startDate.toDate ? data.startDate.toDate().toISOString() : data.startDate;
       const endDate = data.endDate && data.endDate.toDate ? data.endDate.toDate().toISOString() : data.endDate;
       const createdAt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toISOString() : data.createdAt;
+
+      // If staff with city restriction, we'll filter based on data.cityId (if exists)
+      if (requesterRole === 'staff' && requesterCityId) {
+        if (data.cityId && data.cityId !== requesterCityId) {
+          return; // Skip orders not in staff city
+        }
+      }
 
       orders.push({
         id: doc.id,  // This will now be the orderId (e.g., ORD-20250701-GEN-MAN-0001)
@@ -324,6 +338,29 @@ const createOrder = async (req, res) => {
       createdBy: user ? user.uid : 'system',
       createdByEmail: user ? user.email : 'system'
     };
+
+    // --- NEW: attach cityId for easier filtering ---
+    try {
+      if (spaceId) {
+        const spaceDoc = await db.collection('spaces').doc(spaceId).get();
+        if (spaceDoc.exists) {
+          const spaceData = spaceDoc.data();
+          const buildingIdFromSpace = spaceData.buildingId;
+          if (buildingIdFromSpace) {
+            const buildingDoc = await db.collection('buildings').doc(buildingIdFromSpace).get();
+            if (buildingDoc.exists) {
+              const buildingData = buildingDoc.data();
+              if (buildingData.cityId) {
+                orderData.cityId = buildingData.cityId;
+              }
+            }
+          }
+        }
+      }
+    } catch (cityErr) {
+      console.warn('⚠️ Unable to attach cityId to order', cityErr);
+    }
+    // --- END NEW ---
 
     // Use orderId as document name instead of auto-generated ID
     await db.collection('orders').doc(orderId).set(orderData);

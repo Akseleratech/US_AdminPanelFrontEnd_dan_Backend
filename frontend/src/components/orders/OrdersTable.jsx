@@ -11,7 +11,7 @@ import useSpaces from '../../hooks/useSpaces';
 import useLayanan from '../../hooks/useLayanan';
 import useInvoices from '../../hooks/useInvoices';
 
-const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
+const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice }) => {
   const { spaces, loading: spacesLoading } = useSpaces();
   const { layananList } = useLayanan();
   const { generateInvoiceFromOrder } = useInvoices();
@@ -493,14 +493,12 @@ const OrdersTable = ({ orders = [], onEdit, onDelete }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {order.invoiceId ? (
                       <div className="flex items-center space-x-2">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Generated
-                        </span>
-                        <button 
-                          className="text-blue-600 hover:text-blue-900 text-xs"
-                          title="View Invoice"
+                        <button
+                          onClick={() => onViewInvoice && onViewInvoice(order)}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 transition-colors"
+                          title="Lihat Invoice"
                         >
-                          View
+                          Generated
                         </button>
                       </div>
                     ) : (

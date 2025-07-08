@@ -72,6 +72,7 @@ const Invoices = () => {
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [viewingInvoice, setViewingInvoice] = useState(null);
   const [selectedInvoices, setSelectedInvoices] = useState([]);
+  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
 
   // Data is now managed by useInvoices hook
 
@@ -173,7 +174,19 @@ const Invoices = () => {
     
     const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    // Date range filter (issuedDate between start & end)
+    const issuedMs = invoice.issuedDate ? new Date(invoice.issuedDate).getTime() : null;
+    const startMs = dateRange.startDate ? new Date(dateRange.startDate).getTime() : null;
+    const endMs = dateRange.endDate ? new Date(dateRange.endDate).getTime() : null;
+    let matchesDate = true;
+    if (startMs && issuedMs !== null) {
+      matchesDate = issuedMs >= startMs;
+    }
+    if (matchesDate && endMs && issuedMs !== null) {
+      matchesDate = issuedMs <= endMs + 24*60*60*1000 - 1; // include end day
+    }
+    
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   if (loading) {
@@ -183,7 +196,7 @@ const Invoices = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Invoices</h2>
           <p className="text-sm text-gray-500">Manage your invoices and billing</p>
@@ -223,7 +236,7 @@ const Invoices = () => {
       )}
 
       {/* Search and Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4 bg-white rounded-lg p-4 shadow-sm border border-gray-200">
         {/* Search */}
         <div className="flex-1">
           <div className="relative">
@@ -238,8 +251,8 @@ const Invoices = () => {
           </div>
         </div>
 
-        {/* Status Filter */}
-        <div className="relative">
+        {/* Status Filter & Date Range */}
+        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -251,6 +264,23 @@ const Invoices = () => {
             <option value="paid">Paid</option>
             <option value="overdue">Overdue</option>
           </select>
+
+          {/* Date Range */}
+          <div className="flex items-center space-x-2">
+            <input
+              type="date"
+              value={dateRange.startDate}
+              onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
+            <span className="text-gray-500">to</span>
+            <input
+              type="date"
+              value={dateRange.endDate}
+              onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
+          </div>
         </div>
       </div>
 
