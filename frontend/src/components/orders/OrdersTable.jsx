@@ -10,11 +10,14 @@ import {
 import useSpaces from '../../hooks/useSpaces';
 import useLayanan from '../../hooks/useLayanan';
 import useInvoices from '../../hooks/useInvoices';
+import { ordersAPI } from '../../services/api.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice }) => {
   const { spaces, loading: spacesLoading } = useSpaces();
   const { layananList } = useLayanan();
   const { generateInvoiceFromOrder } = useInvoices();
+  const { userRole } = useAuth();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -202,6 +205,9 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice }) => {
 
   // Auto-generate invoice when an order moves to "confirmed" and has no invoice yet
   useEffect(() => {
+    // Only auto-generate invoice for admin users
+    if (userRole !== 'admin') return;
+
     if (!Array.isArray(orders)) return;
 
     const unprocessedConfirmed = orders.filter(

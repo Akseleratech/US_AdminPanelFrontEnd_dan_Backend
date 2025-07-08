@@ -7,10 +7,12 @@ import AvailabilityCalendar from '../common/AvailabilityCalendar';
 import HalfDaySessionSelector from '../common/HalfDaySessionSelector';
 import useSpaceAvailability from '../../hooks/useSpaceAvailability';
 import { formatDateLocal, formatDateTimeLocal } from '../../utils/helpers';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
   const { customers, loading: customersLoading } = useCustomers();
   const { spaces, loading: spacesLoading } = useSpaces();
+  const { userRole } = useAuth();
 
   const [formData, setFormData] = useState({
     customerId: '',
@@ -699,14 +701,24 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       const startDateToSend = formData.startDate ? new Date(formData.startDate).toISOString() : null;
       const endDateToSend = formData.endDate ? new Date(formData.endDate).toISOString() : null;
       
-      const orderData = {
-        ...formData,
-        amountBase: parseFloat(formData.amountBase || 0),
-        pricingType: formData.pricingType,
-        startDate: startDateToSend,
-        endDate: endDateToSend,
-        source: 'manual' // Menandakan bahwa order ini dibuat manual
-      };
+      let orderData;
+
+      // When editing and current user is staff, only allow status & notes to be updated
+      if (editingOrder && userRole === 'staff') {
+        orderData = {
+          status: formData.status,
+          notes: formData.notes || ''
+        };
+      } else {
+        orderData = {
+          ...formData,
+          amountBase: parseFloat(formData.amountBase || 0),
+          pricingType: formData.pricingType,
+          startDate: startDateToSend,
+          endDate: endDateToSend,
+          source: 'manual' // Menandakan bahwa order ini dibuat manual
+        };
+      }
 
       console.log('🔍 Sending order data:', orderData);
       await onSave(orderData);

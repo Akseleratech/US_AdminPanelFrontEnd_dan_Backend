@@ -11,7 +11,8 @@ const {
   verifyAuthToken,
   getUserFromToken,
   verifyAdminAuth,
-  getUserRoleAndCity
+  getUserRoleAndCity,
+  getCurrentTaxRate
 } = require("./utils/helpers");
 const admin = require("firebase-admin");
 
@@ -105,6 +106,62 @@ const updateSpaceBookingStatus = async (db, spaceId, orderId, orderStatus, prici
   console.log(`✅ Space ${spaceId} booking status updated: ${isBooked ? 'booked' : 'available'} (${activeOrders.length} confirmed/active orders, ${hasFullDayBookings ? 'has full-day bookings' : 'hourly/halfday only'})`);
 };
 
+// Auto-generate invoice for confirmed order without invoiceId
+const autoGenerateInvoiceForOrder = async (db, orderId) => {
+  try {
+    const orderRef = db.collection('orders').doc(orderId);
+    const orderDoc = await orderRef.get();
+    if (!orderDoc.exists) return;
+
+    const order = orderDoc.data();
+    if (order.status !== 'confirmed') return; // only for confirmed orders
+    if (order.invoiceId) return; // already has invoice
+
+    // Generate new invoice ID using helpers
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const invoiceId = await generateSequentialId(`invoices_${year}_${month}`, 'INV', 4);
+
+    const taxRate = await getCurrentTaxRate();
+    const taxAmount = order.amountBase * taxRate;
+    const total = order.amountBase + taxAmount;
+
+    const issuedDate = now;
+    const dueDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const invoiceData = {
+      orderId: orderId,
+      orderIds: [orderId],
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone || null,
+      amountBase: order.amountBase,
+      taxRate,
+      taxAmount,
+      discountRate: 0,
+      discountAmount: 0,
+      total,
+      status: 'draft',
+      issuedDate,
+      dueDate,
+      paidDate: null,
+      paidAmount: 0,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: 'system',
+      createdByEmail: 'system'
+    };
+
+    await db.collection('invoices').doc(invoiceId).set(invoiceData);
+    await orderRef.update({ invoiceId });
+
+    console.log(`🧾 Auto-generated invoice ${invoiceId} for order ${orderId}`);
+  } catch (err) {
+    console.error('❌ Failed to auto-generate invoice for order', orderId, err);
+  }
+};
+
 // Main orders function
 const orders = onRequest(async (req, res) => {
   return cors(req, res, async () => {
@@ -120,17 +177,17 @@ const orders = onRequest(async (req, res) => {
           return await getOrderById(pathParts[0], req, res);
         }
       } else if (method === 'POST' && pathParts.length === 0) {
-        // POST /orders - Require admin auth
-        const isAdmin = await verifyAdminAuth(req);
-        if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+        // POST /orders - Allow admin or staff
+        const { role: requesterRole } = await getUserRoleAndCity(req);
+        if (requesterRole !== 'admin' && requesterRole !== 'staff') {
+          return handleResponse(res, { message: 'Admin or Staff access required' }, 403);
         }
-        return await createOrder(req, res);
+        return await createOrder(req, res, requesterRole);
       } else if (method === 'PUT' && pathParts.length === 1) {
-        // PUT /orders/:id - Require admin auth
-        const isAdmin = await verifyAdminAuth(req);
-        if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+        // PUT /orders/:id - Allow admin or staff (city-scoped)
+        const { role: requesterRole } = await getUserRoleAndCity(req);
+        if (requesterRole !== 'admin' && requesterRole !== 'staff') {
+          return handleResponse(res, { message: 'Admin or Staff access required' }, 403);
         }
         return await updateOrder(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
@@ -277,7 +334,7 @@ const getOrderById = async (orderId, req, res) => {
 };
 
 // POST /orders
-const createOrder = async (req, res) => {
+const createOrder = async (req, res, requesterRole) => {
   try {
     const db = getDb();
     const {
@@ -362,6 +419,14 @@ const createOrder = async (req, res) => {
     }
     // --- END NEW ---
 
+    // Staff city restriction
+    if (requesterRole === 'staff') {
+      const { cityId: requesterCityId } = await getUserRoleAndCity(req);
+      if (requesterCityId && orderData.cityId && orderData.cityId !== requesterCityId) {
+        return handleResponse(res, { message: 'Access denied' }, 403);
+      }
+    }
+
     // Use orderId as document name instead of auto-generated ID
     await db.collection('orders').doc(orderId).set(orderData);
 
@@ -371,6 +436,9 @@ const createOrder = async (req, res) => {
     } catch (err) {
       console.warn('⚠️ Unable to update space booking status:', err.message);
     }
+
+    // Auto-generate invoice for confirmed order without invoiceId
+    await autoGenerateInvoiceForOrder(db, orderId);
 
     // Return response with orderId as the main ID
     handleResponse(res, { 
@@ -418,6 +486,23 @@ const updateOrder = async (orderId, req, res) => {
     updateData.updatedBy = user ? user.uid : 'system';
     updateData.updatedByEmail = user ? user.email : 'system';
 
+    // --- Role-based access control: staff can only update orders in their city & limited fields ---
+    const { role: requesterRole, cityId: requesterCityId } = await getUserRoleAndCity(req);
+    if (requesterRole === 'staff') {
+      // Ensure the order belongs to the staff's city
+      if (prevData.cityId && requesterCityId && prevData.cityId !== requesterCityId) {
+        return handleResponse(res, { message: 'Access denied' }, 403);
+      }
+
+      // Limit editable fields for staff
+      const allowedStaffFields = ['status', 'notes'];
+      Object.keys(updateData).forEach((key) => {
+        if (!allowedStaffFields.includes(key)) {
+          delete updateData[key];
+        }
+      });
+    }
+
     try {
       const newStatus = updateData.status || prevData.status;
       const spaceIdToUpdate = updateData.spaceId || prevData.spaceId;
@@ -441,6 +526,10 @@ const updateOrder = async (orderId, req, res) => {
 
     const updatedDoc = await db.collection('orders').doc(orderId).get();
     const data = updatedDoc.data();
+
+    // Auto-generate invoice if necessary
+    await autoGenerateInvoiceForOrder(db, orderId);
+
     handleResponse(res, { 
       id: orderId,  // This will now be the orderId (e.g., ORD-20250701-GEN-MAN-0001)
       ...data 
@@ -610,26 +699,28 @@ const updateOrderStatuses = async () => {
     
     if (!confirmedOrdersSnapshot.empty) {
       console.log(`📊 Found ${confirmedOrdersSnapshot.size} confirmed orders to check...`);
-      
-      confirmedOrdersSnapshot.forEach(doc => {
+
+      for (const doc of confirmedOrdersSnapshot.docs) {
         const order = doc.data();
         const startDate = order.startDate instanceof Date ? order.startDate : new Date(order.startDate);
-        
+
+        // Ensure invoice exists
+        if (!order.invoiceId) {
+          await autoGenerateInvoiceForOrder(db, doc.id);
+        }
+
         // If start date has arrived or passed, update to active
         if (startDate <= now) {
           console.log(`📝 Updating order ${doc.id} from confirmed to active (start date: ${startDate.toISOString()})`);
-          batch.update(doc.ref, { 
+          batch.update(doc.ref, {
             status: 'active',
             updatedAt: now,
             statusUpdateReason: 'Automatic update - booking period started'
           });
-          
-          // Space should remain booked (confirmed -> active both are booked statuses)
-          // No need to update space status as it should already be booked
-          
+
           updatedCount.active++;
         }
-      });
+      }
     }
     
     // Get active/ongoing orders that should be completed (current date > end date)
@@ -640,7 +731,7 @@ const updateOrderStatuses = async () => {
     if (!activeOrdersSnapshot.empty) {
       console.log(`📊 Found ${activeOrdersSnapshot.size} active orders to check...`);
       
-      activeOrdersSnapshot.forEach(doc => {
+      for (const doc of activeOrdersSnapshot.docs) {
         const order = doc.data();
         const endDate = order.endDate instanceof Date ? order.endDate : new Date(order.endDate);
         
@@ -669,7 +760,7 @@ const updateOrderStatuses = async () => {
           
           updatedCount.completed++;
         }
-      });
+      }
     }
     
     // Execute all updates in a batch
