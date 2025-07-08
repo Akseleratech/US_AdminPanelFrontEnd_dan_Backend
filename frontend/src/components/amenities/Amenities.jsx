@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import useAmenities from '../../hooks/useAmenities';
 import AmenitiesTable from './AmenitiesTable';
 import AmenityModal from './AmenityModal';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const Amenities = () => {
   const { 
@@ -22,6 +23,7 @@ const Amenities = () => {
   const [currentAmenity, setCurrentAmenity] = useState(null);
   const [modalMode, setModalMode] = useState('add');
   const [notification, setNotification] = useState(null);
+  const { userRole } = useAuth();
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -123,13 +125,15 @@ const Amenities = () => {
             Buat, edit, dan kelola semua fasilitas yang tersedia untuk ruangan.
           </p>
         </div>
-        <button
-          onClick={() => handleOpenModal('add')}
-          className="flex items-center px-4 py-2 bg-gradient-primary text-white text-sm font-semibold rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Fasilitas
-        </button>
+        {userRole === 'admin' && (
+          <button
+            onClick={() => handleOpenModal('add')}
+            className="flex items-center px-4 py-2 bg-gradient-primary text-white text-sm font-semibold rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Fasilitas
+          </button>
+        )}
       </div>
 
       {error && <div className="bg-red-100 text-red-700 p-4 rounded-md mb-4">{error}</div>}

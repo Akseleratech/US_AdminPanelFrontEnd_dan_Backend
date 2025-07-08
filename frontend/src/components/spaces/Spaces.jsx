@@ -9,6 +9,7 @@ import { getStatusColor, getStatusIcon } from '../../utils/helpers';
 import { ordersAPI } from '../../services/api.jsx';
 import SpacesGrid from './SpacesGrid';
 import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const Spaces = () => {
   const {
@@ -33,6 +34,9 @@ const Spaces = () => {
 
   // Global refresh context for listening to orders changes
   const { refreshTriggers } = useGlobalRefresh();
+
+  // Get current user role
+  const { userRole } = useAuth();
 
   // Create a map of layanan IDs to names
   const layananMap = {};
@@ -396,13 +400,15 @@ const Spaces = () => {
             }`} />
           </button>
         </div>
-        <button
-          onClick={handleAddSpace}
-          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add New Space
-        </button>
+        {userRole === 'admin' && (
+          <button
+            onClick={handleAddSpace}
+            className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add New Space
+          </button>
+        )}
       </div>
 
       {/* Filter Panel */}

@@ -5,6 +5,7 @@ import SimpleCityModal from './SimpleCityModal.jsx';
 import useCities from '../../hooks/useCities.js';
 import useBuildings from '../../hooks/useBuildings.js';
 import useSpaces from '../../hooks/useSpaces.js';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const Cities = () => {
   const {
@@ -22,6 +23,7 @@ const Cities = () => {
 
   const { buildings, loading: buildingsLoading } = useBuildings();
   const { spaces, loading: spacesLoading } = useSpaces();
+  const { userRole } = useAuth();
 
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
@@ -326,13 +328,15 @@ const Cities = () => {
             }`} />
           </button>
         </div>
-        <button
-          onClick={handleAddNew}
-          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Kota/Kabupaten
-        </button>
+        {userRole === 'admin' && (
+          <button
+            onClick={handleAddNew}
+            className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Kota/Kabupaten
+          </button>
+        )}
       </div>
 
       {/* Filter Panel */}
@@ -598,13 +602,15 @@ const Cities = () => {
           <div className="text-gray-500 mb-4">
             {searchFilter ? 'No cities found matching your search.' : 'No cities available.'}
           </div>
-          <button
-            onClick={handleAddNew}
-            className="inline-flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add First City
-          </button>
+          {userRole === 'admin' && (
+            <button
+              onClick={handleAddNew}
+              className="inline-flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add First City
+            </button>
+          )}
         </div>
       )}
 

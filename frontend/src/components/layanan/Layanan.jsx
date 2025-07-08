@@ -4,6 +4,7 @@ import LayananTable from './LayananTable.jsx';
 import LayananModal from './LayananModal.jsx';
 import useLayanan from '../../hooks/useLayanan.js';
 import useSpaces from '../../hooks/useSpaces.js';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const Layanan = () => {
   const {
@@ -19,6 +20,7 @@ const Layanan = () => {
   } = useLayanan();
 
   const { spaces, loading: spacesLoading } = useSpaces();
+  const { userRole } = useAuth();
 
   const [showLayananModal, setShowLayananModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
@@ -147,13 +149,15 @@ const Layanan = () => {
             Filter
           </button>
         </div>
-        <button
-          onClick={handleAddNew}
-          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Layanan
-        </button>
+        {userRole === 'admin' && (
+          <button
+            onClick={handleAddNew}
+            className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Layanan
+          </button>
+        )}
       </div>
 
       {/* Error Display */}

@@ -5,6 +5,7 @@ import BuildingModal from './BuildingModal.jsx';
 import useBuildings from '../../hooks/useBuildings.js';
 import useSpaces from '../../hooks/useSpaces.js';
 import { useGlobalRefresh } from '../../contexts/GlobalRefreshContext.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const Buildings = () => {
   const {
@@ -23,6 +24,9 @@ const Buildings = () => {
 
   // Global refresh context
   const { refreshRelatedToSpaces, refreshRelatedToBuildings } = useGlobalRefresh();
+
+  // Retrieve current user role
+  const { userRole } = useAuth();
 
   const [showBuildingModal, setShowBuildingModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
@@ -272,13 +276,15 @@ const Buildings = () => {
             }`} />
           </button>
         </div>
-        <button
-          onClick={handleAddNew}
-          className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Lokasi/Gedung
-        </button>
+        {userRole === 'admin' && (
+          <button
+            onClick={handleAddNew}
+            className="flex items-center px-4 py-2 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover shadow-primary transition-all duration-200"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Lokasi/Gedung
+          </button>
+        )}
       </div>
 
       {/* Filter Panel */}
