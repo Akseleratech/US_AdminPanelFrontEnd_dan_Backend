@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Eye, Edit, Trash2, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Eye, Edit, Trash2, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
 const LayananTable = ({ layananList, onEdit, onDelete, loading = false, usedLayananIds }) => {
@@ -7,12 +7,42 @@ const LayananTable = ({ layananList, onEdit, onDelete, loading = false, usedLaya
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  // Sort layanan
+  const sortedLayanan = useMemo(() => {
+    if (!sortConfig.key || !layananList) return layananList || [];
+    
+    return [...layananList].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      // Handle special cases for sorting
+      if (sortConfig.key === 'description') {
+        aValue = typeof a.description === 'object' ? a.description?.short || a.description?.long || '' : a.description || '';
+        bValue = typeof b.description === 'object' ? b.description?.short || b.description?.long || '' : b.description || '';
+      } else if (sortConfig.key === 'totalSpaces') {
+        aValue = a.spaceCount?.total || 0;
+        bValue = b.spaceCount?.total || 0;
+      }
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [layananList, sortConfig]);
+
   // Calculate pagination values
-  const totalItems = layananList?.length || 0;
+  const totalItems = sortedLayanan?.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentLayanan = layananList?.slice(startIndex, endIndex) || [];
+  const currentLayanan = sortedLayanan?.slice(startIndex, endIndex) || [];
 
   // Pagination handlers
   const goToFirstPage = () => setCurrentPage(1);
@@ -25,6 +55,25 @@ const LayananTable = ({ layananList, onEdit, onDelete, loading = false, usedLaya
   React.useEffect(() => {
     setCurrentPage(1);
   }, [layananList?.length]);
+
+  // Sort function
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Sort icon component
+  const SortIcon = ({ column }) => {
+    if (sortConfig.key !== column) {
+      return <ChevronUp className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <ChevronUp className="w-4 h-4 text-primary-600" /> : 
+      <ChevronDown className="w-4 h-4 text-primary-600" />;
+  };
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -173,16 +222,7 @@ const LayananTable = ({ layananList, onEdit, onDelete, loading = false, usedLaya
     );
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white border border-primary-200 table-green-theme rounded-lg overflow-hidden">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-          <span className="ml-3 text-gray-500">Memuat layanan...</span>
-        </div>
-      </div>
-    );
-  }
+  // Remove this early return to consolidate loading state in table body
 
   return (
     <div className="bg-white border border-primary-200 table-green-theme rounded-lg overflow-hidden">
@@ -190,15 +230,56 @@ const LayananTable = ({ layananList, onEdit, onDelete, loading = false, usedLaya
         <table className="w-full table-auto divide-y divide-primary-200">
           <thead className="bg-primary-50 border-b border-primary-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Nama Layanan</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Deskripsi</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider">Total Spaces</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('name')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Nama Layanan</span>
+                  <SortIcon column="name" />
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('description')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Deskripsi</span>
+                  <SortIcon column="description" />
+                </button>
+              </th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('totalSpaces')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Total Spaces</span>
+                  <SortIcon column="totalSpaces" />
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('status')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Status</span>
+                  <SortIcon column="status" />
+                </button>
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-primary-100">
-            {currentLayanan && currentLayanan.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan="5" className="px-6 py-8 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                    <p className="text-gray-500 font-medium">Memuat layanan...</p>
+                  </div>
+                </td>
+              </tr>
+            ) : currentLayanan && currentLayanan.length > 0 ? (
               currentLayanan.map((layanan) => (
                 <tr key={layanan.id} className="hover:bg-primary-50 transition-colors duration-150">
                   <td className="px-6 py-4 align-middle">

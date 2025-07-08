@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Edit, Trash2, User, Eye, Image, Upload, Phone, Mail, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import React, { useRef, useState, useMemo } from 'react';
+import { Edit, Trash2, User, Eye, Image, Upload, Phone, Mail, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
 
 const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, loading, activeCustomerEmails = new Set() }) => {
   const fileInputRefs = useRef({});
@@ -8,12 +8,47 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  // Sort customers
+  const sortedCustomers = useMemo(() => {
+    if (!sortConfig.key || !customers) return customers || [];
+    
+    return [...customers].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      // Handle special cases for sorting
+      if (sortConfig.key === 'isActive') {
+        const aActive = activeCustomerEmails.has((a.email || '').toLowerCase());
+        const bActive = activeCustomerEmails.has((b.email || '').toLowerCase());
+        aValue = aActive ? 1 : 0;
+        bValue = bActive ? 1 : 0;
+      } else if (sortConfig.key === 'joinDate') {
+        aValue = new Date(a.joinDate || 0).getTime();
+        bValue = new Date(b.joinDate || 0).getTime();
+      } else if (sortConfig.key === 'createdBy') {
+        aValue = a.createdBy?.displayName || '';
+        bValue = b.createdBy?.displayName || '';
+      }
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [customers, sortConfig, activeCustomerEmails]);
+
   // Calculate pagination values
-  const totalItems = customers?.length || 0;
+  const totalItems = sortedCustomers?.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentCustomers = customers?.slice(startIndex, endIndex) || [];
+  const currentCustomers = sortedCustomers?.slice(startIndex, endIndex) || [];
 
   // Pagination handlers
   const goToFirstPage = () => setCurrentPage(1);
@@ -26,6 +61,25 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
   React.useEffect(() => {
     setCurrentPage(1);
   }, [customers?.length]);
+
+  // Sort function
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Sort icon component
+  const SortIcon = ({ column }) => {
+    if (sortConfig.key !== column) {
+      return <ChevronUp className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <ChevronUp className="w-4 h-4 text-primary-600" /> : 
+      <ChevronDown className="w-4 h-4 text-primary-600" />;
+  };
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -206,13 +260,69 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer ID</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('customerId')}
+                  className="group flex items-center space-x-1 hover:text-gray-700"
+                >
+                  <span>Customer ID</span>
+                  <SortIcon column="customerId" />
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('name')}
+                  className="group flex items-center space-x-1 hover:text-gray-700"
+                >
+                  <span>Name</span>
+                  <SortIcon column="name" />
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('email')}
+                  className="group flex items-center space-x-1 hover:text-gray-700"
+                >
+                  <span>Contact</span>
+                  <SortIcon column="email" />
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('gender')}
+                  className="group flex items-center space-x-1 hover:text-gray-700"
+                >
+                  <span>Gender</span>
+                  <SortIcon column="gender" />
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('joinDate')}
+                  className="group flex items-center space-x-1 hover:text-gray-700"
+                >
+                  <span>Join Date</span>
+                  <SortIcon column="joinDate" />
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('isActive')}
+                  className="group flex items-center space-x-1 hover:text-gray-700"
+                >
+                  <span>Status</span>
+                  <SortIcon column="isActive" />
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('createdBy')}
+                  className="group flex items-center space-x-1 hover:text-gray-700"
+                >
+                  <span>Created By</span>
+                  <SortIcon column="createdBy" />
+                </button>
+              </th>
               <th scope="col" className="relative px-6 py-3">
                 <span className="sr-only">Actions</span>
               </th>
@@ -221,10 +331,10 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
           <tbody className="bg-white divide-y divide-primary-100">
             {loading ? (
               <tr>
-                <td colSpan="9" className="px-6 py-8 text-center">
+                <td colSpan="8" className="px-6 py-8 text-center">
                   <div className="flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-                    <p className="text-gray-500 font-medium">Loading customers...</p>
+                    <p className="text-gray-500 font-medium">Memuat pelanggan...</p>
                   </div>
                 </td>
               </tr>
@@ -303,11 +413,11 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
               ))
             ) : (
               <tr>
-                <td colSpan="9" className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan="8" className="px-6 py-8 text-center text-sm text-gray-500">
                   <div className="flex flex-col items-center justify-center">
-                    <User className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="text-gray-500 font-medium">No customers found</p>
-                    <p className="text-gray-400 text-xs mt-1">Start by adding a new customer.</p>
+                    <User className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <p className="text-gray-500 font-medium">Tidak ada pelanggan</p>
+                    <p className="text-gray-400 text-xs mt-1">Mulai dengan menambahkan pelanggan baru.</p>
                   </div>
                 </td>
               </tr>

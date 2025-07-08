@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Edit, Trash2, MapPin, Image, Upload, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import React, { useRef, useState, useMemo } from 'react';
+import { Edit, Trash2, MapPin, Image, Upload, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
 
 const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCityIds }) => {
   const fileInputRefs = useRef({});
@@ -8,12 +8,42 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  // Sort cities
+  const sortedCities = useMemo(() => {
+    if (!sortConfig.key || !cities) return cities || [];
+    
+    return [...cities].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      // Handle special cases for sorting
+      if (sortConfig.key === 'country') {
+        aValue = typeof a.country === 'object' ? a.country.name : a.country || '';
+        bValue = typeof b.country === 'object' ? b.country.name : b.country || '';
+      } else if (sortConfig.key === 'totalSpaces') {
+        aValue = Number(a.totalSpaces) || 0;
+        bValue = Number(b.totalSpaces) || 0;
+      }
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [cities, sortConfig]);
+
   // Calculate pagination values
-  const totalItems = cities?.length || 0;
+  const totalItems = sortedCities?.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentCities = cities?.slice(startIndex, endIndex) || [];
+  const currentCities = sortedCities?.slice(startIndex, endIndex) || [];
 
   // Pagination handlers
   const goToFirstPage = () => setCurrentPage(1);
@@ -26,6 +56,25 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
   React.useEffect(() => {
     setCurrentPage(1);
   }, [cities?.length]);
+
+  // Sort function
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Sort icon component
+  const SortIcon = ({ column }) => {
+    if (sortConfig.key !== column) {
+      return <ChevronUp className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <ChevronUp className="w-4 h-4 text-primary-600" /> : 
+      <ChevronDown className="w-4 h-4 text-primary-600" />;
+  };
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -197,11 +246,51 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
           <thead className="bg-primary-50">
             <tr>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Thumbnail</th>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Nama Kota</th>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Provinsi</th>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Negara</th>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Lokasi</th>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Spaces</th>
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('name')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Nama Kota</span>
+                  <SortIcon column="name" />
+                </button>
+              </th>
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('province')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Provinsi</span>
+                  <SortIcon column="province" />
+                </button>
+              </th>
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('country')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Negara</span>
+                  <SortIcon column="country" />
+                </button>
+              </th>
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('locations')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Lokasi</span>
+                  <SortIcon column="locations" />
+                </button>
+              </th>
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('totalSpaces')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Spaces</span>
+                  <SortIcon column="totalSpaces" />
+                </button>
+              </th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { Edit, Trash2, Image, Package, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Edit, Trash2, Image, Package, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
 const AmenitiesTable = ({ amenities, onEdit, onDelete, onToggleStatus, loading, usedAmenityIds }) => {
@@ -8,12 +8,45 @@ const AmenitiesTable = ({ amenities, onEdit, onDelete, onToggleStatus, loading, 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  // Sort amenities
+  const sortedAmenities = useMemo(() => {
+    if (!sortConfig.key || !amenities) return amenities || [];
+    
+    return [...amenities].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      // Handle special cases for sorting
+      if (sortConfig.key === 'totalSpaces') {
+        aValue = a.spaceCount?.total || 0;
+        bValue = b.spaceCount?.total || 0;
+      } else if (sortConfig.key === 'isActive') {
+        aValue = a.isActive ? 1 : 0;
+        bValue = b.isActive ? 1 : 0;
+      } else if (sortConfig.key === 'createdAt') {
+        aValue = a.createdAt?.seconds || 0;
+        bValue = b.createdAt?.seconds || 0;
+      }
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [amenities, sortConfig]);
+
   // Calculate pagination values
-  const totalItems = amenities?.length || 0;
+  const totalItems = sortedAmenities?.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentAmenities = amenities?.slice(startIndex, endIndex) || [];
+  const currentAmenities = sortedAmenities?.slice(startIndex, endIndex) || [];
 
   // Pagination handlers
   const goToFirstPage = () => setCurrentPage(1);
@@ -26,6 +59,25 @@ const AmenitiesTable = ({ amenities, onEdit, onDelete, onToggleStatus, loading, 
   React.useEffect(() => {
     setCurrentPage(1);
   }, [amenities?.length]);
+
+  // Sort function
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Sort icon component
+  const SortIcon = ({ column }) => {
+    if (sortConfig.key !== column) {
+      return <ChevronUp className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <ChevronUp className="w-4 h-4 text-primary-600" /> : 
+      <ChevronDown className="w-4 h-4 text-primary-600" />;
+  };
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -181,11 +233,51 @@ const AmenitiesTable = ({ amenities, onEdit, onDelete, onToggleStatus, loading, 
           <thead className="bg-primary-50 border-b border-primary-200">
             <tr>
               <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider">Icon</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Name</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Description</th>
-              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider">Total Spaces</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Status</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Created At</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('name')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Name</span>
+                  <SortIcon column="name" />
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('description')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Description</span>
+                  <SortIcon column="description" />
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('totalSpaces')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Total Spaces</span>
+                  <SortIcon column="totalSpaces" />
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('isActive')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Status</span>
+                  <SortIcon column="isActive" />
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('createdAt')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Created At</span>
+                  <SortIcon column="createdAt" />
+                </button>
+              </th>
               <th scope="col" className="relative px-6 py-3 text-right text-xs font-medium text-primary-700 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>

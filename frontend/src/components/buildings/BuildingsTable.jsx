@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Eye, Edit, Trash2, MapPin, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Eye, Edit, Trash2, MapPin, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 
 const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds }) => {
@@ -10,12 +10,45 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  // Sort buildings
+  const sortedBuildings = useMemo(() => {
+    if (!sortConfig.key || !buildings) return buildings || [];
+    
+    return [...buildings].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      // Handle special cases for sorting
+      if (sortConfig.key === 'location') {
+        aValue = `${a.location?.city || ''}, ${a.location?.province || ''}`;
+        bValue = `${b.location?.city || ''}, ${b.location?.province || ''}`;
+      } else if (sortConfig.key === 'totalSpaces') {
+        aValue = a.statistics?.totalSpaces || 0;
+        bValue = b.statistics?.totalSpaces || 0;
+      } else if (sortConfig.key === 'isActive') {
+        aValue = a.isActive ? 1 : 0;
+        bValue = b.isActive ? 1 : 0;
+      }
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [buildings, sortConfig]);
+
   // Calculate pagination values
-  const totalItems = buildings?.length || 0;
+  const totalItems = sortedBuildings?.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentBuildings = buildings?.slice(startIndex, endIndex) || [];
+  const currentBuildings = sortedBuildings?.slice(startIndex, endIndex) || [];
 
   // Pagination handlers
   const goToFirstPage = () => setCurrentPage(1);
@@ -28,6 +61,25 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
   React.useEffect(() => {
     setCurrentPage(1);
   }, [buildings?.length]);
+
+  // Sort function
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Sort icon component
+  const SortIcon = ({ column }) => {
+    if (sortConfig.key !== column) {
+      return <ChevronUp className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <ChevronUp className="w-4 h-4 text-primary-600" /> : 
+      <ChevronDown className="w-4 h-4 text-primary-600" />;
+  };
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -186,19 +238,49 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
                 Image
               </th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider max-w-[200px]">
-                Nama Gedung
+                <button 
+                  onClick={() => handleSort('name')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Nama Gedung</span>
+                  <SortIcon column="name" />
+                </button>
               </th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-28">
-                Brand
+                <button 
+                  onClick={() => handleSort('brand')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Brand</span>
+                  <SortIcon column="brand" />
+                </button>
               </th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider max-w-[300px]">
-                Lokasi
+                <button 
+                  onClick={() => handleSort('location')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Lokasi</span>
+                  <SortIcon column="location" />
+                </button>
               </th>
               <th className="px-3 md:px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider w-28">
-                Total Spaces
+                <button 
+                  onClick={() => handleSort('totalSpaces')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Total Spaces</span>
+                  <SortIcon column="totalSpaces" />
+                </button>
               </th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-28">
-                Status
+                <button 
+                  onClick={() => handleSort('isActive')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Status</span>
+                  <SortIcon column="isActive" />
+                </button>
               </th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-28">
                 Actions
@@ -208,7 +290,7 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
           <tbody className="bg-white divide-y divide-primary-100">
             {loading ? (
               <tr>
-                <td colSpan="7" className="px-3 md:px-6 py-8 text-center">
+                <td colSpan="7" className="px-6 py-8 text-center">
                   <div className="flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
                     <p className="text-gray-500 font-medium">Memuat gedung...</p>

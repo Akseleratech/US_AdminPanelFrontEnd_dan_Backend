@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Edit, Trash2, Calendar, MapPin, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Edit, Trash2, Calendar, MapPin, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { 
   getStatusColor, 
   getStatusIcon, 
@@ -13,7 +13,7 @@ import useInvoices from '../../hooks/useInvoices';
 import { ordersAPI } from '../../services/api.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 
-const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRefresh }) => {
+const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRefresh, loading = false }) => {
   const { spaces, loading: spacesLoading } = useSpaces();
   const { layananList } = useLayanan();
   const { generateInvoiceFromOrder } = useInvoices();
@@ -23,12 +23,48 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  // Sort orders
+  const sortedOrders = useMemo(() => {
+    if (!sortConfig.key) return orders;
+    
+    return [...orders].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      // Handle special cases for sorting
+      if (sortConfig.key === 'customerName') {
+        aValue = a.customerName || a.customer || '';
+        bValue = b.customerName || b.customer || '';
+      } else if (sortConfig.key === 'spaceName') {
+        aValue = a.spaceName || a.location || '';
+        bValue = b.spaceName || b.location || '';
+      } else if (sortConfig.key === 'startDate' || sortConfig.key === 'endDate') {
+        aValue = new Date(aValue || 0).getTime();
+        bValue = new Date(bValue || 0).getTime();
+      } else if (sortConfig.key === 'amountBase') {
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+      }
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [orders, sortConfig]);
+
   // Calculate pagination values
-  const totalItems = orders.length;
+  const totalItems = sortedOrders.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentOrders = orders.slice(startIndex, endIndex);
+  const currentOrders = sortedOrders.slice(startIndex, endIndex);
 
   // Pagination handlers
   const goToFirstPage = () => setCurrentPage(1);
@@ -41,6 +77,25 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
   React.useEffect(() => {
     setCurrentPage(1);
   }, [orders.length]);
+
+  // Sort function
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Sort icon component
+  const SortIcon = ({ column }) => {
+    if (sortConfig.key !== column) {
+      return <ChevronUp className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <ChevronUp className="w-4 h-4 text-primary-600" /> : 
+      <ChevronDown className="w-4 h-4 text-primary-600" />;
+  };
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -420,19 +475,76 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
         <table className="min-w-full divide-y divide-primary-200">
           <thead className="bg-primary-50 border-b border-primary-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[200px]">Order ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[180px]">Rentang Tanggal</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[180px]">Nama</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[140px]">Space</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[200px]">
+                <button 
+                  onClick={() => handleSort('orderId')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Order ID</span>
+                  <SortIcon column="orderId" />
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[180px]">
+                <button 
+                  onClick={() => handleSort('startDate')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Rentang Tanggal</span>
+                  <SortIcon column="startDate" />
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[180px]">
+                <button 
+                  onClick={() => handleSort('customerName')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Nama</span>
+                  <SortIcon column="customerName" />
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[140px]">
+                <button 
+                  onClick={() => handleSort('spaceName')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Space</span>
+                  <SortIcon column="spaceName" />
+                </button>
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Layanan</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Base Price</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">
+                <button 
+                  onClick={() => handleSort('amountBase')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Base Price</span>
+                  <SortIcon column="amountBase" />
+                </button>
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[120px]">Invoice</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[200px]">Status Order</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[200px]">
+                <button 
+                  onClick={() => handleSort('status')}
+                  className="group flex items-center space-x-1 hover:text-primary-900"
+                >
+                  <span>Status Order</span>
+                  <SortIcon column="status" />
+                </button>
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[100px]">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-primary-100">
-            {currentOrders && currentOrders.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan="9" className="px-6 py-8 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                    <p className="text-gray-500 font-medium">Memuat order...</p>
+                  </div>
+                </td>
+              </tr>
+            ) : currentOrders && currentOrders.length > 0 ? (
               currentOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-primary-50 transition-colors duration-150">
                   {/* Order ID */}
@@ -552,8 +664,8 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
                 <td colSpan="9" className="px-6 py-8 text-center text-sm text-gray-500">
                   <div className="flex flex-col items-center justify-center">
                     <div className="text-gray-400 text-lg mb-2">📦</div>
-                    <p className="text-gray-500 font-medium">No orders found</p>
-                    <p className="text-gray-400 text-xs mt-1">Orders will appear here when available.</p>
+                    <p className="text-gray-500 font-medium">Tidak ada order</p>
+                    <p className="text-gray-400 text-xs mt-1">Order akan muncul di sini ketika tersedia.</p>
                   </div>
                 </td>
               </tr>

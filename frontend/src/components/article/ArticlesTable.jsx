@@ -1,17 +1,50 @@
-import React, { useState } from 'react';
-import { Edit2, Trash2, Eye, EyeOff, Image as ImageIcon, Star, User, FolderOpen, Tag, Calendar, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Edit2, Trash2, Eye, EyeOff, Image as ImageIcon, Star, User, FolderOpen, Tag, Calendar, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
 
 const ArticlesTable = ({ articles, loading, onEdit, onDelete, onToggleStatus }) => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  // Sort articles
+  const sortedArticles = useMemo(() => {
+    if (!sortConfig.key || !articles) return articles || [];
+    
+    return [...articles].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      // Handle special cases for sorting
+      if (sortConfig.key === 'isFeatured') {
+        aValue = a.isFeatured ? 1 : 0;
+        bValue = b.isFeatured ? 1 : 0;
+      } else if (sortConfig.key === 'createdAt') {
+        aValue = a.metadata?.createdAt?.seconds || a.metadata?.createdAt?._seconds || 0;
+        bValue = b.metadata?.createdAt?.seconds || b.metadata?.createdAt?._seconds || 0;
+      } else if (sortConfig.key === 'publishedAt') {
+        aValue = a.publishedAt?.seconds || a.publishedAt?._seconds || 0;
+        bValue = b.publishedAt?.seconds || b.publishedAt?._seconds || 0;
+      }
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [articles, sortConfig]);
+
   // Calculate pagination values
-  const totalItems = articles?.length || 0;
+  const totalItems = sortedArticles?.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentArticles = articles?.slice(startIndex, endIndex) || [];
+  const currentArticles = sortedArticles?.slice(startIndex, endIndex) || [];
 
   // Pagination handlers
   const goToFirstPage = () => setCurrentPage(1);
@@ -24,6 +57,25 @@ const ArticlesTable = ({ articles, loading, onEdit, onDelete, onToggleStatus }) 
   React.useEffect(() => {
     setCurrentPage(1);
   }, [articles?.length]);
+
+  // Sort function
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Sort icon component
+  const SortIcon = ({ column }) => {
+    if (sortConfig.key !== column) {
+      return <ChevronUp className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <ChevronUp className="w-4 h-4 text-blue-600" /> : 
+      <ChevronDown className="w-4 h-4 text-blue-600" />;
+  };
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -212,30 +264,7 @@ const ArticlesTable = ({ articles, loading, onEdit, onDelete, onToggleStatus }) 
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Daftar Article</h3>
-        </div>
-        <div className="p-6">
-          <div className="animate-pulse space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gray-200 rounded"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-                </div>
-                <div className="w-20 h-8 bg-gray-200 rounded"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Remove this early return to consolidate loading state in table body
 
   return (
     <div className="bg-white shadow rounded-lg">
@@ -243,31 +272,45 @@ const ArticlesTable = ({ articles, loading, onEdit, onDelete, onToggleStatus }) 
         <h3 className="text-lg font-medium text-gray-900">Daftar Article</h3>
       </div>
 
-      {currentArticles.length === 0 ? (
-        <div className="p-6 text-center">
-          <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada article</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Mulai dengan membuat article pertama Anda.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <button 
+                  onClick={() => handleSort('title')}
+                  className="group flex items-center space-x-1 hover:text-gray-700"
+                >
+                  <span>Article</span>
+                  <SortIcon column="title" />
+                </button>
+              </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Article
+                    <button 
+                      onClick={() => handleSort('author')}
+                      className="group flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>Penulis & Kategori</span>
+                      <SortIcon column="author" />
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Penulis & Kategori
+                    <button 
+                      onClick={() => handleSort('status')}
+                      className="group flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>Status</span>
+                      <SortIcon column="status" />
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tanggal
+                    <button 
+                      onClick={() => handleSort('createdAt')}
+                      className="group flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>Tanggal</span>
+                      <SortIcon column="createdAt" />
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Aksi
@@ -275,8 +318,28 @@ const ArticlesTable = ({ articles, loading, onEdit, onDelete, onToggleStatus }) 
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {currentArticles.map((article) => (
-                  <tr key={article.id} className="hover:bg-gray-50">
+                {loading ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-8 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                        <p className="text-gray-500 font-medium">Memuat article...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : currentArticles.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-8 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <p className="text-gray-500 font-medium">Tidak ada article</p>
+                        <p className="text-gray-400 text-xs mt-1">Mulai dengan membuat article pertama Anda.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  currentArticles.map((article) => (
+                    <tr key={article.id} className="hover:bg-gray-50">
                     {/* Article Info */}
                     <td className="px-6 py-4">
                       <div className="flex items-start space-x-4">
@@ -403,15 +466,14 @@ const ArticlesTable = ({ articles, loading, onEdit, onDelete, onToggleStatus }) 
                       </div>
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>
           
           {/* Pagination Controls */}
           <PaginationControls />
-        </>
-      )}
     </div>
   );
 };

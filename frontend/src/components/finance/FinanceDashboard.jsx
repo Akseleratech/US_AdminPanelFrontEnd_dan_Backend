@@ -193,7 +193,7 @@ const FinanceDashboard = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Invoices</h3>
           <div className="space-y-3">
-            {dashboardData.recentInvoices.map((invoice) => (
+            {dashboardData.recentInvoices.slice(0, 5).map((invoice) => (
               <div key={invoice.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
