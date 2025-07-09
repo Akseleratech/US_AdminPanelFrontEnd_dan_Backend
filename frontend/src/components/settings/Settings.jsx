@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { doc, getDoc, setDoc, collection, addDoc, getDocs, query, where, deleteDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider, getAuth, connectAuthEmulator } from 'firebase/auth';
+import { initializeApp, getApp, deleteApp } from 'firebase/app';
 import { db, auth } from '../../config/firebase';
 import { useAuth } from '../auth/AuthContext';
 import { Save, Percent, AlertCircle, Users, Key, UserPlus, Shield, Trash2, Settings as SettingsIcon } from 'lucide-react';
@@ -164,10 +165,28 @@ export default function Settings() {
     setError('');
     setSuccess('');
 
+    let secondaryApp = null;
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, newAdminData.email, newAdminData.password);
+      // Create a secondary Firebase app so that creating a new user does not switch the current session
+      const primaryApp = getApp();
+      secondaryApp = initializeApp(primaryApp.options, `Secondary-${Date.now()}`);
+      const secondaryAuth = getAuth(secondaryApp);
+
+      // Connect to emulator in development mode (optional)
+      if (import.meta.env.DEV || window.location.hostname === 'localhost') {
+        try {
+          connectAuthEmulator(secondaryAuth, 'http://127.0.0.1:9099', { disableWarnings: true });
+        } catch (e) {
+          console.warn('Secondary auth emulator already connected or failed to connect:', e.message);
+        }
+      }
+
+      // Create the user using the secondary auth instance (keeps current admin logged in)
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, newAdminData.email, newAdminData.password);
       const newUser = userCredential.user;
 
+      // Store admin metadata in Firestore using the main app's credentials
       await setDoc(doc(db, 'admins', newUser.uid), {
         email: newAdminData.email,
         name: newAdminData.name,
@@ -193,6 +212,15 @@ export default function Settings() {
         setError('Gagal menambahkan admin: ' + err.message);
       }
     } finally {
+      // Clean up the secondary app to avoid memory leaks
+      if (secondaryApp) {
+        try {
+          await getAuth(secondaryApp).signOut();
+          await deleteApp(secondaryApp);
+        } catch (cleanupErr) {
+          console.warn('Failed to clean up secondary Firebase app:', cleanupErr);
+        }
+      }
       setSaving(false);
     }
   };
