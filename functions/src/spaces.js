@@ -24,6 +24,15 @@ const spaces = onRequest(async (req, res) => {
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);
 
+      // Remove '/api' if hosting adds it
+      if (pathParts[0] === 'api') {
+        pathParts.shift();
+      }
+      // NEW: Strip resource segment to normalize routing
+      if (pathParts[0] === 'spaces') {
+        pathParts.shift();
+      }
+
       // Route handling
       if (method === 'GET') {
         if (pathParts.length === 0) {

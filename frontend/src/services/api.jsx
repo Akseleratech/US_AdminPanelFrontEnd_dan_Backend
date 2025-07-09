@@ -7,7 +7,7 @@ import { auth } from '../config/firebase.jsx';
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.DEV
-    ? 'http://localhost:5555/demo-unionspace-crm/asia-southeast1'
+    ? 'http://localhost:5555/unionspace-w9v242/asia-southeast1'
     : '/api');
 
 // Export API_BASE_URL for use in other services
@@ -200,22 +200,23 @@ const fileToBase64 = (file) => {
 export const citiesAPI = {
   getAll: () => apiCall('/cities'),
   getById: (id) => apiCall(`/cities/${id}`),
-  create: (data) => fetch(`${API_BASE_URL}/cities`, {
+  create: (data) => apiCall('/cities', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   }),
-  update: (id, data) => fetch(`${API_BASE_URL}/cities/${id}`, {
+  update: (id, data) => apiCall(`/cities/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   }),
-  delete: (id) => fetch(`${API_BASE_URL}/cities/${id}`, { method: 'DELETE' })
+  delete: (id) => apiCall(`/cities/${id}`, { method: 'DELETE' })
 };
 
 // Layanan API (Services)
 export const layananAPI = {
-  getAll: () => apiCall('/services'),
+  getAll: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return apiCall(`/services${queryParams ? `?${queryParams}` : ''}`);
+  },
   getById: (id) => apiCall(`/services/${id}`),
   create: (data) => apiCall('/services', {
     method: 'POST',
@@ -235,7 +236,7 @@ export const buildingsAPI = {
     const defaultParams = {
       page: 1,
       limit: 100, // Get more buildings for dropdown
-      sortBy: 'metadata.createdAt',
+      sortBy: 'metadata.createdAt', // Fix: match backend field structure
       sortOrder: 'desc',
       ...params
     };
@@ -322,4 +323,43 @@ export const articlesAPI = {
       })
     });
   }
+};
+
+// Invoices API
+export const invoicesAPI = {
+  getAll: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return apiCall(`/invoices${queryParams ? `?${queryParams}` : ''}`);
+  },
+  getById: (id) => apiCall(`/invoices/${id}`),
+  create: (data) => apiCall('/invoices', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  update: (id, data) => apiCall(`/invoices/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  delete: (id) => apiCall(`/invoices/${id}`, { method: 'DELETE' }),
+  generateFromOrder: (orderId) => apiCall(`/invoices/${orderId}/generate-from-order`, {
+    method: 'POST'
+  })
+};
+
+// Customers API
+export const customersAPI = {
+  getAll: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return apiCall(`/customers${queryParams ? `?${queryParams}` : ''}`);
+  },
+  getById: (id) => apiCall(`/customers/${id}`),
+  create: (data) => apiCall('/customers', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  update: (id, data) => apiCall(`/customers/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  delete: (id) => apiCall(`/customers/${id}`, { method: 'DELETE' })
 };

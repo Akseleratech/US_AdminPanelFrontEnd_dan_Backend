@@ -18,6 +18,15 @@ const services = onRequest(async (req, res) => {
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);
 
+      // Strip '/api' prefix inserted by Firebase Hosting rewrite, if present
+      if (pathParts[0] === 'api') {
+        pathParts.shift();
+      }
+      // NEW: Strip resource name ('services') if still present to normalize routing
+      if (pathParts[0] === 'services') {
+        pathParts.shift();
+      }
+
       // Route handling
       if (method === 'GET') {
         if (pathParts.length === 0) {
@@ -62,7 +71,7 @@ const services = onRequest(async (req, res) => {
 const getAllServices = async (req, res) => {
   try {
     const db = getDb();
-    const {search, status, limit, category, type} = req.query;
+    const {search, status, limit, category, type, skipStats} = req.query;
     let servicesRef = db.collection('layanan');
 
     // Build query
@@ -86,32 +95,47 @@ const getAllServices = async (req, res) => {
     const snapshot = await servicesRef.get();
     let services = [];
 
-    // Get all spaces to count usage
-    const spacesSnapshot = await db.collection('spaces').get();
+    // Conditionally get spaces data for performance optimization
     const spacesData = [];
-    spacesSnapshot.forEach((doc) => {
-      spacesData.push(doc.data());
-    });
+    if (skipStats !== 'true') {
+      // Get all spaces to count usage (only if not skipping stats)
+      const spacesSnapshot = await db.collection('spaces').get();
+      spacesSnapshot.forEach((doc) => {
+        spacesData.push(doc.data());
+      });
+    }
 
     snapshot.forEach((doc) => {
       const data = doc.data();
 
-      // Count spaces using this service (enhanced matching)
-      const serviceSpaces = spacesData.filter((space) => {
-        // Direct category match with service name (most common)
-        if (space.category === data.name) return true;
+      let spaceCount = {
+        total: 0,
+        active: 0,
+      };
 
-        // Alternative matches for backwards compatibility
-        if (space.category === (data.layananId || data.serviceId) || space.serviceId === (data.layananId || data.serviceId)) return true;
+      // Only calculate space counts if not skipping stats
+      if (skipStats !== 'true' && spacesData.length > 0) {
+        // Count spaces using this service (enhanced matching)
+        const serviceSpaces = spacesData.filter((space) => {
+          // Direct category match with service name (most common)
+          if (space.category === data.name) return true;
 
-        // Case-insensitive match
-        if (space.category && data.name &&
-            space.category.toLowerCase() === data.name.toLowerCase()) return true;
+          // Alternative matches for backwards compatibility
+          if (space.category === (data.layananId || data.serviceId) || space.serviceId === (data.layananId || data.serviceId)) return true;
 
-        return false;
-      });
+          // Case-insensitive match
+          if (space.category && data.name &&
+              space.category.toLowerCase() === data.name.toLowerCase()) return true;
 
-      const activeSpaces = serviceSpaces.filter((space) => space.isActive === true);
+          return false;
+        });
+
+        const activeSpaces = serviceSpaces.filter((space) => space.isActive === true);
+        spaceCount = {
+          total: serviceSpaces.length,
+          active: activeSpaces.length,
+        };
+      }
 
       services.push({
         id: doc.id,
@@ -119,11 +143,8 @@ const getAllServices = async (req, res) => {
         // Frontend-compatible fields
         description: data.description?.short || data.description?.long || 'No description available',
         price: data.metrics?.averageLifetimeValue || 0,
-        // Add space count
-        spaceCount: {
-          total: serviceSpaces.length,
-          active: activeSpaces.length,
-        },
+        // Add space count (0 if skipped)
+        spaceCount,
         // Ensure layananId is available (for backward compatibility)
         layananId: data.layananId || data.serviceId || doc.id,
       });

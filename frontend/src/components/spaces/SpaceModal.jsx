@@ -60,21 +60,7 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
     { value: 'phone-booth', label: 'Phone Booth' }
   ];
 
-  // Categories for amenities
-  const amenityCategories = [
-    { value: 'general', label: 'General' },
-    { value: 'technology', label: 'Technology' },
-    { value: 'furniture', label: 'Furniture' },
-    { value: 'facilities', label: 'Facilities' },
-    { value: 'services', label: 'Services' },
-    { value: 'safety', label: 'Safety & Security' }
-  ];
-
-  const amenityTypes = [
-    { value: 'common', label: 'Common' },
-    { value: 'premium', label: 'Premium' },
-    { value: 'specialized', label: 'Specialized' }
-  ];
+  // Note: Amenities are now loaded dynamically from the database
 
   // Fetch available services, buildings, and amenities
   const fetchData = async () => {
@@ -82,8 +68,8 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
       console.log('🔄 SpaceModal: Fetching layanan, buildings, and amenities...');
       
       // Test API calls individually for comparison
-      console.log('🔄 SpaceModal: Testing layananAPI.getAll() first...');
-      const servicesResponse = await layananAPI.getAll();
+      console.log('🔄 SpaceModal: Testing layananAPI.getAll() with skipStats for performance...');
+      const servicesResponse = await layananAPI.getAll({ skipStats: 'true' });
       console.log('📊 SpaceModal: Services API response:', servicesResponse);
       
       // Also test manual /api/services for comparison
@@ -99,13 +85,16 @@ const SpaceModal = ({ isOpen, onClose, onSave, space, mode }) => {
       console.log('🔄 SpaceModal: Testing buildingsAPI.getAll()...');
       console.log('🔍 SpaceModal: buildingsAPI object:', buildingsAPI);
       console.log('🔍 SpaceModal: buildingsAPI.getAll function:', typeof buildingsAPI.getAll);
-      console.log('🔄 SpaceModal: Using UPDATED buildingsAPI.getAll() with query params...');
+      console.log('🔄 SpaceModal: Calling buildingsAPI.getAll() with specific params...');
       
       let buildingsResponse;
       try {
-        console.log('🔄 SpaceModal: Making buildingsAPI.getAll() call...');
-        buildingsResponse = await buildingsAPI.getAll();
+        console.log('🔄 SpaceModal: Making buildingsAPI.getAll() call with params...');
+        const buildingParams = { limit: 50, page: 1, sortBy: 'metadata.createdAt', sortOrder: 'desc' };
+        console.log('🔧 SpaceModal: Building API params:', buildingParams);
+        buildingsResponse = await buildingsAPI.getAll(buildingParams);
         console.log('🏢 SpaceModal: Buildings API call successful:', buildingsResponse);
+        console.log('🔍 SpaceModal: Raw buildings response structure:', JSON.stringify(buildingsResponse, null, 2));
       } catch (buildingsError) {
         console.error('💥 SpaceModal: Buildings API failed:', buildingsError);
         console.log('🔄 SpaceModal: Trying manual fetch to /api/buildings...');

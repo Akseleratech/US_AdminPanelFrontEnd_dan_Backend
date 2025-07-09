@@ -170,6 +170,12 @@ const promos = onRequest(async (req, res) => {
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);
 
+      if (pathParts[0] === 'api') {
+        pathParts.shift();
+      }
+      // NEW: Strip 'promos' resource segment
+      if (pathParts[0] === 'promos') pathParts.shift();
+
       if (method === 'GET') {
         if (pathParts.length === 0) {
           return await getAllPromos(req, res);

@@ -23,58 +23,45 @@
       "**/node_modules/**"
     ],
     "rewrites": [
-      {
-        "source": "/api/dashboard/**",
-        "function": "dashboard"
-      },
-      {
-        "source": "/api/cities/**",
-        "function": "cities"
-      },
-      {
-        "source": "/api/services/**",
-        "function": "services"
-      },
-      {
-        "source": "/api/spaces/**",
-        "function": "spaces"
-      },
-      {
-        "source": "/api/buildings/**",
-        "function": "buildings"
-      },
-      {
-        "source": "/api/orders/**",
-        "function": "orders"
-      },
-      {
-        "source": "/api/database/**",
-        "function": "database"
-      },
-      {
-        "source": "/api/amenities/**",
-        "function": "amenities"
-      },
-      {
-        "source": "/api/customers/**",
-        "function": "customers"
-      },
-      {
-        "source": "/api/promos/**",
-        "function": "promos"
-      },
-      {
-        "source": "/api/articles/**",
-        "function": "articles"
-      },
-      {
-        "source": "/api/health",
-        "function": "health"
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
+      { "source": "/api/dashboard/**", "function": "dashboard" },
+      { "source": "/api/dashboard",   "function": "dashboard" },
+
+      { "source": "/api/services/**", "function": "services" },
+      { "source": "/api/services",    "function": "services" },
+
+      { "source": "/api/spaces/**",   "function": "spaces" },
+      { "source": "/api/spaces",      "function": "spaces" },
+
+      { "source": "/api/amenities/**", "function": "amenities" },
+      { "source": "/api/amenities",    "function": "amenities" },
+
+      { "source": "/api/cities/**",   "function": "cities" },
+      { "source": "/api/cities",      "function": "cities" },
+
+      { "source": "/api/buildings/**", "function": "buildings" },
+      { "source": "/api/buildings",    "function": "buildings" },
+
+      { "source": "/api/promos/**",   "function": "promos" },
+      { "source": "/api/promos",      "function": "promos" },
+
+      { "source": "/api/articles/**", "function": "articles" },
+      { "source": "/api/articles",    "function": "articles" },
+
+      { "source": "/api/invoices/**", "function": "invoices" },
+      { "source": "/api/invoices",    "function": "invoices" },
+
+      { "source": "/api/orders/**",   "function": "orders" },
+      { "source": "/api/orders",      "function": "orders" },
+
+      { "source": "/api/customers/**", "function": "customers" },
+      { "source": "/api/customers",    "function": "customers" },
+
+      { "source": "/api/database/**", "function": "database" },
+      { "source": "/api/database",    "function": "database" },
+
+      { "source": "/api/health", "function": "health" },
+
+      { "source": "**", "destination": "/index.html" }
     ],
     "headers": [
       {

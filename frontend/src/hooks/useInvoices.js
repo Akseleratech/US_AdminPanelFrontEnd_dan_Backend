@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import * as invoiceAPI from '../services/invoiceApi';
+import { invoicesAPI } from '../services/api';
 
 const useInvoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -11,8 +11,8 @@ const useInvoices = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await invoiceAPI.getAllInvoices();
-        setInvoices(data);
+        const response = await invoicesAPI.getAll();
+        setInvoices(response.data?.invoices || response.invoices || []);
       } catch (err) {
         setError(err.message);
         console.error('Error fetching invoices:', err);
@@ -26,7 +26,7 @@ const useInvoices = () => {
 
   const createInvoice = async (invoiceData) => {
     try {
-      const newInvoice = await invoiceAPI.createInvoice(invoiceData);
+      const newInvoice = await invoicesAPI.create(invoiceData);
       setInvoices(prev => [newInvoice, ...prev]);
       return newInvoice;
     } catch (err) {
@@ -36,7 +36,7 @@ const useInvoices = () => {
 
   const updateInvoice = async (id, invoiceData) => {
     try {
-      const updatedInvoice = await invoiceAPI.updateInvoice(id, invoiceData);
+      const updatedInvoice = await invoicesAPI.update(id, invoiceData);
       setInvoices(prev => 
         prev.map(invoice => 
           invoice.id === id ? updatedInvoice : invoice
@@ -50,7 +50,7 @@ const useInvoices = () => {
 
   const deleteInvoice = async (id) => {
     try {
-      await invoiceAPI.deleteInvoice(id);
+      await invoicesAPI.delete(id);
       setInvoices(prev => prev.filter(invoice => invoice.id !== id));
     } catch (err) {
       throw new Error(err.message);
@@ -59,7 +59,7 @@ const useInvoices = () => {
 
   const generateInvoiceFromOrder = async (order) => {
     try {
-      const newInvoice = await invoiceAPI.generateInvoiceFromOrder(order.id);
+      const newInvoice = await invoicesAPI.generateFromOrder(order.id);
       setInvoices(prev => [newInvoice, ...prev]);
       return newInvoice;
     } catch (err) {
@@ -104,8 +104,8 @@ const useInvoices = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await invoiceAPI.getAllInvoices();
-        setInvoices(data);
+        const response = await invoicesAPI.getAll();
+        setInvoices(response.data?.invoices || response.invoices || []);
       } catch (err) {
         setError(err.message);
         console.error('Error refreshing invoices:', err);

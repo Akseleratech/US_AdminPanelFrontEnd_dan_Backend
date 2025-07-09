@@ -201,6 +201,9 @@ const articles = onRequest(async (req, res) => {
       const {method, url} = req;
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);
+      if (pathParts[0] === 'api') pathParts.shift();
+      // NEW: normalize path
+      if (pathParts[0] === 'articles') pathParts.shift();
 
       if (method === 'GET') {
         if (pathParts.length === 0) {

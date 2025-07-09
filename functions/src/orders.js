@@ -199,6 +199,10 @@ const orders = onRequest(async (req, res) => {
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);
 
+      if (pathParts[0] === 'api') pathParts.shift();
+      // NEW: strip 'orders' segment
+      if (pathParts[0] === 'orders') pathParts.shift();
+
       if (method === 'GET') {
         if (pathParts.length === 0) {
           return await getAllOrders(req, res);
@@ -829,74 +833,103 @@ const updateOrderStatusesEndpoint = async (req, res) => {
 const fixSpacesBookingStatus = async () => {
   try {
     const db = getDb();
-    console.log('🔄 Starting space booking status fix...');
+    console.log('🔄 Starting optimized space booking status fix...');
 
-    // Get all spaces that are marked as booked
-    const bookedSpacesSnapshot = await db.collection('spaces')
-        .where('isBooked', '==', true)
-        .get();
+    // Step 1: Get active orders and build shouldBeBooked set - run concurrently
+    const [bookedSpacesSnapshot, activeOrdersSnapshot] = await Promise.all([
+      db.collection('spaces').where('isBooked', '==', true).get(),
+      db.collection('orders').where('status', 'in', ['confirmed', 'active']).get(),
+    ]);
 
-    if (bookedSpacesSnapshot.empty) {
-      console.log('No booked spaces found.');
-      return {fixed: 0};
-    }
+    // Create sets for faster lookups
+    const shouldBeBookedSet = new Set();
+    const shouldBeBookedMap = new Map(); // spaceId -> orderId
 
-    console.log(`Found ${bookedSpacesSnapshot.size} spaces marked as booked.`);
-
-    // Get all orders that should have booked spaces (only confirmed and active)
-    const activeOrdersSnapshot = await db.collection('orders')
-        .where('status', 'in', ['confirmed', 'active'])
-        .get();
-
-    // Create a map of space IDs that should be booked
-    const shouldBeBooked = new Map();
     activeOrdersSnapshot.forEach((doc) => {
       const order = doc.data();
       if (order.spaceId) {
-        shouldBeBooked.set(order.spaceId, doc.id);
+        shouldBeBookedSet.add(order.spaceId);
+        shouldBeBookedMap.set(order.spaceId, doc.id);
       }
     });
 
-    console.log(`Found ${shouldBeBooked.size} spaces that should be booked based on confirmed/active orders.`);
+    console.log(`Found ${bookedSpacesSnapshot.size} spaces marked as booked.`);
+    console.log(`Found ${shouldBeBookedSet.size} spaces that should be booked based on confirmed/active orders.`);
 
-    // Fix spaces with incorrect booking status
-    const batch = db.batch();
     let fixedCount = 0;
+    let batchCount = 0;
+    let batch = db.batch();
+    const BATCH_SIZE = 400; // Leave some buffer under 500 limit
 
-    // Check spaces marked as booked but shouldn't be
-    bookedSpacesSnapshot.forEach((doc) => {
+    // Helper function to commit batch if needed
+    const commitBatchIfNeeded = async () => {
+      if (batchCount >= BATCH_SIZE) {
+        await batch.commit();
+        console.log(`✅ Committed batch of ${batchCount} operations.`);
+        batch = db.batch();
+        batchCount = 0;
+      }
+    };
+
+    // Step 2: Fix spaces marked as booked but shouldn't be
+    for (const doc of bookedSpacesSnapshot.docs) {
       const spaceId = doc.id;
-      if (!shouldBeBooked.has(spaceId)) {
+      if (!shouldBeBookedSet.has(spaceId)) {
         console.log(`Space ${spaceId} is marked as booked but has no active order - fixing...`);
         batch.update(doc.ref, {
           isBooked: false,
           bookingOrderId: admin.firestore.FieldValue.delete(),
+          lastBookingUpdate: new Date(),
         });
         fixedCount++;
+        batchCount++;
+        await commitBatchIfNeeded();
       }
-    });
+    }
 
-    // Check spaces that should be booked but aren't
-    const allSpacesSnapshot = await db.collection('spaces').get();
-    allSpacesSnapshot.forEach((doc) => {
-      const spaceId = doc.id;
-      const spaceData = doc.data();
-      const orderId = shouldBeBooked.get(spaceId);
+    // Step 3: Check spaces that should be booked but aren't - use pagination
+    const spacesToCheck = Array.from(shouldBeBookedSet);
+    const PAGE_SIZE = 100; // Process in smaller chunks
 
-      if (orderId && (!spaceData.isBooked || spaceData.bookingOrderId !== orderId)) {
-        console.log(`Space ${spaceId} should be booked for order ${orderId} but isn't - fixing...`);
-        batch.update(doc.ref, {
-          isBooked: true,
-          bookingOrderId: orderId,
-        });
-        fixedCount++;
+    for (let i = 0; i < spacesToCheck.length; i += PAGE_SIZE) {
+      const batchSpaceIds = spacesToCheck.slice(i, i + PAGE_SIZE);
+
+      // Get spaces by their IDs
+      const spacePromises = batchSpaceIds.map((spaceId) =>
+        db.collection('spaces').doc(spaceId).get(),
+      );
+
+      const spaceDocs = await Promise.all(spacePromises);
+
+      for (const doc of spaceDocs) {
+        if (!doc.exists) continue;
+
+        const spaceId = doc.id;
+        const spaceData = doc.data();
+        const orderId = shouldBeBookedMap.get(spaceId);
+
+        if (orderId && (!spaceData.isBooked || spaceData.bookingOrderId !== orderId)) {
+          console.log(`Space ${spaceId} should be booked for order ${orderId} but isn't - fixing...`);
+          batch.update(doc.ref, {
+            isBooked: true,
+            bookingOrderId: orderId,
+            lastBookingUpdate: new Date(),
+          });
+          fixedCount++;
+          batchCount++;
+          await commitBatchIfNeeded();
+        }
       }
-    });
+    }
 
-    // Commit all changes
-    if (fixedCount > 0) {
+    // Step 4: Commit final batch
+    if (batchCount > 0) {
       await batch.commit();
-      console.log(`✅ Fixed booking status for ${fixedCount} spaces.`);
+      console.log(`✅ Committed final batch of ${batchCount} operations.`);
+    }
+
+    if (fixedCount > 0) {
+      console.log(`✅ Fixed booking status for ${fixedCount} spaces total.`);
     } else {
       console.log('ℹ️ No spaces needed booking status fixes.');
     }

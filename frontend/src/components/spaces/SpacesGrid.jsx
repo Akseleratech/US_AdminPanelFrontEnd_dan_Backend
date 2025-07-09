@@ -43,7 +43,7 @@ const SpacesGrid = ({
   // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pages = [];
-    const maxVisiblePages = 5;
+    const maxVisiblePages = 1;
     
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) {

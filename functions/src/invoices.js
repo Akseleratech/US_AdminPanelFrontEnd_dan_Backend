@@ -20,6 +20,8 @@ const invoices = onRequest(async (req, res) => {
       const {method, url} = req;
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);
+      if (pathParts[0] === 'api') pathParts.shift();
+      if (pathParts[0] === 'invoices') pathParts.shift();
 
       if (method === 'GET') {
         if (pathParts.length === 0) {

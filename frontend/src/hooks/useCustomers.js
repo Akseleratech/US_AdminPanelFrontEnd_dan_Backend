@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import customerAPI from '../services/customerApi';
+import { customersAPI } from '../services/api';
 import { useGlobalRefresh } from '../contexts/GlobalRefreshContext.jsx';
 import { useAuth } from '../components/auth/AuthContext';
 
@@ -28,7 +28,7 @@ const useCustomers = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await customerAPI.getAllCustomers(params);
+      const response = await customersAPI.getAll(params);
       // Extract customers from nested response structure
       const customersData = response.data?.customers || response.customers || [];
       setCustomers(customersData);
@@ -54,7 +54,7 @@ const useCustomers = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await customerAPI.searchCustomers(term, { ...filters, ...additionalFilters });
+      const response = await customersAPI.getAll({ search: term, ...filters, ...additionalFilters });
       // Extract customers from nested response structure
       const customersData = response.data?.customers || response.customers || [];
       setCustomers(customersData);
@@ -74,7 +74,7 @@ const useCustomers = () => {
   // Get single customer
   const getCustomer = useCallback(async (id) => {
     try {
-      const response = await customerAPI.getCustomerById(id);
+      const response = await customersAPI.getById(id);
       return response;
     } catch (err) {
       setError(err.message);
@@ -86,7 +86,7 @@ const useCustomers = () => {
   // Add new customer
   const addCustomer = useCallback(async (customerData) => {
     try {
-      const response = await customerAPI.createCustomer(customerData);
+      const response = await customersAPI.create(customerData);
       // Extract customer data from nested response structure
       const newCustomer = response.data || response;
       setCustomers(prev => [newCustomer, ...prev]);
@@ -102,7 +102,7 @@ const useCustomers = () => {
   // Update customer
   const updateCustomer = useCallback(async (id, customerData) => {
     try {
-      const response = await customerAPI.updateCustomer(id, customerData);
+      const response = await customersAPI.update(id, customerData);
       // Extract customer data from nested response structure
       const updatedCustomer = response.data?.data || response.data || response;
       setCustomers(prev => prev.map(customer => 
@@ -120,7 +120,7 @@ const useCustomers = () => {
   // Delete customer
   const deleteCustomer = useCallback(async (id) => {
     try {
-      await customerAPI.deleteCustomer(id);
+      await customersAPI.delete(id);
       setCustomers(prev => prev.filter(customer => customer.id !== id));
       triggerRefresh();
     } catch (err) {

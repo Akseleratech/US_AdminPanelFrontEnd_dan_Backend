@@ -14,8 +14,8 @@ const getBucket = () => {
     admin.initializeApp();
   }
 
-  const projectId = process.env.GCLOUD_PROJECT || 'demo-unionspace-crm';
-  const bucketName = `${projectId}.appspot.com`;
+  const projectId = process.env.GCLOUD_PROJECT || 'unionspace-w9v242';
+  const bucketName = `${projectId}.firebasestorage.app`;
 
   console.log(`📦 Using bucket: ${bucketName}`);
   return admin.storage().bucket(bucketName);
@@ -25,8 +25,8 @@ const getBucket = () => {
 const getImageUrl = (fileName) => {
   if (!fileName) return null;
 
-  const projectId = process.env.GCLOUD_PROJECT || 'demo-unionspace-crm';
-  const bucketName = `${projectId}.appspot.com`;
+  const projectId = process.env.GCLOUD_PROJECT || 'unionspace-w9v242';
+  const bucketName = `${projectId}.firebasestorage.app`;
 
   if (isEmulator()) {
     // Use emulator URL format
@@ -112,12 +112,16 @@ const uploadImageFromBase64 = async (base64Data, fileName, folder = 'general') =
 
     // Parse base64 data
     const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
-      throw new Error('Invalid base64 image data format');
+    let mimeType;
+    let imageBuffer;
+    if (matches && matches.length === 3) {
+      mimeType = matches[1];
+      imageBuffer = Buffer.from(matches[2], 'base64');
+    } else {
+      // Fallback: treat the entire string as base64 and assume jpeg
+      mimeType = 'image/jpeg';
+      imageBuffer = Buffer.from(base64Data, 'base64');
     }
-
-    const mimeType = matches[1];
-    const imageBuffer = Buffer.from(matches[2], 'base64');
 
     console.log(`📊 Image info: ${mimeType}, ${imageBuffer.length} bytes`);
 
@@ -159,7 +163,7 @@ const deleteImage = async (imageUrl) => {
       // Production URL format: https://storage.googleapis.com/bucket/path/to/file.jpg
       const urlParts = imageUrl.split('/');
       // Remove the bucket name and join the rest as the filename
-      const bucketIndex = urlParts.findIndex((part) => part.includes('.appspot.com'));
+      const bucketIndex = urlParts.findIndex((part) => part.includes('.firebasestorage.app') || part.includes('.appspot.com'));
       if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
         fileName = urlParts.slice(bucketIndex + 1).join('/');
       } else {

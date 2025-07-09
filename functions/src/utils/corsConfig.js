@@ -6,8 +6,8 @@ const allowedOrigins = [
   'http://localhost:3000', // Alternative dev port
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
-  // Add your production domain here when deploying
-  // 'https://your-production-domain.com'
+  'https://unionspace-w9v242.web.app', // Production domain
+  'https://unionspace-w9v242.firebaseapp.com', // Firebase app domain
 ];
 
 const corsOptions = {

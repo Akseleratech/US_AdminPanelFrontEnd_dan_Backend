@@ -230,6 +230,10 @@ const customers = onRequest(async (req, res) => {
       const {method, url} = req;
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);
+      if (pathParts[0] === 'api') pathParts.shift();
+
+      // NEW: Remove resource name ('customers') if present so that route parsing works for root endpoints
+      if (pathParts[0] === 'customers') pathParts.shift();
 
       // Enhanced logging for debugging routing issues
       console.log(`[CUSTOMERS ROUTER] Received request: ${method} ${url}`);

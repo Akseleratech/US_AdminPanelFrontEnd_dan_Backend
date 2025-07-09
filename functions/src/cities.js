@@ -189,6 +189,9 @@ const cities = onRequest(async (req, res) => {
       const {method, url} = req;
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);
+      if (pathParts[0] === 'api') pathParts.shift();
+      // NEW: strip 'cities' segment
+      if (pathParts[0] === 'cities') pathParts.shift();
 
       // Enhanced logging for debugging routing issues
       console.log(`[CITIES ROUTER] Received request: ${method} ${url}`);

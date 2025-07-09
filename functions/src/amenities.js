@@ -21,6 +21,9 @@ const amenities = onRequest(async (req, res) => {
       const {method, url} = req;
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);
+      if (pathParts[0] === 'api') pathParts.shift();
+      // NEW: Normalize by removing resource segment
+      if (pathParts[0] === 'amenities') pathParts.shift();
 
       if (method === 'GET') {
         if (pathParts.length === 0) {
@@ -70,23 +73,35 @@ const getAllAmenities = async (req, res) => {
   try {
     const db = getDb();
     const {search, status, limit} = req.query;
-    let amenitiesRef = db.collection('amenities');
-
-    if (status === 'active') {
-      amenitiesRef = amenitiesRef.where('isActive', '==', true);
-    }
-
-    amenitiesRef = amenitiesRef.orderBy('name');
-
-    const snapshot = await amenitiesRef.get();
+    let snapshot;
     let amenities = [];
 
+    if (status === 'active') {
+      // When we combine an equality filter and a different orderBy field
+      // Firestore often requires a composite index. To keep setup simple we
+      // fetch filtered docs first and sort them locally.
+      snapshot = await db.collection('amenities')
+          .where('isActive', '==', true)
+          .get();
+    } else {
+      // No filter – we can safely order directly in Firestore.
+      snapshot = await db.collection('amenities')
+          .orderBy('name')
+          .get();
+    }
+
+    // Build amenities array
     snapshot.forEach((doc) => {
       amenities.push({
         id: doc.id,
         ...doc.data(),
       });
     });
+
+    // Ensure predictable order when we skipped Firestore orderBy
+    if (status === 'active') {
+      amenities.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
 
     if (search) {
       const searchLower = search.toLowerCase();
@@ -148,7 +163,9 @@ const createAmenity = async (req, res) => {
       let iconUrl = '';
       if (uploads.icon) {
         const {filepath, mimeType} = uploads.icon;
-        const bucket = admin.storage().bucket();
+        const projectId = process.env.GCLOUD_PROJECT || 'unionspace-w9v242';
+        const bucketName = `${projectId}.firebasestorage.app`;
+        const bucket = admin.storage().bucket(bucketName);
         const dest = `amenities/${Date.now()}_${path.basename(filepath)}`;
         const [uploadedFile] = await bucket.upload(filepath, {
           destination: dest,
@@ -176,7 +193,12 @@ const createAmenity = async (req, res) => {
     }
   });
 
-  bb.end(req.rawBody);
+  // Feed data into Busboy depending on availability of rawBody (v1) or stream (v2)
+  if (req.rawBody) {
+    bb.end(req.rawBody);
+  } else {
+    req.pipe(bb);
+  }
 };
 
 // PUT /amenities/:id
@@ -213,7 +235,9 @@ const updateAmenity = async (amenityId, req, res) => {
         const oldIconUrl = amenityDoc.data().icon;
         if (oldIconUrl) {
           try {
-            const bucket = admin.storage().bucket();
+            const projectId = process.env.GCLOUD_PROJECT || 'unionspace-w9v242';
+            const bucketName = `${projectId}.firebasestorage.app`;
+            const bucket = admin.storage().bucket(bucketName);
             const oldFileName = decodeURIComponent(oldIconUrl.split('/').pop().split('?')[0]);
             await bucket.file(oldFileName).delete();
           } catch (storageError) {
@@ -222,7 +246,9 @@ const updateAmenity = async (amenityId, req, res) => {
         }
 
         const {filepath, mimeType} = uploads.icon;
-        const bucket = admin.storage().bucket();
+        const projectId = process.env.GCLOUD_PROJECT || 'unionspace-w9v242';
+        const bucketName = `${projectId}.firebasestorage.app`;
+        const bucket = admin.storage().bucket(bucketName);
         const dest = `amenities/${Date.now()}_${path.basename(filepath)}`;
         const [uploadedFile] = await bucket.upload(filepath, {
           destination: dest,
@@ -249,7 +275,11 @@ const updateAmenity = async (amenityId, req, res) => {
     }
   });
 
-  bb.end(req.rawBody);
+  if (req.rawBody) {
+    bb.end(req.rawBody);
+  } else {
+    req.pipe(bb);
+  }
 };
 
 // DELETE /amenities/:id
@@ -276,7 +306,9 @@ const deleteAmenity = async (amenityId, req, res) => {
     const iconUrl = amenityDoc.data().icon;
     if (iconUrl) {
       try {
-        const bucket = admin.storage().bucket();
+        const projectId = process.env.GCLOUD_PROJECT || 'unionspace-w9v242';
+        const bucketName = `${projectId}.firebasestorage.app`;
+        const bucket = admin.storage().bucket(bucketName);
         const fileName = decodeURIComponent(iconUrl.split('/').pop().split('?')[0]);
         await bucket.file(fileName).delete();
       } catch (storageError) {
