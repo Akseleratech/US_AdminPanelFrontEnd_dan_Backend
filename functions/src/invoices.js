@@ -1,26 +1,25 @@
-const { onRequest } = require("firebase-functions/v2/https");
-const cors = require("cors")({ origin: true });
-const { 
-  getDb, 
-  handleResponse, 
-  handleError, 
-  validateRequired, 
+const {onRequest} = require('firebase-functions/v2/https');
+const cors = require('cors')({origin: true});
+const {
+  getDb,
+  handleResponse,
+  handleError,
+  validateRequired,
   sanitizeString,
-  generateSequentialId,
   verifyAuthToken,
   getUserFromToken,
   getCurrentTaxRate,
-  verifyAdminAuth
-} = require("./utils/helpers");
-const admin = require("firebase-admin");
+  verifyAdminAuth,
+} = require('./utils/helpers');
+const admin = require('firebase-admin');
 
 // Main invoices function
 const invoices = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
-      const { method, url } = req;
+      const {method, url} = req;
       const path = url.split('?')[0];
-      const pathParts = path.split('/').filter(part => part);
+      const pathParts = path.split('/').filter((part) => part);
 
       if (method === 'GET') {
         if (pathParts.length === 0) {
@@ -32,9 +31,9 @@ const invoices = onRequest(async (req, res) => {
         // Require admin auth for all POST operations
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
-        
+
         if (pathParts.length === 0) {
           return await createInvoice(req, res);
         } else if (pathParts.length === 2 && pathParts[1] === 'generate-from-order') {
@@ -44,19 +43,19 @@ const invoices = onRequest(async (req, res) => {
         // PUT /invoices/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await updateInvoice(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /invoices/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await deleteInvoice(pathParts[0], req, res);
       }
 
-      handleResponse(res, { message: 'Invoice route not found' }, 404);
+      handleResponse(res, {message: 'Invoice route not found'}, 404);
     } catch (error) {
       handleError(res, error);
     }
@@ -67,7 +66,7 @@ const invoices = onRequest(async (req, res) => {
 const getAllInvoices = async (req, res) => {
   try {
     const db = getDb();
-    const { status, limit, offset = 0, search, customerEmail, orderId, sortBy = 'issuedDate', sortOrder = 'desc' } = req.query;
+    const {status, limit, offset = 0, search, customerEmail, orderId, sortBy = 'issuedDate', sortOrder = 'desc'} = req.query;
     let invoicesRef = db.collection('invoices');
 
     // Apply filters
@@ -85,13 +84,13 @@ const getAllInvoices = async (req, res) => {
 
     // Apply sorting
     invoicesRef = invoicesRef.orderBy(sortBy, sortOrder);
-    
+
     const snapshot = await invoicesRef.get();
     let invoices = [];
 
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc) => {
       const data = doc.data();
-      
+
       // Ensure date fields are serialized as ISO strings
       const issuedDate = data.issuedDate && data.issuedDate.toDate ? data.issuedDate.toDate().toISOString() : data.issuedDate;
       const dueDate = data.dueDate && data.dueDate.toDate ? data.dueDate.toDate().toISOString() : data.dueDate;
@@ -104,18 +103,18 @@ const getAllInvoices = async (req, res) => {
         issuedDate,
         dueDate,
         paidDate,
-        createdAt
+        createdAt,
       });
     });
 
     // Apply search filter after fetching
     if (search) {
       const searchLower = search.toLowerCase();
-      invoices = invoices.filter(invoice =>
+      invoices = invoices.filter((invoice) =>
         invoice.customerName?.toLowerCase().includes(searchLower) ||
         invoice.customerEmail?.toLowerCase().includes(searchLower) ||
         invoice.id?.toLowerCase().includes(searchLower) ||
-        invoice.orderId?.toLowerCase().includes(searchLower)
+        invoice.orderId?.toLowerCase().includes(searchLower),
       );
     }
 
@@ -133,8 +132,8 @@ const getAllInvoices = async (req, res) => {
         total: totalInvoices,
         offset: offsetNum,
         limit: limitNum,
-        hasMore: offsetNum + limitNum < totalInvoices
-      }
+        hasMore: offsetNum + limitNum < totalInvoices,
+      },
     });
   } catch (error) {
     handleError(res, error);
@@ -146,9 +145,9 @@ const getInvoiceById = async (invoiceId, req, res) => {
   try {
     const db = getDb();
     const doc = await db.collection('invoices').doc(invoiceId).get();
-    
+
     if (!doc.exists) {
-      return handleResponse(res, { message: 'Invoice not found' }, 404);
+      return handleResponse(res, {message: 'Invoice not found'}, 404);
     }
 
     const data = doc.data();
@@ -163,7 +162,7 @@ const getInvoiceById = async (invoiceId, req, res) => {
       issuedDate,
       dueDate,
       paidDate,
-      createdAt
+      createdAt,
     });
   } catch (error) {
     handleError(res, error);
@@ -187,7 +186,7 @@ const createInvoice = async (req, res) => {
       paymentTerms = 30,
       notes = '',
       serviceName = null,
-      cityName = null
+      cityName = null,
     } = req.body;
 
     // Validate required fields
@@ -238,14 +237,14 @@ const createInvoice = async (req, res) => {
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: user ? user.uid : 'system',
-      createdByEmail: user ? user.email : 'system'
+      createdByEmail: user ? user.email : 'system',
     };
 
     await db.collection('invoices').doc(invoiceId).set(invoiceData);
 
-    handleResponse(res, { 
+    handleResponse(res, {
       id: invoiceId,
-      ...invoiceData 
+      ...invoiceData,
     }, 201);
   } catch (error) {
     handleError(res, error);
@@ -256,16 +255,16 @@ const createInvoice = async (req, res) => {
 const generateInvoiceFromOrder = async (orderId, req, res) => {
   try {
     console.log('🔍 DEBUG - generateInvoiceFromOrder called with orderId:', orderId);
-    
+
     const db = getDb();
-    
+
     // Get the order
     console.log('🔍 DEBUG - Fetching order document...');
     const orderDoc = await db.collection('orders').doc(orderId).get();
-    
+
     if (!orderDoc.exists) {
       console.log('❌ DEBUG - Order not found:', orderId);
-      return handleResponse(res, { message: 'Order not found' }, 404);
+      return handleResponse(res, {message: 'Order not found'}, 404);
     }
 
     console.log('✅ DEBUG - Order found, extracting data...');
@@ -275,31 +274,31 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
     // Check if invoice already exists for this order
     if (order.invoiceId) {
       console.log('⚠️ DEBUG - Invoice already exists:', order.invoiceId);
-      return handleResponse(res, { message: 'Invoice already exists for this order', invoiceId: order.invoiceId }, 400);
+      return handleResponse(res, {message: 'Invoice already exists for this order', invoiceId: order.invoiceId}, 400);
     }
 
     // Validate required fields
     console.log('🔍 DEBUG - Validating required fields...');
     if (!order.amountBase) {
       console.log('❌ DEBUG - Missing amountBase field');
-      return handleResponse(res, { message: 'Order missing amountBase field' }, 400);
+      return handleResponse(res, {message: 'Order missing amountBase field'}, 400);
     }
-    
+
     if (!order.customerName) {
       console.log('❌ DEBUG - Missing customerName field');
-      return handleResponse(res, { message: 'Order missing customerName field' }, 400);
+      return handleResponse(res, {message: 'Order missing customerName field'}, 400);
     }
-    
+
     if (!order.customerEmail) {
       console.log('❌ DEBUG - Missing customerEmail field');
-      return handleResponse(res, { message: 'Order missing customerEmail field' }, 400);
+      return handleResponse(res, {message: 'Order missing customerEmail field'}, 400);
     }
 
     // Get customer data to fetch complete information including phone
     console.log('🔍 DEBUG - Fetching customer data...');
     let customerPhone = order.customerPhone || null;
     let customerAddress = null;
-    
+
     if (order.customerId) {
       try {
         const customerDoc = await db.collection('customers').doc(order.customerId).get();
@@ -307,7 +306,7 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
           const customerData = customerDoc.data();
           customerPhone = customerData.phone || customerPhone;
           customerAddress = customerData.address || null;
-          console.log('✅ DEBUG - Customer data fetched:', { phone: customerPhone, address: customerAddress });
+          console.log('✅ DEBUG - Customer data fetched:', {phone: customerPhone, address: customerAddress});
         } else {
           console.log('⚠️ DEBUG - Customer document not found for ID:', order.customerId);
         }
@@ -321,14 +320,14 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
     let spaceCityName = 'Unknown City';
     let spaceProvinceName = 'Unknown Province';
     let serviceName = order.spaceName || 'Layanan Sewa Space';
-    
+
     if (order.spaceId) {
       try {
         const spaceDoc = await db.collection('spaces').doc(order.spaceId).get();
         if (spaceDoc.exists) {
           const spaceData = spaceDoc.data();
           serviceName = spaceData.category || spaceData.name || serviceName;
-          
+
           // Get building data for location
           if (spaceData.buildingId) {
             const buildingDoc = await db.collection('buildings').doc(spaceData.buildingId).get();
@@ -336,10 +335,10 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
               const buildingData = buildingDoc.data();
               spaceCityName = buildingData.location?.city || spaceCityName;
               spaceProvinceName = buildingData.location?.province || spaceProvinceName;
-              console.log('✅ DEBUG - Space and building data fetched:', { 
-                serviceName, 
-                city: spaceCityName, 
-                province: spaceProvinceName 
+              console.log('✅ DEBUG - Space and building data fetched:', {
+                serviceName,
+                city: spaceCityName,
+                province: spaceProvinceName,
               });
             }
           }
@@ -360,7 +359,7 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
     console.log('🔍 DEBUG - Generating invoice ID...');
     const invoiceId = await generateInvoiceId();
     console.log('✅ DEBUG - Generated invoice ID:', invoiceId);
-    
+
     const issuedDate = new Date();
     const dueDate = new Date(issuedDate.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days payment terms
 
@@ -414,7 +413,7 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
           const endStr = formatDate(order.endDate);
           return `${startStr} - ${endStr}`;
         })(),
-        spaceName: order.spaceName || 'Unknown Space'
+        spaceName: order.spaceName || 'Unknown Space',
       }],
       // Format dates safely to YYYY-MM-DD
       notes: (() => {
@@ -432,7 +431,7 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: user ? user.uid : 'system',
-      createdByEmail: user ? user.email : 'system'
+      createdByEmail: user ? user.email : 'system',
     };
 
     console.log('🔍 DEBUG - Invoice data:', JSON.stringify(invoiceData, null, 2));
@@ -446,14 +445,14 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
     console.log('🔍 DEBUG - Updating order with invoice reference...');
     await db.collection('orders').doc(orderId).update({
       invoiceId: invoiceId,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
     console.log('✅ DEBUG - Order updated successfully');
 
     console.log('🔍 DEBUG - Sending response...');
-    handleResponse(res, { 
+    handleResponse(res, {
       id: invoiceId,
-      ...invoiceData 
+      ...invoiceData,
     }, 201);
   } catch (error) {
     console.error('❌ DEBUG - Error in generateInvoiceFromOrder:', error);
@@ -466,13 +465,13 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
 const updateInvoice = async (invoiceId, req, res) => {
   try {
     const db = getDb();
-    
+
     const invoiceDoc = await db.collection('invoices').doc(invoiceId).get();
     if (!invoiceDoc.exists) {
-      return handleResponse(res, { message: 'Invoice not found' }, 404);
+      return handleResponse(res, {message: 'Invoice not found'}, 404);
     }
 
-    const updateData = { ...req.body };
+    const updateData = {...req.body};
     delete updateData.id;
 
     // Get user info from auth token if available
@@ -511,10 +510,10 @@ const updateInvoice = async (invoiceId, req, res) => {
 
     const updatedDoc = await db.collection('invoices').doc(invoiceId).get();
     const data = updatedDoc.data();
-    
-    handleResponse(res, { 
+
+    handleResponse(res, {
       id: invoiceId,
-      ...data 
+      ...data,
     });
   } catch (error) {
     handleError(res, error);
@@ -525,10 +524,10 @@ const updateInvoice = async (invoiceId, req, res) => {
 const deleteInvoice = async (invoiceId, req, res) => {
   try {
     const db = getDb();
-    
+
     const invoiceDoc = await db.collection('invoices').doc(invoiceId).get();
     if (!invoiceDoc.exists) {
-      return handleResponse(res, { message: 'Invoice not found' }, 404);
+      return handleResponse(res, {message: 'Invoice not found'}, 404);
     }
 
     const invoiceData = invoiceDoc.data();
@@ -536,21 +535,21 @@ const deleteInvoice = async (invoiceId, req, res) => {
     // Remove invoice reference from related orders
     if (invoiceData.orderIds && invoiceData.orderIds.length > 0) {
       const batch = db.batch();
-      
+
       for (const orderId of invoiceData.orderIds) {
         const orderRef = db.collection('orders').doc(orderId);
         batch.update(orderRef, {
           invoiceId: admin.firestore.FieldValue.delete(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         });
       }
-      
+
       await batch.commit();
     }
 
     await db.collection('invoices').doc(invoiceId).delete();
-    
-    handleResponse(res, { message: 'Invoice deleted successfully' });
+
+    handleResponse(res, {message: 'Invoice deleted successfully'});
   } catch (error) {
     handleError(res, error);
   }
@@ -561,20 +560,20 @@ const generateInvoiceId = async () => {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
-  
+
   const db = getDb();
   const invoicesRef = db.collection('invoices');
   const prefix = `INV-${year}-${month}`;
-  
+
   // Get all invoices for this month and find the highest sequence number
   const snapshot = await invoicesRef
-    .where('__name__', '>=', `${prefix}-000`)
-    .where('__name__', '<', `${prefix}-999`)
-    .get();
-  
+      .where('__name__', '>=', `${prefix}-000`)
+      .where('__name__', '<', `${prefix}-999`)
+      .get();
+
   let maxSequence = 0;
   if (!snapshot.empty) {
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc) => {
       const id = doc.id;
       const sequencePart = id.split('-').pop();
       const sequence = parseInt(sequencePart);
@@ -583,9 +582,9 @@ const generateInvoiceId = async () => {
       }
     });
   }
-  
+
   const nextSequence = maxSequence + 1;
   return `${prefix}-${String(nextSequence).padStart(3, '0')}`;
 };
 
-module.exports = { invoices }; 
+module.exports = {invoices};

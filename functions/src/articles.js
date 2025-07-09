@@ -1,79 +1,77 @@
-const { onRequest } = require("firebase-functions/v2/https");
-const cors = require("cors")({ origin: true });
-const { 
-  getDb, 
-  handleResponse, 
-  handleError, 
-  validateRequired, 
-  sanitizeString,
-  verifyAdminAuth
-} = require("./utils/helpers");
-const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
+const {onRequest} = require('firebase-functions/v2/https');
+const cors = require('cors')({origin: true});
+const {
+  getDb,
+  handleResponse,
+  handleError,
+  verifyAdminAuth,
+} = require('./utils/helpers');
+const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
 
 // Enhanced validation schema for Articles
-const articleValidationSchema = {
-  title: { type: 'string', required: true, minLength: 2, maxLength: 200 },
-  excerpt: { type: 'string', required: false, maxLength: 500 },
-  content: { type: 'string', required: true, minLength: 10 },
-  author: { type: 'string', required: false, maxLength: 100 },
-  category: { type: 'string', required: false, maxLength: 50 },
-  tags: { type: 'array', required: false },
-  status: { type: 'string', required: false, enum: ['draft', 'published', 'archived'] },
-  featuredImage: { type: 'string', required: false },
-  isFeatured: { type: 'boolean', required: false, default: false },
-  publishedAt: { type: 'date', required: false }
+const _articleValidationSchema = {
+  title: {type: 'string', required: true, minLength: 2, maxLength: 200},
+  excerpt: {type: 'string', required: false, maxLength: 500},
+  content: {type: 'string', required: true, minLength: 10},
+  author: {type: 'string', required: false, maxLength: 100},
+  category: {type: 'string', required: false, maxLength: 50},
+  tags: {type: 'array', required: false},
+  status: {type: 'string', required: false, enum: ['draft', 'published', 'archived']},
+  featuredImage: {type: 'string', required: false},
+  isFeatured: {type: 'boolean', required: false, default: false},
+  publishedAt: {type: 'date', required: false},
 };
 
 // Enhanced validation function for articles
 function validateArticleData(data, isUpdate = false) {
   const errors = [];
-  
+
   // Basic required fields validation
   if (!isUpdate && !data.title) errors.push('Title is required');
   if (!isUpdate && !data.content) errors.push('Content is required');
-  
+
   // Title validation
   if (data.title && (data.title.length < 2 || data.title.length > 200)) {
     errors.push('Title must be between 2 and 200 characters');
   }
-  
+
   // Content validation
   if (data.content && data.content.length < 10) {
     errors.push('Content must be at least 10 characters');
   }
-  
+
   // Excerpt validation
   if (data.excerpt && data.excerpt.length > 500) {
     errors.push('Excerpt must be less than 500 characters');
   }
-  
+
   // Author validation
   if (data.author && data.author.length > 100) {
     errors.push('Author name must be less than 100 characters');
   }
-  
+
   // Category validation
   if (data.category && data.category.length > 50) {
     errors.push('Category must be less than 50 characters');
   }
-  
+
   // Status validation
   if (data.status && !['draft', 'published', 'archived'].includes(data.status)) {
     errors.push('Status must be either "draft", "published", or "archived"');
   }
-  
+
   // Tags validation
   if (data.tags && (!Array.isArray(data.tags) || data.tags.length > 10)) {
     errors.push('Tags must be an array with maximum 10 items');
   }
-  
+
   return errors;
 }
 
 // Enhanced data sanitization function for articles
 function sanitizeArticleData(data) {
   const sanitized = {};
-  
+
   // Sanitize strings
   if (data.title) sanitized.title = data.title.trim();
   if (data.excerpt) sanitized.excerpt = data.excerpt.trim();
@@ -81,27 +79,27 @@ function sanitizeArticleData(data) {
   if (data.author) sanitized.author = data.author.trim();
   if (data.category) sanitized.category = data.category.trim();
   if (data.featuredImage) sanitized.featuredImage = data.featuredImage.trim();
-  
+
   // Boolean values
   if (data.isFeatured !== undefined) {
     sanitized.isFeatured = Boolean(data.isFeatured);
   }
-  
+
   // Status
   if (data.status) {
     sanitized.status = data.status.trim();
   }
-  
+
   // Tags array
   if (data.tags && Array.isArray(data.tags)) {
-    sanitized.tags = data.tags.map(tag => tag.trim()).filter(tag => tag.length > 0);
+    sanitized.tags = data.tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0);
   }
-  
+
   // Dates
   if (data.publishedAt) {
     sanitized.publishedAt = new Date(data.publishedAt);
   }
-  
+
   return sanitized;
 }
 
@@ -111,42 +109,41 @@ async function generateSequentialArticleId() {
     const db = getDb();
     const year = new Date().getFullYear();
     const counterRef = db.collection('counters').doc('articles');
-    
+
     const result = await db.runTransaction(async (transaction) => {
       const counterDoc = await transaction.get(counterRef);
-      
+
       let lastId = 1;
       let currentYear = year;
-      
+
       if (counterDoc.exists) {
         const data = counterDoc.data();
         lastId = data.lastId + 1;
         currentYear = data.year;
-        
+
         // Reset counter if year changed
         if (currentYear !== year) {
           lastId = 1;
           currentYear = year;
         }
       }
-      
+
       const yearSuffix = year.toString().slice(-2);
       const sequence = String(lastId).padStart(4, '0');
       const articleId = `ART${yearSuffix}${sequence}`;
-      
+
       // Update counter
       transaction.set(counterRef, {
         lastId: lastId,
         year: currentYear,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
-      
+
       return articleId;
     });
-    
+
     console.log(`✅ Generated sequential article ID: ${result}`);
     return result;
-    
   } catch (error) {
     console.error('Error generating sequential article ID:', error);
     const fallbackId = `ART${Date.now().toString().slice(-6)}`;
@@ -158,52 +155,52 @@ async function generateSequentialArticleId() {
 // Generate search keywords for articles
 function generateArticleSearchKeywords(articleData) {
   const keywords = [];
-  
+
   // Add title keywords
   if (articleData.title) {
     keywords.push(articleData.title.toLowerCase());
     keywords.push(...articleData.title.toLowerCase().split(' '));
   }
-  
+
   // Add author keywords
   if (articleData.author) {
     keywords.push(articleData.author.toLowerCase());
     keywords.push(...articleData.author.toLowerCase().split(' '));
   }
-  
+
   // Add category keywords
   if (articleData.category) {
     keywords.push(articleData.category.toLowerCase());
   }
-  
+
   // Add tags keywords
   if (articleData.tags && Array.isArray(articleData.tags)) {
-    keywords.push(...articleData.tags.map(tag => tag.toLowerCase()));
+    keywords.push(...articleData.tags.map((tag) => tag.toLowerCase()));
   }
-  
+
   // Add excerpt keywords
   if (articleData.excerpt) {
-    const excerptWords = articleData.excerpt.toLowerCase().split(' ').filter(word => word.length > 2);
+    const excerptWords = articleData.excerpt.toLowerCase().split(' ').filter((word) => word.length > 2);
     keywords.push(...excerptWords.slice(0, 15)); // Limit to first 15 meaningful words
   }
-  
+
   // Add content keywords (first 100 words)
   if (articleData.content) {
-    const contentWords = articleData.content.toLowerCase().split(' ').filter(word => word.length > 3);
+    const contentWords = articleData.content.toLowerCase().split(' ').filter((word) => word.length > 3);
     keywords.push(...contentWords.slice(0, 20)); // Limit to first 20 meaningful words
   }
-  
+
   // Remove duplicates and empty strings
-  return [...new Set(keywords.filter(keyword => keyword && keyword.length > 0))];
+  return [...new Set(keywords.filter((keyword) => keyword && keyword.length > 0))];
 }
 
 // Main articles function
 const articles = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
-      const { method, url } = req;
+      const {method, url} = req;
       const path = url.split('?')[0];
-      const pathParts = path.split('/').filter(part => part);
+      const pathParts = path.split('/').filter((part) => part);
 
       if (method === 'GET') {
         if (pathParts.length === 0) {
@@ -215,9 +212,9 @@ const articles = onRequest(async (req, res) => {
         // Require admin auth for all POST operations
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
-        
+
         if (pathParts.length === 0) {
           return await createArticle(req, res);
         } else if (pathParts.length === 2 && pathParts[1] === 'upload-image') {
@@ -227,19 +224,19 @@ const articles = onRequest(async (req, res) => {
         // PUT /articles/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await updateArticle(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /articles/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await deleteArticle(pathParts[0], req, res);
       }
 
-      handleResponse(res, { message: 'Article route not found' }, 404);
+      handleResponse(res, {message: 'Article route not found'}, 404);
     } catch (error) {
       handleError(res, error);
     }
@@ -259,7 +256,7 @@ const getAllArticles = async (req, res) => {
       author = '',
       isFeatured = '',
       sortBy = 'metadata.createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = req.query;
 
     // Build query
@@ -292,12 +289,12 @@ const getAllArticles = async (req, res) => {
     query = query.orderBy(sortBy, sortOrder);
 
     const snapshot = await query.get();
-    let articles = [];
+    const articles = [];
 
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc) => {
       articles.push({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       });
     });
 
@@ -311,9 +308,9 @@ const getAllArticles = async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total: articles.length,
-        totalPages: Math.ceil(articles.length / parseInt(limit))
+        totalPages: Math.ceil(articles.length / parseInt(limit)),
       },
-      total: articles.length
+      total: articles.length,
     });
   } catch (error) {
     handleError(res, error);
@@ -325,12 +322,12 @@ const getArticleById = async (articleId, req, res) => {
   try {
     const db = getDb();
     const doc = await db.collection('articles').doc(articleId).get();
-    
+
     if (!doc.exists) {
-      return handleResponse(res, { message: 'Article not found' }, 404);
+      return handleResponse(res, {message: 'Article not found'}, 404);
     }
 
-    handleResponse(res, { id: doc.id, ...doc.data() });
+    handleResponse(res, {id: doc.id, ...doc.data()});
   } catch (error) {
     handleError(res, error);
   }
@@ -348,7 +345,7 @@ const createArticle = async (req, res) => {
       console.log('❌ Validation failed:', validationErrors);
       return handleResponse(res, {
         message: 'Validation failed',
-        errors: validationErrors
+        errors: validationErrors,
       }, 400);
     }
 
@@ -366,10 +363,10 @@ const createArticle = async (req, res) => {
       metadata: {
         createdAt: new Date(),
         updatedAt: new Date(),
-        version: 1
+        version: 1,
       },
       status: sanitizedData.status || 'draft',
-      isFeatured: sanitizedData.isFeatured !== undefined ? sanitizedData.isFeatured : false
+      isFeatured: sanitizedData.isFeatured !== undefined ? sanitizedData.isFeatured : false,
     };
 
     // Set publishedAt if status is published and not already set
@@ -386,7 +383,7 @@ const createArticle = async (req, res) => {
 
     handleResponse(res, {
       id: articleId,
-      ...articleData
+      ...articleData,
     }, 201);
   } catch (error) {
     handleError(res, error);
@@ -398,10 +395,10 @@ const updateArticle = async (articleId, req, res) => {
   try {
     const db = getDb();
     console.log(`🎯 PUT /articles/${articleId} - Request received`);
-    
+
     const articleDoc = await db.collection('articles').doc(articleId).get();
     if (!articleDoc.exists) {
-      return handleResponse(res, { message: 'Article not found' }, 404);
+      return handleResponse(res, {message: 'Article not found'}, 404);
     }
 
     // Validate data
@@ -409,7 +406,7 @@ const updateArticle = async (articleId, req, res) => {
     if (validationErrors.length > 0) {
       return handleResponse(res, {
         message: 'Validation failed',
-        errors: validationErrors
+        errors: validationErrors,
       }, 400);
     }
 
@@ -427,13 +424,13 @@ const updateArticle = async (articleId, req, res) => {
       ...sanitizedData,
       searchKeywords: generateArticleSearchKeywords({
         ...existingData,
-        ...sanitizedData
+        ...sanitizedData,
       }),
       metadata: {
         ...existingData.metadata,
         updatedAt: new Date(),
-        version: (existingData.metadata?.version || 1) + 1
-      }
+        version: (existingData.metadata?.version || 1) + 1,
+      },
     };
 
     // Update in Firestore
@@ -443,7 +440,7 @@ const updateArticle = async (articleId, req, res) => {
     const updatedDoc = await db.collection('articles').doc(articleId).get();
     const updatedArticle = {
       id: updatedDoc.id,
-      ...updatedDoc.data()
+      ...updatedDoc.data(),
     };
 
     handleResponse(res, updatedArticle);
@@ -456,10 +453,10 @@ const updateArticle = async (articleId, req, res) => {
 const deleteArticle = async (articleId, req, res) => {
   try {
     const db = getDb();
-    
+
     const articleDoc = await db.collection('articles').doc(articleId).get();
     if (!articleDoc.exists) {
-      return handleResponse(res, { message: 'Article not found' }, 404);
+      return handleResponse(res, {message: 'Article not found'}, 404);
     }
 
     const articleData = articleDoc.data();
@@ -471,7 +468,7 @@ const deleteArticle = async (articleId, req, res) => {
 
     await db.collection('articles').doc(articleId).delete();
 
-    handleResponse(res, { message: 'Article deleted successfully' });
+    handleResponse(res, {message: 'Article deleted successfully'});
   } catch (error) {
     handleError(res, error);
   }
@@ -481,16 +478,16 @@ const deleteArticle = async (articleId, req, res) => {
 const uploadArticleImage = async (articleId, req, res) => {
   try {
     const db = getDb();
-    const { imageData, fileName } = req.body;
+    const {imageData, fileName} = req.body;
 
     if (!imageData) {
-      return handleResponse(res, { message: 'No image data provided' }, 400);
+      return handleResponse(res, {message: 'No image data provided'}, 400);
     }
 
     // Check if article exists
     const articleDoc = await db.collection('articles').doc(articleId).get();
     if (!articleDoc.exists) {
-      return handleResponse(res, { message: 'Article not found' }, 404);
+      return handleResponse(res, {message: 'Article not found'}, 404);
     }
 
     const articleData = articleDoc.data();
@@ -502,9 +499,9 @@ const uploadArticleImage = async (articleId, req, res) => {
 
     // Upload new image
     const uploadResult = await uploadImageFromBase64(
-      imageData, 
-      fileName || `article_${articleId}`, 
-      'articles'
+        imageData,
+        fileName || `article_${articleId}`,
+        'articles',
     );
 
     // Update article document with new image URL
@@ -513,15 +510,15 @@ const uploadArticleImage = async (articleId, req, res) => {
       metadata: {
         ...articleData.metadata,
         updatedAt: new Date(),
-        version: (articleData.metadata?.version || 1) + 1
-      }
+        version: (articleData.metadata?.version || 1) + 1,
+      },
     });
 
     console.log(`✅ Successfully updated article ${articleId} with image: ${uploadResult.url}`);
 
     handleResponse(res, {
       featuredImage: uploadResult.url,
-      filename: uploadResult.filename
+      filename: uploadResult.filename,
     });
   } catch (error) {
     console.error('Error uploading article image:', error);
@@ -529,4 +526,4 @@ const uploadArticleImage = async (articleId, req, res) => {
   }
 };
 
-module.exports = { articles }; 
+module.exports = {articles};

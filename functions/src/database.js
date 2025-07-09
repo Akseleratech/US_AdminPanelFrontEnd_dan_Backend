@@ -1,14 +1,14 @@
-const { onRequest } = require("firebase-functions/v2/https");
-const cors = require("cors")({ origin: true });
-const { getDb, handleResponse, handleError, verifyAdminAuth } = require("./utils/helpers");
+const {onRequest} = require('firebase-functions/v2/https');
+const cors = require('cors')({origin: true});
+const {getDb, handleResponse, handleError, verifyAdminAuth} = require('./utils/helpers');
 
 // Main database function
 const database = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
-      const { method, url } = req;
+      const {method, url} = req;
       const path = url.split('?')[0];
-      const pathParts = path.split('/').filter(part => part);
+      const pathParts = path.split('/').filter((part) => part);
 
       if (method === 'GET') {
         if (pathParts.length === 1 && pathParts[0] === 'collections') {
@@ -22,9 +22,9 @@ const database = onRequest(async (req, res) => {
         // Require admin auth for all POST operations (dangerous operations)
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
-        
+
         if (pathParts.length === 1 && pathParts[0] === 'cleanup') {
           return await cleanupDatabase(req, res);
         } else if (pathParts.length === 1 && pathParts[0] === 'seed') {
@@ -32,7 +32,7 @@ const database = onRequest(async (req, res) => {
         }
       }
 
-      handleResponse(res, { message: 'Database route not found' }, 404);
+      handleResponse(res, {message: 'Database route not found'}, 404);
     } catch (error) {
       handleError(res, error);
     }
@@ -43,26 +43,26 @@ const database = onRequest(async (req, res) => {
 const getCollections = async (req, res) => {
   try {
     const db = getDb();
-    
+
     const collections = [
-      'cities', 'layanan', 'spaces', 'buildings', 
-      'orders', 'amenities', 'counters'
+      'cities', 'layanan', 'spaces', 'buildings',
+      'orders', 'amenities', 'counters',
     ];
-    
+
     const collectionInfo = [];
-    
+
     for (const collectionName of collections) {
       const snapshot = await db.collection(collectionName).get();
       collectionInfo.push({
         name: collectionName,
         documentCount: snapshot.size,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       });
     }
 
     handleResponse(res, {
       collections: collectionInfo,
-      totalCollections: collections.length
+      totalCollections: collections.length,
     });
   } catch (error) {
     handleError(res, error);
@@ -73,49 +73,49 @@ const getCollections = async (req, res) => {
 const getDatabaseStats = async (req, res) => {
   try {
     const db = getDb();
-    
+
     const [
       citiesSnapshot,
       servicesSnapshot,
       spacesSnapshot,
       buildingsSnapshot,
       ordersSnapshot,
-      amenitiesSnapshot
+      amenitiesSnapshot,
     ] = await Promise.all([
       db.collection('cities').get(),
       db.collection('layanan').get(),
       db.collection('spaces').get(),
       db.collection('buildings').get(),
       db.collection('orders').get(),
-      db.collection('amenities').get()
+      db.collection('amenities').get(),
     ]);
 
     const stats = {
       cities: {
         total: citiesSnapshot.size,
-        active: citiesSnapshot.docs.filter(doc => doc.data().isActive).length
+        active: citiesSnapshot.docs.filter((doc) => doc.data().isActive).length,
       },
       services: {
         total: servicesSnapshot.size,
-        published: servicesSnapshot.docs.filter(doc => doc.data().status === 'published').length
+        published: servicesSnapshot.docs.filter((doc) => doc.data().status === 'published').length,
       },
       spaces: {
         total: spacesSnapshot.size,
-        active: spacesSnapshot.docs.filter(doc => doc.data().isActive).length
+        active: spacesSnapshot.docs.filter((doc) => doc.data().isActive).length,
       },
       buildings: {
         total: buildingsSnapshot.size,
-        active: buildingsSnapshot.docs.filter(doc => doc.data().isActive).length
+        active: buildingsSnapshot.docs.filter((doc) => doc.data().isActive).length,
       },
       orders: {
         total: ordersSnapshot.size,
-        pending: ordersSnapshot.docs.filter(doc => doc.data().status === 'pending').length,
-        completed: ordersSnapshot.docs.filter(doc => doc.data().status === 'completed').length
+        pending: ordersSnapshot.docs.filter((doc) => doc.data().status === 'pending').length,
+        completed: ordersSnapshot.docs.filter((doc) => doc.data().status === 'completed').length,
       },
       amenities: {
         total: amenitiesSnapshot.size,
-        active: amenitiesSnapshot.docs.filter(doc => doc.data().isActive).length
-      }
+        active: amenitiesSnapshot.docs.filter((doc) => doc.data().isActive).length,
+      },
     };
 
     handleResponse(res, stats);
@@ -128,15 +128,15 @@ const getDatabaseStats = async (req, res) => {
 const getDatabaseHealth = async (req, res) => {
   try {
     const db = getDb();
-    
+
     // Test basic connectivity
     await db.collection('cities').limit(1).get();
-    
+
     const health = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       connection: 'ok',
-      latency: Date.now() - new Date().getTime() + 'ms'
+      latency: Date.now() - new Date().getTime() + 'ms',
     };
 
     handleResponse(res, health);
@@ -145,7 +145,7 @@ const getDatabaseHealth = async (req, res) => {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
       connection: 'failed',
-      error: error.message
+      error: error.message,
     }, 500);
   }
 };
@@ -153,29 +153,29 @@ const getDatabaseHealth = async (req, res) => {
 // POST /database/cleanup
 const cleanupDatabase = async (req, res) => {
   try {
-    const { collection, dryRun = true } = req.body;
-    
+    const {collection, dryRun = true} = req.body;
+
     if (!collection) {
-      return handleResponse(res, { message: 'Collection name is required' }, 400);
+      return handleResponse(res, {message: 'Collection name is required'}, 400);
     }
 
     const db = getDb();
     const snapshot = await db.collection(collection).get();
-    
+
     let cleanupCount = 0;
     const issues = [];
 
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc) => {
       const data = doc.data();
-      
+
       // Check for common issues
       if (!data.createdAt) {
-        issues.push({ id: doc.id, issue: 'Missing createdAt' });
+        issues.push({id: doc.id, issue: 'Missing createdAt'});
         cleanupCount++;
       }
-      
+
       if (!data.updatedAt) {
-        issues.push({ id: doc.id, issue: 'Missing updatedAt' });
+        issues.push({id: doc.id, issue: 'Missing updatedAt'});
         cleanupCount++;
       }
     });
@@ -190,7 +190,7 @@ const cleanupDatabase = async (req, res) => {
       dryRun,
       totalDocuments: snapshot.size,
       issuesFound: cleanupCount,
-      issues: issues.slice(0, 10) // Return first 10 issues
+      issues: issues.slice(0, 10), // Return first 10 issues
     });
   } catch (error) {
     handleError(res, error);
@@ -200,36 +200,36 @@ const cleanupDatabase = async (req, res) => {
 // POST /database/seed
 const seedDatabase = async (req, res) => {
   try {
-    const { type } = req.body;
-    
+    const {type} = req.body;
+
     if (type !== 'amenities') {
-      return handleResponse(res, { message: 'Only amenities seeding supported' }, 400);
+      return handleResponse(res, {message: 'Only amenities seeding supported'}, 400);
     }
 
     const db = getDb();
-    
+
     const defaultAmenities = [
-      { name: 'WiFi', category: 'connectivity', icon: 'wifi' },
-      { name: 'Coffee', category: 'food', icon: 'coffee' },
-      { name: 'Parking', category: 'facility', icon: 'car' },
-      { name: 'Meeting Room', category: 'space', icon: 'users' },
-      { name: 'Printer', category: 'equipment', icon: 'printer' }
+      {name: 'WiFi', category: 'connectivity', icon: 'wifi'},
+      {name: 'Coffee', category: 'food', icon: 'coffee'},
+      {name: 'Parking', category: 'facility', icon: 'car'},
+      {name: 'Meeting Room', category: 'space', icon: 'users'},
+      {name: 'Printer', category: 'equipment', icon: 'printer'},
     ];
 
     let createdCount = 0;
-    
+
     for (const amenity of defaultAmenities) {
       // Check if amenity already exists
       const existing = await db.collection('amenities')
-        .where('name', '==', amenity.name)
-        .get();
-      
+          .where('name', '==', amenity.name)
+          .get();
+
       if (existing.empty) {
         await db.collection('amenities').add({
           ...amenity,
           isActive: true,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         });
         createdCount++;
       }
@@ -239,11 +239,11 @@ const seedDatabase = async (req, res) => {
       type,
       created: createdCount,
       total: defaultAmenities.length,
-      message: `Created ${createdCount} new amenities`
+      message: `Created ${createdCount} new amenities`,
     });
   } catch (error) {
     handleError(res, error);
   }
 };
 
-module.exports = { database }; 
+module.exports = {database};

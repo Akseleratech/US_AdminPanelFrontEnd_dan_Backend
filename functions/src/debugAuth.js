@@ -13,7 +13,7 @@ const PROJECT_ID = 'demo-unionspace-crm';
 // Test auth sign-in
 async function testAuthSignIn(email, password) {
   const url = `http://${EMULATOR_HOST}:${AUTH_PORT}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key`;
-  
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -22,8 +22,8 @@ async function testAuthSignIn(email, password) {
     body: JSON.stringify({
       email: email,
       password: password,
-      returnSecureToken: true
-    })
+      returnSecureToken: true,
+    }),
   });
 
   return response;
@@ -32,12 +32,12 @@ async function testAuthSignIn(email, password) {
 // Test Firestore document read
 async function testFirestoreRead(collection, docId) {
   const url = `http://${EMULATOR_HOST}:${FIRESTORE_PORT}/v1/projects/${PROJECT_ID}/databases/(default)/documents/${collection}/${docId}`;
-  
+
   const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-    }
+    },
   });
 
   return response;
@@ -47,25 +47,25 @@ async function testFirestoreRead(collection, docId) {
 async function debugAuth() {
   console.log('🔍 DEBUG: Testing Auth and Firestore...');
   console.log('========================================');
-  
+
   // Test 1: Auth Sign-in
   console.log('📝 Test 1: Auth Sign-in');
   try {
     const authResponse = await testAuthSignIn('admin@unionspace.com', 'admin123456');
     console.log(`   Status: ${authResponse.status} ${authResponse.statusText}`);
-    
+
     if (authResponse.ok) {
       const authData = await authResponse.json();
       console.log(`   ✅ Auth Success - UID: ${authData.localId}`);
       console.log(`   Token: ${authData.idToken.substring(0, 50)}...`);
-      
+
       // Test 2: Firestore Read Admin Document
       console.log('');
       console.log('📄 Test 2: Firestore Read Admin Document');
       try {
         const firestoreResponse = await testFirestoreRead('admins', authData.localId);
         console.log(`   Status: ${firestoreResponse.status} ${firestoreResponse.statusText}`);
-        
+
         if (firestoreResponse.ok) {
           const docData = await firestoreResponse.json();
           console.log(`   ✅ Firestore Read Success`);
@@ -77,7 +77,6 @@ async function debugAuth() {
       } catch (error) {
         console.log(`   ❌ Firestore Read Error: ${error.message}`);
       }
-      
     } else {
       const error = await authResponse.json();
       console.log(`   ❌ Auth Failed: ${JSON.stringify(error, null, 2)}`);
@@ -85,7 +84,7 @@ async function debugAuth() {
   } catch (error) {
     console.log(`   ❌ Auth Error: ${error.message}`);
   }
-  
+
   console.log('');
   console.log('🎯 CONCLUSION:');
   console.log('   If both tests pass ✅, the backend is working correctly.');

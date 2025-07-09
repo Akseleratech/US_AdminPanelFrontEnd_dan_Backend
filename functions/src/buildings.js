@@ -1,55 +1,53 @@
-const { onRequest } = require("firebase-functions/v2/https");
-const cors = require("cors")({ origin: true });
-const { 
-  getDb, 
-  handleResponse, 
-  handleError, 
-  validateRequired, 
-  sanitizeString,
+const {onRequest} = require('firebase-functions/v2/https');
+const cors = require('cors')({origin: true});
+const {
+  getDb,
+  handleResponse,
+  handleError,
   verifyAdminAuth,
-  getUserRoleAndCity
-} = require("./utils/helpers");
-const { uploadImageFromBase64, deleteImage } = require("./services/imageService");
+  getUserRoleAndCity,
+} = require('./utils/helpers');
+const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
 
 // Enhanced validation schema for Buildings
-const buildingValidationSchema = {
-  name: { type: 'string', required: true, minLength: 2, maxLength: 100 },
-  description: { type: 'string', required: false, maxLength: 1000 },
-  brand: { type: 'string', required: true, enum: ['NextSpace', 'UnionSpace', 'CoSpace'] },
+const _buildingValidationSchema = {
+  name: {type: 'string', required: true, minLength: 2, maxLength: 100},
+  description: {type: 'string', required: false, maxLength: 1000},
+  brand: {type: 'string', required: true, enum: ['NextSpace', 'UnionSpace', 'CoSpace']},
   location: {
     type: 'object',
     required: true,
     properties: {
-      address: { type: 'string', required: true, minLength: 5 },
-      city: { type: 'string', required: true, minLength: 2 },
-      province: { type: 'string', required: true, minLength: 2 },
-      postalCode: { type: 'string', required: false },
-      country: { type: 'string', required: true, default: 'Indonesia' },
-      latitude: { type: 'number', required: false, min: -90, max: 90 },
-      longitude: { type: 'number', required: false, min: -180, max: 180 }
-    }
-  }
+      address: {type: 'string', required: true, minLength: 5},
+      city: {type: 'string', required: true, minLength: 2},
+      province: {type: 'string', required: true, minLength: 2},
+      postalCode: {type: 'string', required: false},
+      country: {type: 'string', required: true, default: 'Indonesia'},
+      latitude: {type: 'number', required: false, min: -90, max: 90},
+      longitude: {type: 'number', required: false, min: -180, max: 180},
+    },
+  },
 };
 
 // Enhanced validation function for buildings
 function validateBuildingData(data, isUpdate = false) {
   const errors = [];
-  
+
   // Basic required fields validation
   if (!isUpdate && !data.name) errors.push('Name is required');
   if (!isUpdate && !data.brand) errors.push('Brand is required');
   if (!isUpdate && !data.location) errors.push('Location is required');
-  
+
   // Name validation
   if (data.name && (data.name.length < 2 || data.name.length > 100)) {
     errors.push('Name must be between 2 and 100 characters');
   }
-  
+
   // Brand validation
   if (data.brand && !['NextSpace', 'UnionSpace', 'CoSpace'].includes(data.brand)) {
     errors.push('Brand must be one of: NextSpace, UnionSpace, CoSpace');
   }
-  
+
   // Location validation
   if (data.location) {
     if (!data.location.address || data.location.address.length < 5) {
@@ -71,19 +69,19 @@ function validateBuildingData(data, isUpdate = false) {
       errors.push('Longitude must be between -180 and 180');
     }
   }
-  
+
   return errors;
 }
 
 // Enhanced data sanitization function for buildings
 function sanitizeBuildingData(data) {
   const sanitized = {};
-  
+
   // Sanitize strings
   if (data.name) sanitized.name = data.name.trim();
   if (data.description) sanitized.description = data.description.trim();
   if (data.brand) sanitized.brand = data.brand.trim();
-  
+
   // Sanitize location
   if (data.location) {
     sanitized.location = {
@@ -94,15 +92,15 @@ function sanitizeBuildingData(data) {
       country: data.location.country?.trim() || 'Indonesia',
       coordinates: data.location.coordinates || null,
       latitude: data.location.latitude ? parseFloat(data.location.latitude) : null,
-      longitude: data.location.longitude ? parseFloat(data.location.longitude) : null
+      longitude: data.location.longitude ? parseFloat(data.location.longitude) : null,
     };
   }
-  
+
   // Boolean values
   if (data.isActive !== undefined) {
     sanitized.isActive = Boolean(data.isActive);
   }
-  
+
   return sanitized;
 }
 
@@ -110,17 +108,17 @@ function sanitizeBuildingData(data) {
 async function checkDuplicateBuilding(name, city, excludeId = null) {
   try {
     const db = getDb();
-    let query = db.collection('buildings')
-      .where('name', '==', name)
-      .where('location.city', '==', city);
-    
+    const query = db.collection('buildings')
+        .where('name', '==', name)
+        .where('location.city', '==', city);
+
     const snapshot = await query.get();
-    
+
     if (excludeId) {
       // Filter out the current building being updated
-      return snapshot.docs.some(doc => doc.id !== excludeId);
+      return snapshot.docs.some((doc) => doc.id !== excludeId);
     }
-    
+
     return !snapshot.empty;
   } catch (error) {
     console.warn('Could not check for duplicate buildings:', error);
@@ -134,42 +132,41 @@ async function generateSequentialBuildingId() {
     const db = getDb();
     const year = new Date().getFullYear();
     const counterRef = db.collection('counters').doc('buildings');
-    
+
     const result = await db.runTransaction(async (transaction) => {
       const counterDoc = await transaction.get(counterRef);
-      
+
       let lastId = 1;
       let currentYear = year;
-      
+
       if (counterDoc.exists) {
         const data = counterDoc.data();
         lastId = data.lastId + 1;
         currentYear = data.year;
-        
+
         // Reset counter if year changed
         if (currentYear !== year) {
           lastId = 1;
           currentYear = year;
         }
       }
-      
+
       const yearSuffix = year.toString().slice(-2);
       const sequence = String(lastId).padStart(3, '0');
       const buildingId = `BLD${yearSuffix}${sequence}`;
-      
+
       // Update counter
       transaction.set(counterRef, {
         lastId: lastId,
         year: currentYear,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
-      
+
       return buildingId;
     });
-    
+
     console.log(`✅ Generated sequential building ID: ${result}`);
     return result;
-    
   } catch (error) {
     console.error('Error generating sequential building ID:', error);
     const fallbackId = `BLD${Date.now().toString().slice(-6)}`;
@@ -181,18 +178,18 @@ async function generateSequentialBuildingId() {
 // Generate search keywords for buildings
 function generateBuildingSearchKeywords(buildingData) {
   const keywords = [];
-  
+
   // Add name keywords
   if (buildingData.name) {
     keywords.push(buildingData.name.toLowerCase());
     keywords.push(...buildingData.name.toLowerCase().split(' '));
   }
-  
+
   // Add brand keywords
   if (buildingData.brand) {
     keywords.push(buildingData.brand.toLowerCase());
   }
-  
+
   // Add location keywords
   if (buildingData.location) {
     if (buildingData.location.city) {
@@ -208,9 +205,9 @@ function generateBuildingSearchKeywords(buildingData) {
       keywords.push(...buildingData.location.address.toLowerCase().split(' '));
     }
   }
-  
+
   // Remove duplicates and empty strings
-  return [...new Set(keywords.filter(keyword => keyword && keyword.length > 1))];
+  return [...new Set(keywords.filter((keyword) => keyword && keyword.length > 1))];
 }
 
 // Find or create city automatically
@@ -220,53 +217,53 @@ async function findOrCreateCity(locationData) {
     const cityName = locationData.city;
     const provinceName = locationData.province;
     const countryName = locationData.country || 'Indonesia';
-    
+
     // Check if city already exists
     const citySnapshot = await db.collection('cities')
-      .where('name', '==', cityName)
-      .where('province', '==', provinceName)
-      .limit(1)
-      .get();
-    
+        .where('name', '==', cityName)
+        .where('province', '==', provinceName)
+        .limit(1)
+        .get();
+
     if (!citySnapshot.empty) {
       console.log(`✅ City ${cityName} already exists`);
       return citySnapshot.docs[0].id;
     }
-    
+
     // Generate city ID
     const year = new Date().getFullYear();
     const counterRef = db.collection('counters').doc('cities');
-    
+
     const cityId = await db.runTransaction(async (transaction) => {
       const counterDoc = await transaction.get(counterRef);
-      
+
       let lastId = 1;
       let currentYear = year;
-      
+
       if (counterDoc.exists) {
         const data = counterDoc.data();
         lastId = data.lastId + 1;
         currentYear = data.year;
-        
+
         if (currentYear !== year) {
           lastId = 1;
           currentYear = year;
         }
       }
-      
+
       const yearSuffix = year.toString().slice(-2);
       const sequence = String(lastId).padStart(3, '0');
       const generatedCityId = `CIT${yearSuffix}${sequence}`;
-      
+
       transaction.set(counterRef, {
         lastId: lastId,
         year: currentYear,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
-      
+
       return generatedCityId;
     });
-    
+
     // Create new city
     const cityData = {
       cityId,
@@ -276,21 +273,21 @@ async function findOrCreateCity(locationData) {
       statistics: {
         totalSpaces: 0,
         totalBuildings: 0,
-        activeBuildings: 0
+        activeBuildings: 0,
       },
       search: {
         keywords: [cityName.toLowerCase(), provinceName.toLowerCase()],
-        aliases: []
+        aliases: [],
       },
       isActive: true,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     // Use structured ID as document ID
     await db.collection('cities').doc(cityId).set(cityData);
     console.log(`✅ Created new city: ${cityName} with ID: ${cityId}`);
-    
+
     return cityId;
   } catch (error) {
     console.error('Error in findOrCreateCity:', error);
@@ -303,36 +300,36 @@ async function updateCityStatistics(cityName) {
   try {
     const db = getDb();
     const citySnapshot = await db.collection('cities')
-      .where('name', '==', cityName)
-      .limit(1)
-      .get();
-    
+        .where('name', '==', cityName)
+        .limit(1)
+        .get();
+
     if (citySnapshot.empty) return;
-    
+
     const cityDoc = citySnapshot.docs[0];
-    
+
     // Count buildings and spaces in this city
     const buildingSnapshot = await db.collection('buildings')
-      .where('location.city', '==', cityName)
-      .get();
-    
+        .where('location.city', '==', cityName)
+        .get();
+
     const totalBuildings = buildingSnapshot.size;
-    const activeBuildings = buildingSnapshot.docs.filter(doc => doc.data().isActive).length;
-    
+    const activeBuildings = buildingSnapshot.docs.filter((doc) => doc.data().isActive).length;
+
     // Count spaces in this city
     const spaceSnapshot = await db.collection('spaces')
-      .where('location.city', '==', cityName)
-      .get();
-    
+        .where('location.city', '==', cityName)
+        .get();
+
     const totalSpaces = spaceSnapshot.size;
-    
+
     await cityDoc.ref.update({
       'statistics.totalBuildings': totalBuildings,
       'statistics.activeBuildings': activeBuildings,
       'statistics.totalSpaces': totalSpaces,
-      updatedAt: new Date()
+      'updatedAt': new Date(),
     });
-    
+
     console.log(`✅ Updated statistics for city ${cityName}: ${totalBuildings} buildings, ${totalSpaces} spaces`);
   } catch (error) {
     console.error('Error updating city statistics:', error);
@@ -343,9 +340,9 @@ async function updateCityStatistics(cityName) {
 const buildings = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
-      const { method, url } = req;
+      const {method, url} = req;
       const path = url.split('?')[0];
-      const pathParts = path.split('/').filter(part => part);
+      const pathParts = path.split('/').filter((part) => part);
 
       if (method === 'GET') {
         if (pathParts.length === 0) {
@@ -357,33 +354,33 @@ const buildings = onRequest(async (req, res) => {
         // POST /buildings - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await createBuilding(req, res);
       } else if (method === 'POST' && pathParts.length === 2 && pathParts[1] === 'upload-image') {
         // POST /buildings/:id/upload-image - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await uploadBuildingImage(pathParts[0], req, res);
       } else if (method === 'PUT' && pathParts.length === 1) {
         // PUT /buildings/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await updateBuilding(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /buildings/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await deleteBuilding(pathParts[0], req, res);
       }
 
-      handleResponse(res, { message: 'Building route not found' }, 404);
+      handleResponse(res, {message: 'Building route not found'}, 404);
     } catch (error) {
       handleError(res, error);
     }
@@ -404,14 +401,14 @@ const getAllBuildings = async (req, res) => {
       country = '',
       isActive = '',
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = req.query;
 
     // Build query
     let query = db.collection('buildings');
 
     // Role-based restriction: if requester is staff, force city filter
-    const { role: requesterRole, cityId: requesterCityId } = await getUserRoleAndCity(req);
+    const {role: requesterRole, cityId: requesterCityId} = await getUserRoleAndCity(req);
     if (requesterRole === 'staff' && requesterCityId) {
       query = query.where('cityId', '==', requesterCityId);
     }
@@ -447,12 +444,12 @@ const getAllBuildings = async (req, res) => {
     query = query.orderBy(sortBy, sortOrder);
 
     const snapshot = await query.get();
-    let buildings = [];
+    const buildings = [];
 
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc) => {
       buildings.push({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       });
     });
 
@@ -466,9 +463,9 @@ const getAllBuildings = async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total: buildings.length,
-        totalPages: Math.ceil(buildings.length / parseInt(limit))
+        totalPages: Math.ceil(buildings.length / parseInt(limit)),
       },
-      total: buildings.length
+      total: buildings.length,
     });
   } catch (error) {
     handleError(res, error);
@@ -480,12 +477,12 @@ const getBuildingById = async (buildingId, req, res) => {
   try {
     const db = getDb();
     const doc = await db.collection('buildings').doc(buildingId).get();
-    
+
     if (!doc.exists) {
-      return handleResponse(res, { message: 'Building not found' }, 404);
+      return handleResponse(res, {message: 'Building not found'}, 404);
     }
 
-    handleResponse(res, { id: doc.id, ...doc.data() });
+    handleResponse(res, {id: doc.id, ...doc.data()});
   } catch (error) {
     handleError(res, error);
   }
@@ -504,7 +501,7 @@ const createBuilding = async (req, res) => {
       console.log('❌ Validation failed:', validationErrors);
       return handleResponse(res, {
         message: 'Validation failed',
-        errors: validationErrors
+        errors: validationErrors,
       }, 400);
     }
 
@@ -514,13 +511,13 @@ const createBuilding = async (req, res) => {
 
     // Check for duplicate building
     const isDuplicate = await checkDuplicateBuilding(
-      sanitizedData.name,
-      sanitizedData.location.city
+        sanitizedData.name,
+        sanitizedData.location.city,
     );
 
     if (isDuplicate) {
       return handleResponse(res, {
-        message: 'A building with this name already exists in the same city'
+        message: 'A building with this name already exists in the same city',
       }, 409);
     }
 
@@ -538,14 +535,14 @@ const createBuilding = async (req, res) => {
       searchKeywords: generateBuildingSearchKeywords(sanitizedData),
       statistics: {
         totalSpaces: 0,
-        activeSpaces: 0
+        activeSpaces: 0,
       },
       metadata: {
         createdAt: new Date(),
         updatedAt: new Date(),
-        version: 1
+        version: 1,
       },
-      isActive: sanitizedData.isActive !== undefined ? sanitizedData.isActive : true
+      isActive: sanitizedData.isActive !== undefined ? sanitizedData.isActive : true,
     };
 
     console.log('💾 Saving building data:', JSON.stringify(buildingData, null, 2));
@@ -560,7 +557,7 @@ const createBuilding = async (req, res) => {
 
     handleResponse(res, {
       id: buildingId,
-      ...buildingData
+      ...buildingData,
     }, 201);
   } catch (error) {
     handleError(res, error);
@@ -572,10 +569,10 @@ const updateBuilding = async (buildingId, req, res) => {
   try {
     const db = getDb();
     console.log(`🏢 PUT /buildings/${buildingId} - Request received`);
-    
+
     const buildingDoc = await db.collection('buildings').doc(buildingId).get();
     if (!buildingDoc.exists) {
-      return handleResponse(res, { message: 'Building not found' }, 404);
+      return handleResponse(res, {message: 'Building not found'}, 404);
     }
 
     // Validate data
@@ -583,7 +580,7 @@ const updateBuilding = async (buildingId, req, res) => {
     if (validationErrors.length > 0) {
       return handleResponse(res, {
         message: 'Validation failed',
-        errors: validationErrors
+        errors: validationErrors,
       }, 400);
     }
 
@@ -593,14 +590,14 @@ const updateBuilding = async (buildingId, req, res) => {
     // Check for duplicate building (excluding current one)
     if (sanitizedData.name && sanitizedData.location?.city) {
       const isDuplicate = await checkDuplicateBuilding(
-        sanitizedData.name,
-        sanitizedData.location.city,
-        buildingId
+          sanitizedData.name,
+          sanitizedData.location.city,
+          buildingId,
       );
 
       if (isDuplicate) {
         return handleResponse(res, {
-          message: 'A building with this name already exists in the same city'
+          message: 'A building with this name already exists in the same city',
         }, 409);
       }
     }
@@ -620,13 +617,13 @@ const updateBuilding = async (buildingId, req, res) => {
       cityId,
       searchKeywords: generateBuildingSearchKeywords({
         ...existingData,
-        ...sanitizedData
+        ...sanitizedData,
       }),
       metadata: {
         ...existingData.metadata,
         updatedAt: new Date(),
-        version: (existingData.metadata?.version || 1) + 1
-      }
+        version: (existingData.metadata?.version || 1) + 1,
+      },
     };
 
     // Update in Firestore
@@ -644,7 +641,7 @@ const updateBuilding = async (buildingId, req, res) => {
     const updatedDoc = await db.collection('buildings').doc(buildingId).get();
     const updatedBuilding = {
       id: updatedDoc.id,
-      ...updatedDoc.data()
+      ...updatedDoc.data(),
     };
 
     handleResponse(res, updatedBuilding);
@@ -657,10 +654,10 @@ const updateBuilding = async (buildingId, req, res) => {
 const deleteBuilding = async (buildingId, req, res) => {
   try {
     const db = getDb();
-    
+
     const buildingDoc = await db.collection('buildings').doc(buildingId).get();
     if (!buildingDoc.exists) {
-      return handleResponse(res, { message: 'Building not found' }, 404);
+      return handleResponse(res, {message: 'Building not found'}, 404);
     }
 
     const buildingData = buildingDoc.data();
@@ -685,7 +682,7 @@ const deleteBuilding = async (buildingId, req, res) => {
       await updateCityStatistics(cityName);
     }
 
-    handleResponse(res, { message: 'Building deleted successfully' });
+    handleResponse(res, {message: 'Building deleted successfully'});
   } catch (error) {
     handleError(res, error);
   }
@@ -695,16 +692,16 @@ const deleteBuilding = async (buildingId, req, res) => {
 const uploadBuildingImage = async (buildingId, req, res) => {
   try {
     const db = getDb();
-    const { imageData, fileName } = req.body;
+    const {imageData, fileName} = req.body;
 
     if (!imageData) {
-      return handleResponse(res, { message: 'No image data provided' }, 400);
+      return handleResponse(res, {message: 'No image data provided'}, 400);
     }
 
     // Check if building exists
     const buildingDoc = await db.collection('buildings').doc(buildingId).get();
     if (!buildingDoc.exists) {
-      return handleResponse(res, { message: 'Building not found' }, 404);
+      return handleResponse(res, {message: 'Building not found'}, 404);
     }
 
     const buildingData = buildingDoc.data();
@@ -716,9 +713,9 @@ const uploadBuildingImage = async (buildingId, req, res) => {
 
     // Upload new image
     const uploadResult = await uploadImageFromBase64(
-      imageData, 
-      fileName || `building_${buildingId}`, 
-      'buildings'
+        imageData,
+        fileName || `building_${buildingId}`,
+        'buildings',
     );
 
     // Update building document with new image URL
@@ -727,15 +724,15 @@ const uploadBuildingImage = async (buildingId, req, res) => {
       metadata: {
         ...buildingData.metadata,
         updatedAt: new Date(),
-        version: (buildingData.metadata?.version || 1) + 1
-      }
+        version: (buildingData.metadata?.version || 1) + 1,
+      },
     });
 
     console.log(`✅ Successfully updated building ${buildingId} with image: ${uploadResult.url}`);
 
     handleResponse(res, {
       image: uploadResult.url,
-      filename: uploadResult.filename
+      filename: uploadResult.filename,
     });
   } catch (error) {
     console.error('Error uploading building image:', error);
@@ -743,4 +740,4 @@ const uploadBuildingImage = async (buildingId, req, res) => {
   }
 };
 
-module.exports = { buildings }; 
+module.exports = {buildings};

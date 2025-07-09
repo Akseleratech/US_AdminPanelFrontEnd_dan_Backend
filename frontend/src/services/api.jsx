@@ -1,7 +1,14 @@
 import { auth } from '../config/firebase.jsx';
 
-// API Base URL - using direct functions emulator URL since proxy isn't working
-const API_BASE_URL = 'http://localhost:5555/demo-unionspace-crm/asia-southeast1';
+// API Base URL: dynamic based on environment
+// 1) If VITE_API_BASE is defined, always use that (allows custom targets)
+// 2) Otherwise: in development (vite dev / emulator) -> use functions emulator URL
+//                in production (build on Hosting)   -> use relative '/api' path so Hosting rewrites route to Cloud Functions
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE ||
+  (import.meta.env.DEV
+    ? 'http://localhost:5555/demo-unionspace-crm/asia-southeast1'
+    : '/api');
 
 // Export API_BASE_URL for use in other services
 export { API_BASE_URL };

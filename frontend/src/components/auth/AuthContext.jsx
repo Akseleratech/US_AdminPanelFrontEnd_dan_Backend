@@ -20,14 +20,7 @@ export const useAuth = () => {
   return context;
 };
 
-// DEVELOPMENT FLAG: Set to true to bypass login and use a mock user
-const BYPASS_AUTH_FOR_DEVELOPMENT = false;
-
-const mockUser = {
-  uid: 'dev-user-123',
-  email: 'dev@unionspace.com',
-  displayName: 'Dev User',
-};
+// Development auth-bypass code removed for production safety
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -57,13 +50,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    if (BYPASS_AUTH_FOR_DEVELOPMENT) {
-      // In dev mode, "logout" will just reload to the "logged-in" state
-      setUser(null); 
-      setIsAdmin(false);
-      window.location.reload();
-      return;
-    }
     try {
       await firebaseSignOut(auth);
       setIsAdmin(false);
@@ -116,13 +102,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    if (BYPASS_AUTH_FOR_DEVELOPMENT) {
-      setUser(mockUser);
-      setIsAdmin(true); // Mock user is always admin in dev mode
-      setLoading(false);
-      return;
-    }
-
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {

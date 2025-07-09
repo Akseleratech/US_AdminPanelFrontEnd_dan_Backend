@@ -1,4 +1,4 @@
-const admin = require("firebase-admin");
+const admin = require('firebase-admin');
 
 // Get Firestore instance
 const getDb = () => {
@@ -14,7 +14,7 @@ const handleResponse = (res, data, statusCode = 200) => {
     success: statusCode < 400,
     data: statusCode < 400 ? data : null,
     error: statusCode >= 400 ? data : null,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 };
 
@@ -23,13 +23,13 @@ const handleError = (res, error, statusCode = 500) => {
   console.error('Function Error:', error);
   handleResponse(res, {
     message: error.message || 'Internal server error',
-    code: error.code || 'INTERNAL_ERROR'
+    code: error.code || 'INTERNAL_ERROR',
   }, statusCode);
 };
 
 // Validation helpers
 const validateRequired = (data, fields) => {
-  const missing = fields.filter(field => !data[field]);
+  const missing = fields.filter((field) => !data[field]);
   if (missing.length > 0) {
     throw new Error(`Missing required fields: ${missing.join(', ')}`);
   }
@@ -62,7 +62,7 @@ const sanitizeString = (str) => {
 
 const sanitizeObject = (obj, allowedFields) => {
   const sanitized = {};
-  allowedFields.forEach(field => {
+  allowedFields.forEach((field) => {
     if (obj[field] !== undefined) {
       if (typeof obj[field] === 'string') {
         sanitized[field] = sanitizeString(obj[field]);
@@ -92,36 +92,36 @@ const generateSequentialId = async (counterName, prefix, digits = 3) => {
   const db = getDb();
   const year = new Date().getFullYear();
   const counterRef = db.collection('counters').doc(counterName);
-  
+
   return await db.runTransaction(async (transaction) => {
     const counterDoc = await transaction.get(counterRef);
-    
+
     let lastId = 1;
     let currentYear = year;
-    
+
     if (counterDoc.exists) {
       const data = counterDoc.data();
       lastId = data.lastId + 1;
       currentYear = data.year;
-      
+
       // Reset counter if year changed
       if (currentYear !== year) {
         lastId = 1;
         currentYear = year;
       }
     }
-    
+
     const yearSuffix = year.toString().slice(-2);
     const sequence = String(lastId).padStart(digits, '0');
     const id = `${prefix}${yearSuffix}${sequence}`;
-    
+
     // Update counter
     transaction.set(counterRef, {
       lastId: lastId,
       year: currentYear,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
-    
+
     return id;
   });
 };
@@ -143,7 +143,7 @@ const parseQueryParams = (query = {}) => {
     sortBy = 'createdAt',
     sortOrder = 'desc',
     search = '',
-    filter = {}
+    filter = {},
   } = query;
 
   return {
@@ -152,7 +152,7 @@ const parseQueryParams = (query = {}) => {
     sortBy: sanitizeString(sortBy),
     sortOrder: sortOrder === 'asc' ? 'asc' : 'desc',
     search: sanitizeString(search),
-    filter: typeof filter === 'string' ? JSON.parse(filter) : filter
+    filter: typeof filter === 'string' ? JSON.parse(filter) : filter,
   };
 };
 
@@ -170,12 +170,12 @@ const getUserFromToken = async (token) => {
     if (!admin.apps.length) {
       admin.initializeApp();
     }
-    
+
     const decodedToken = await admin.auth().verifyIdToken(token);
     return {
       uid: decodedToken.uid,
       email: decodedToken.email,
-      displayName: decodedToken.name || decodedToken.email
+      displayName: decodedToken.name || decodedToken.email,
     };
   } catch (error) {
     console.error('Error verifying token:', error);
@@ -200,23 +200,23 @@ const requireAdmin = async (req, res, next) => {
   try {
     const token = verifyAuthToken(req);
     if (!token) {
-      return handleResponse(res, { message: 'Authentication required' }, 401);
+      return handleResponse(res, {message: 'Authentication required'}, 401);
     }
 
     const user = await getUserFromToken(token);
     if (!user) {
-      return handleResponse(res, { message: 'Invalid authentication token' }, 401);
+      return handleResponse(res, {message: 'Invalid authentication token'}, 401);
     }
 
     const isAdmin = await checkIsAdmin(user.uid);
     if (!isAdmin) {
-      return handleResponse(res, { message: 'Admin access required' }, 403);
+      return handleResponse(res, {message: 'Admin access required'}, 403);
     }
 
     // Attach user info to request for use in handlers
     req.user = user;
     req.isAdmin = true;
-    
+
     if (next) {
       next();
     } else {
@@ -224,7 +224,7 @@ const requireAdmin = async (req, res, next) => {
     }
   } catch (error) {
     console.error('Error in requireAdmin middleware:', error);
-    return handleResponse(res, { message: 'Authentication error' }, 500);
+    return handleResponse(res, {message: 'Authentication error'}, 500);
   }
 };
 
@@ -247,9 +247,9 @@ const verifyAdminAuth = async (req) => {
 // Helper function to get service type code
 const getServiceTypeCode = (serviceName) => {
   if (!serviceName) return 'GEN';
-  
+
   const name = serviceName.toLowerCase();
-  
+
   if (name.includes('meeting') || name.includes('rapat')) return 'MTG';
   if (name.includes('workspace') || name.includes('kerja') || name.includes('coworking')) return 'WRK';
   if (name.includes('event') || name.includes('acara')) return 'EVT';
@@ -257,7 +257,7 @@ const getServiceTypeCode = (serviceName) => {
   if (name.includes('training') || name.includes('pelatihan')) return 'TRN';
   if (name.includes('seminar')) return 'SEM';
   if (name.includes('workshop')) return 'WSP';
-  
+
   return 'GEN'; // General/Umum as default
 };
 
@@ -271,7 +271,7 @@ const getServiceTypeLabel = (serviceType) => {
     'TRN': 'Training/Pelatihan',
     'SEM': 'Seminar',
     'WSP': 'Workshop',
-    'GEN': 'General/Umum'
+    'GEN': 'General/Umum',
   };
   return labels[serviceType] || serviceType;
 };
@@ -280,39 +280,39 @@ const getServiceTypeLabel = (serviceType) => {
 const generateStructuredOrderId = async (source = 'manual') => {
   const db = getDb();
   const now = new Date();
-  
+
   // Format date as YYYYMMDD
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   const dateStr = `${year}${month}${day}`;
-  
+
   // Get source code
   const sourceCode = source === 'mobile' || source === 'app' ? 'APP' : 'MAN';
-  
+
   // Generate sequence number (reset monthly)
   const counterName = `orders_${year}_${month}`;
   const counterRef = db.collection('counters').doc(counterName);
-  
+
   return await db.runTransaction(async (transaction) => {
     const counterDoc = await transaction.get(counterRef);
-    
+
     let sequence = 1;
     if (counterDoc.exists) {
       sequence = (counterDoc.data().lastSequence || 0) + 1;
     }
-    
+
     const sequenceStr = String(sequence).padStart(4, '0');
     const orderId = `ORD-${dateStr}-${sourceCode}-${sequenceStr}`;
-    
+
     // Update counter
     transaction.set(counterRef, {
       lastSequence: sequence,
       updatedAt: new Date(),
       year: year,
-      month: month
+      month: month,
     });
-    
+
     return orderId;
   });
 };
@@ -336,7 +336,7 @@ const parseOrderId = (orderId) => {
       source,
       sourceLabel: source === 'APP' ? 'Mobile App' : 'Manual/CRM',
       sequence,
-      full: orderId
+      full: orderId,
     };
   }
 
@@ -351,7 +351,7 @@ const parseOrderId = (orderId) => {
       source,
       sourceLabel: source === 'APP' ? 'Mobile App' : 'Manual/CRM',
       sequence,
-      full: orderId
+      full: orderId,
     };
   }
 
@@ -363,13 +363,13 @@ const getCurrentTaxRate = async () => {
   try {
     const db = getDb();
     const docSnap = await db.collection('settings').doc('global').get();
-    
+
     if (docSnap.exists) {
       const data = docSnap.data();
       // Convert percentage to decimal (e.g., 11% -> 0.11)
       return (data.taxRate || 11) / 100;
     }
-    
+
     // Fallback to 11% if no settings found
     return 0.11;
   } catch (error) {
@@ -383,23 +383,23 @@ const getCurrentTaxRate = async () => {
 const getUserRoleAndCity = async (req) => {
   try {
     const token = verifyAuthToken(req);
-    if (!token) return { role: null, cityId: null };
+    if (!token) return {role: null, cityId: null};
 
     const user = await getUserFromToken(token);
-    if (!user) return { role: null, cityId: null };
+    if (!user) return {role: null, cityId: null};
 
     const db = getDb();
     const adminDoc = await db.collection('admins').doc(user.uid).get();
-    if (!adminDoc.exists) return { role: null, cityId: null };
+    if (!adminDoc.exists) return {role: null, cityId: null};
 
     const data = adminDoc.data();
     return {
       role: data.role || null,
-      cityId: data.cityId || null
+      cityId: data.cityId || null,
     };
   } catch (error) {
     console.error('Error in getUserRoleAndCity:', error);
-    return { role: null, cityId: null };
+    return {role: null, cityId: null};
   }
 };
 
@@ -427,5 +427,5 @@ module.exports = {
   generateStructuredOrderId,
   parseOrderId,
   getCurrentTaxRate,
-  getUserRoleAndCity
-}; 
+  getUserRoleAndCity,
+};

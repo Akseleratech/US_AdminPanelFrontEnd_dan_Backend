@@ -1,4 +1,4 @@
-const cors = require("cors");
+const cors = require('cors');
 
 // Configure CORS with restricted origins for security
 const allowedOrigins = [
@@ -11,10 +11,10 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin: function (origin, callback) {
+  origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests in development)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -26,8 +26,8 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
   preflightContinue: false,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
 };
 
 // Export configured CORS middleware
-module.exports = cors(corsOptions); 
+module.exports = cors(corsOptions);

@@ -1,10 +1,10 @@
-const admin = require("firebase-admin");
-const { v4: uuidv4 } = require("uuid");
+const admin = require('firebase-admin');
+const {v4: uuidv4} = require('uuid');
 
 // Check if running in emulator
 const isEmulator = () => {
-  return process.env.FUNCTIONS_EMULATOR === "true" || 
-         process.env.NODE_ENV === "development" ||
+  return process.env.FUNCTIONS_EMULATOR === 'true' ||
+         process.env.NODE_ENV === 'development' ||
          process.env.FIREBASE_STORAGE_EMULATOR_HOST;
 };
 
@@ -13,10 +13,10 @@ const getBucket = () => {
   if (!admin.apps.length) {
     admin.initializeApp();
   }
-  
-  const projectId = process.env.GCLOUD_PROJECT || "demo-unionspace-crm";
+
+  const projectId = process.env.GCLOUD_PROJECT || 'demo-unionspace-crm';
   const bucketName = `${projectId}.appspot.com`;
-  
+
   console.log(`📦 Using bucket: ${bucketName}`);
   return admin.storage().bucket(bucketName);
 };
@@ -24,18 +24,18 @@ const getBucket = () => {
 // Get proper URL based on environment
 const getImageUrl = (fileName) => {
   if (!fileName) return null;
-  
-  const projectId = process.env.GCLOUD_PROJECT || "demo-unionspace-crm";
+
+  const projectId = process.env.GCLOUD_PROJECT || 'demo-unionspace-crm';
   const bucketName = `${projectId}.appspot.com`;
-  
+
   if (isEmulator()) {
     // Use emulator URL format
-    const emulatorHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || "127.0.0.1:9999";
+    const emulatorHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || '127.0.0.1:9999';
     const url = `http://${emulatorHost}/v0/b/${bucketName}/o/${encodeURIComponent(fileName)}?alt=media`;
     console.log(`🔗 Generated emulator URL: ${url}`);
     return url;
   } else {
-    // Use production URL format  
+    // Use production URL format
     return `https://storage.googleapis.com/${bucketName}/${fileName}`;
   }
 };
@@ -45,15 +45,15 @@ const uploadImageFromBuffer = async (fileBuffer, mimeType, fileName, folder = 'g
   try {
     console.log(`📤 Uploading image: ${fileName} to folder: ${folder}`);
     console.log(`🚀 Environment: ${isEmulator() ? 'EMULATOR' : 'PRODUCTION'}`);
-    
+
     const bucket = getBucket();
     const fileExtension = mimeType.split('/')[1];
     const uniqueFileName = `${folder}/${Date.now()}_${uuidv4()}.${fileExtension}`;
-    
+
     console.log(`📁 Generated filename: ${uniqueFileName}`);
-    
+
     const file = bucket.file(uniqueFileName);
-    
+
     // Upload file
     const uploadOptions = {
       metadata: {
@@ -61,9 +61,9 @@ const uploadImageFromBuffer = async (fileBuffer, mimeType, fileName, folder = 'g
         metadata: {
           originalName: fileName,
           uploadedAt: new Date().toISOString(),
-          folder: folder
-        }
-      }
+          folder: folder,
+        },
+      },
     };
 
     // Only set public for production (emulator doesn't need this)
@@ -87,19 +87,19 @@ const uploadImageFromBuffer = async (fileBuffer, mimeType, fileName, folder = 'g
     // Get public URL
     const publicUrl = getImageUrl(uniqueFileName);
     console.log(`🔗 Generated URL: ${publicUrl}`);
-    
+
     return {
       success: true,
       url: publicUrl,
       filename: uniqueFileName,
-      originalName: fileName
+      originalName: fileName,
     };
   } catch (error) {
     console.error('❌ Error uploading image:', error);
     console.error('🔍 Error details:', {
       message: error.message,
       code: error.code,
-      details: error.details
+      details: error.details,
     });
     throw new Error(`Failed to upload image: ${error.message}`);
   }
@@ -109,7 +109,7 @@ const uploadImageFromBuffer = async (fileBuffer, mimeType, fileName, folder = 'g
 const uploadImageFromBase64 = async (base64Data, fileName, folder = 'general') => {
   try {
     console.log(`🔍 Processing base64 image: ${fileName}`);
-    
+
     // Parse base64 data
     const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
     if (!matches || matches.length !== 3) {
@@ -118,7 +118,7 @@ const uploadImageFromBase64 = async (base64Data, fileName, folder = 'general') =
 
     const mimeType = matches[1];
     const imageBuffer = Buffer.from(matches[2], 'base64');
-    
+
     console.log(`📊 Image info: ${mimeType}, ${imageBuffer.length} bytes`);
 
     // Validate image type
@@ -143,7 +143,7 @@ const uploadImageFromBase64 = async (base64Data, fileName, folder = 'general') =
 // Delete image
 const deleteImage = async (imageUrl) => {
   try {
-    if (!imageUrl) return { success: true, message: 'No image to delete' };
+    if (!imageUrl) return {success: true, message: 'No image to delete'};
 
     console.log(`🗑️ Deleting image: ${imageUrl}`);
 
@@ -159,7 +159,7 @@ const deleteImage = async (imageUrl) => {
       // Production URL format: https://storage.googleapis.com/bucket/path/to/file.jpg
       const urlParts = imageUrl.split('/');
       // Remove the bucket name and join the rest as the filename
-      const bucketIndex = urlParts.findIndex(part => part.includes('.appspot.com'));
+      const bucketIndex = urlParts.findIndex((part) => part.includes('.appspot.com'));
       if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
         fileName = urlParts.slice(bucketIndex + 1).join('/');
       } else {
@@ -179,14 +179,14 @@ const deleteImage = async (imageUrl) => {
 
     if (!fileName) {
       console.warn('⚠️ Could not extract filename from URL:', imageUrl);
-      return { success: false, message: 'Could not extract filename from URL' };
+      return {success: false, message: 'Could not extract filename from URL'};
     }
 
     console.log(`📁 Extracted filename: ${fileName}`);
 
     const bucket = getBucket();
     const file = bucket.file(fileName);
-    
+
     // Check if file exists
     const [exists] = await file.exists();
     if (exists) {
@@ -196,11 +196,11 @@ const deleteImage = async (imageUrl) => {
       console.log(`ℹ️ Image does not exist: ${fileName}`);
     }
 
-    return { success: true, message: 'Image deleted successfully' };
+    return {success: true, message: 'Image deleted successfully'};
   } catch (error) {
     console.error('❌ Error deleting image:', error);
     // Don't throw error for deletion failures, just log
-    return { success: false, message: error.message };
+    return {success: false, message: error.message};
   }
 };
 
@@ -230,5 +230,5 @@ module.exports = {
   deleteImage,
   getImageUrl,
   validateImageFile,
-  isEmulator
-}; 
+  isEmulator,
+};

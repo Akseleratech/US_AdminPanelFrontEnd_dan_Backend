@@ -2,10 +2,107 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // TEMPORARY DEVELOPMENT RULES - OPEN ACCESS
-    // TODO: Restore proper rules after admin setup
     match /{document=**} {
-      allow read, write: if true;
+      allow read
+      }
+
+    // ----- Common helper functions -----
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function userRole() {
+      return isSignedIn() ? getUserDoc().data.role : null;
+    }
+
+    function isAdmin() {
+      return userRole() == 'admin';
+    }
+
+    function isStaff() {
+      return userRole() == 'staff';
+    }
+
+    function isUser() {
+      return isSignedIn() && !isAdmin() && !isStaff();
+    }
+
+    function isOrderOwner() {
+      return resource.data.userId == request.auth.uid;
+    }
+    function isOrderOwnerInRequest() {
+      return request.resource.data.userId == request.auth.uid;
+    }
+
+    // ----- Global lock-down -----
+    // By default, deny everything. Each collection explicitly opens what it needs.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ----- Settings -----
+    match /settings/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin(); // only admins can change global settings
+    }
+
+    // ----- Admins management -----
+    match /admins/{userId} {
+      // Users can read their own admin profile. Full read for admins.
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+
+      // Only admins may create / update / delete admin documents
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ----- Reference data collections (cities, amenities, services, buildings) -----
+    match /cities/{cityId} {
+      allow read: if isSignedIn();
+      allow write, delete: if isAdmin();
+    }
+
+    match /amenities/{amenityId} {
+      allow read: if isSignedIn();
+      allow write, delete: if isAdmin();
+    }
+
+    match /services/{serviceId} {
+      allow read: if isSignedIn();
+      allow write, delete: if isAdmin();
+    }
+
+    match /buildings/{buildingId} {
+      allow read: if isSignedIn();
+      allow write, delete: if isAdmin();
+    }
+
+    // ----- Spaces collection -----
+    // Admins: full access. Staff: allowed to manage spaces they belong to (based on cityId field)
+    match /spaces/{spaceId} {
+      allow read: if isSignedIn();
+      allow write, delete: if isAdmin() || (isStaff() && request.resource.data.cityId == getUserDoc().data.cityId);
+    }
+
+    // ----- Orders & Invoices -----
+    match /orders/{orderId} {
+      // All authenticated users can read their own orders; admins/staff can read all
+      allow read: if isAdmin() || isStaff() || (isUser() && isOrderOwner());
+
+      // Mobile user creates a booking order for themselves
+      allow create: if isUser() && isOrderOwnerInRequest();
+
+      // Users cannot modify an order once created; only admin/staff can update/delete
+      allow update, delete: if isAdmin() || isStaff();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() || isStaff();
+      allow delete: if isAdmin();
     }
   }
 } 

@@ -1,22 +1,22 @@
-const { onRequest } = require("firebase-functions/v2/https");
-const cors = require("./utils/corsConfig");
-const { 
-  getDb, 
-  handleResponse, 
-  handleError, 
-  validateRequired, 
+const {onRequest} = require('firebase-functions/v2/https');
+const cors = require('./utils/corsConfig');
+const {
+  getDb,
+  handleResponse,
+  handleError,
+  validateRequired,
   sanitizeString,
   generateSequentialId,
-  verifyAdminAuth
-} = require("./utils/helpers");
+  verifyAdminAuth,
+} = require('./utils/helpers');
 
 // Main services function that handles all service routes
 const services = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
-      const { method, url } = req;
+      const {method, url} = req;
       const path = url.split('?')[0];
-      const pathParts = path.split('/').filter(part => part);
+      const pathParts = path.split('/').filter((part) => part);
 
       // Route handling
       if (method === 'GET') {
@@ -31,27 +31,27 @@ const services = onRequest(async (req, res) => {
         // POST /services - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await createService(req, res);
       } else if (method === 'PUT' && pathParts.length === 1) {
         // PUT /services/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await updateService(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /services/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, { message: 'Admin access required' }, 403);
+          return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await deleteService(pathParts[0], req, res);
       }
 
       // 404 for unknown routes
-      handleResponse(res, { message: 'Service route not found' }, 404);
+      handleResponse(res, {message: 'Service route not found'}, 404);
     } catch (error) {
       handleError(res, error);
     }
@@ -62,7 +62,7 @@ const services = onRequest(async (req, res) => {
 const getAllServices = async (req, res) => {
   try {
     const db = getDb();
-    const { search, status, limit, category, type } = req.query;
+    const {search, status, limit, category, type} = req.query;
     let servicesRef = db.collection('layanan');
 
     // Build query
@@ -89,30 +89,30 @@ const getAllServices = async (req, res) => {
     // Get all spaces to count usage
     const spacesSnapshot = await db.collection('spaces').get();
     const spacesData = [];
-    spacesSnapshot.forEach(doc => {
+    spacesSnapshot.forEach((doc) => {
       spacesData.push(doc.data());
     });
 
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc) => {
       const data = doc.data();
-      
+
       // Count spaces using this service (enhanced matching)
-      const serviceSpaces = spacesData.filter(space => {
+      const serviceSpaces = spacesData.filter((space) => {
         // Direct category match with service name (most common)
         if (space.category === data.name) return true;
-        
+
         // Alternative matches for backwards compatibility
         if (space.category === (data.layananId || data.serviceId) || space.serviceId === (data.layananId || data.serviceId)) return true;
-        
+
         // Case-insensitive match
-        if (space.category && data.name && 
+        if (space.category && data.name &&
             space.category.toLowerCase() === data.name.toLowerCase()) return true;
-            
+
         return false;
       });
-      
-      const activeSpaces = serviceSpaces.filter(space => space.isActive === true);
-      
+
+      const activeSpaces = serviceSpaces.filter((space) => space.isActive === true);
+
       services.push({
         id: doc.id,
         ...data,
@@ -122,20 +122,20 @@ const getAllServices = async (req, res) => {
         // Add space count
         spaceCount: {
           total: serviceSpaces.length,
-          active: activeSpaces.length
+          active: activeSpaces.length,
         },
         // Ensure layananId is available (for backward compatibility)
-        layananId: data.layananId || data.serviceId || doc.id
+        layananId: data.layananId || data.serviceId || doc.id,
       });
     });
 
     // Apply client-side filtering for search
     if (search) {
       const searchLower = search.toLowerCase();
-      services = services.filter(service =>
+      services = services.filter((service) =>
         service.name.toLowerCase().includes(searchLower) ||
         service.slug.toLowerCase().includes(searchLower) ||
-        service.description?.toLowerCase().includes(searchLower)
+        service.description?.toLowerCase().includes(searchLower),
       );
     }
 
@@ -146,7 +146,7 @@ const getAllServices = async (req, res) => {
 
     handleResponse(res, {
       services,
-      total: services.length
+      total: services.length,
     });
   } catch (error) {
     console.error('Error fetching services:', error);
@@ -159,34 +159,34 @@ const getServiceById = async (serviceId, req, res) => {
   try {
     const db = getDb();
     const doc = await db.collection('layanan').doc(serviceId).get();
-    
+
     if (!doc.exists) {
-      return handleResponse(res, { message: 'Service not found' }, 404);
+      return handleResponse(res, {message: 'Service not found'}, 404);
     }
 
     const data = doc.data();
-    
+
     // Get spaces using this service
     const spacesSnapshot = await db.collection('spaces').get();
     const serviceSpaces = [];
     const activeSpaces = [];
-    
-    spacesSnapshot.forEach(spaceDoc => {
+
+    spacesSnapshot.forEach((spaceDoc) => {
       const spaceData = spaceDoc.data();
-      
+
       // Enhanced matching logic (same as in getAll)
       let isMatch = false;
-      
+
       // Direct category match with service name (most common)
       if (spaceData.category === data.name) isMatch = true;
-      
+
       // Alternative matches for backwards compatibility
       if (spaceData.category === (data.layananId || data.serviceId) || spaceData.serviceId === (data.layananId || data.serviceId)) isMatch = true;
-      
+
       // Case-insensitive match
-      if (spaceData.category && data.name && 
+      if (spaceData.category && data.name &&
           spaceData.category.toLowerCase() === data.name.toLowerCase()) isMatch = true;
-      
+
       if (isMatch) {
         serviceSpaces.push(spaceData);
         if (spaceData.isActive === true) {
@@ -194,7 +194,7 @@ const getServiceById = async (serviceId, req, res) => {
         }
       }
     });
-    
+
     const serviceData = {
       id: doc.id,
       ...data,
@@ -204,10 +204,10 @@ const getServiceById = async (serviceId, req, res) => {
       // Add space count
       spaceCount: {
         total: serviceSpaces.length,
-        active: activeSpaces.length
+        active: activeSpaces.length,
       },
       // Ensure layananId is available (for backward compatibility)
-      layananId: data.layananId || data.serviceId || doc.id
+      layananId: data.layananId || data.serviceId || doc.id,
     };
 
     handleResponse(res, serviceData);
@@ -231,7 +231,7 @@ const createService = async (req, res) => {
       metrics,
       status = 'draft',
       createdBy,
-      lastModifiedBy
+      lastModifiedBy,
     } = req.body;
 
     // Validation
@@ -246,7 +246,7 @@ const createService = async (req, res) => {
     // Check for duplicate slug
     const slugQuery = await db.collection('layanan').where('slug', '==', finalSlug).get();
     if (!slugQuery.empty) {
-      return handleResponse(res, { message: 'Service slug already exists' }, 400);
+      return handleResponse(res, {message: 'Service slug already exists'}, 400);
     }
 
     const serviceData = {
@@ -257,19 +257,19 @@ const createService = async (req, res) => {
       type: type || 'standard',
       description: {
         short: description?.short || '',
-        long: description?.long || ''
+        long: description?.long || '',
       },
       metrics: {
         totalSpaces: 0,
         activeSpaces: 0,
         averageLifetimeValue: metrics?.averageLifetimeValue || 0,
-        conversionRate: metrics?.conversionRate || 0
+        conversionRate: metrics?.conversionRate || 0,
       },
       status,
       createdBy: createdBy || 'system',
       lastModifiedBy: lastModifiedBy || createdBy || 'system',
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     // Use structured ID as document ID instead of random
@@ -279,7 +279,7 @@ const createService = async (req, res) => {
 
     handleResponse(res, {
       id: finalLayananId,
-      ...serviceData
+      ...serviceData,
     }, 201);
   } catch (error) {
     console.error('Error creating service:', error);
@@ -291,13 +291,13 @@ const createService = async (req, res) => {
 const updateService = async (serviceId, req, res) => {
   try {
     const db = getDb();
-    const updateData = { ...req.body };
+    const updateData = {...req.body};
     delete updateData.id; // Remove id from update data
 
     // Check if service exists
     const serviceDoc = await db.collection('layanan').doc(serviceId).get();
     if (!serviceDoc.exists) {
-      return handleResponse(res, { message: 'Service not found' }, 404);
+      return handleResponse(res, {message: 'Service not found'}, 404);
     }
 
     // Sanitize strings
@@ -307,12 +307,12 @@ const updateService = async (serviceId, req, res) => {
     // Check for duplicate slug if slug is being updated
     if (updateData.slug) {
       const slugQuery = await db.collection('layanan')
-        .where('slug', '==', updateData.slug)
-        .get();
-      
-      const duplicateSlug = slugQuery.docs.find(doc => doc.id !== serviceId);
+          .where('slug', '==', updateData.slug)
+          .get();
+
+      const duplicateSlug = slugQuery.docs.find((doc) => doc.id !== serviceId);
       if (duplicateSlug) {
-        return handleResponse(res, { message: 'Service slug already exists' }, 400);
+        return handleResponse(res, {message: 'Service slug already exists'}, 400);
       }
     }
 
@@ -328,7 +328,7 @@ const updateService = async (serviceId, req, res) => {
 
     handleResponse(res, {
       id: serviceId,
-      ...data
+      ...data,
     });
   } catch (error) {
     console.error('Error updating service:', error);
@@ -340,24 +340,24 @@ const updateService = async (serviceId, req, res) => {
 const deleteService = async (serviceId, req, res) => {
   try {
     const db = getDb();
-    
+
     // Check if service exists
     const serviceDoc = await db.collection('layanan').doc(serviceId).get();
     if (!serviceDoc.exists) {
-      return handleResponse(res, { message: 'Service not found' }, 404);
+      return handleResponse(res, {message: 'Service not found'}, 404);
     }
 
     const serviceData = serviceDoc.data();
 
     // Check if service has associated spaces
     const spacesSnapshot = await db.collection('spaces')
-      .where('category', '==', serviceData.name)
-      .limit(1)
-      .get();
+        .where('category', '==', serviceData.name)
+        .limit(1)
+        .get();
 
     if (!spacesSnapshot.empty) {
-      return handleResponse(res, { 
-        message: 'Cannot delete service with associated spaces' 
+      return handleResponse(res, {
+        message: 'Cannot delete service with associated spaces',
       }, 400);
     }
 
@@ -365,11 +365,11 @@ const deleteService = async (serviceId, req, res) => {
 
     console.log(`✅ Service deleted: ${serviceId} - ${serviceData.name}`);
 
-    handleResponse(res, { message: 'Service deleted successfully' });
+    handleResponse(res, {message: 'Service deleted successfully'});
   } catch (error) {
     console.error('Error deleting service:', error);
     handleError(res, error);
   }
 };
 
-module.exports = { services }; 
+module.exports = {services};
