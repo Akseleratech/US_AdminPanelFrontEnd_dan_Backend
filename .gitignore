@@ -1,5 +1,7 @@
 databasestructureref
-
+.firebase
+.vscode
+restart-emulator.bat
 
 # Logs
 logs
