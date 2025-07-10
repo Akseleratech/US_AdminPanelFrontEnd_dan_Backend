@@ -4,10 +4,12 @@ const cors = require('cors');
 const allowedOrigins = [
   'http://localhost:5173', // Vite dev server
   'http://localhost:3000', // Alternative dev port
+  'http://localhost:3001', // Current dev port
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
-  'https://unionspace-w9v242.web.app', // Production domain
-  'https://unionspace-w9v242.firebaseapp.com', // Firebase app domain
+  'http://127.0.0.1:3001',
+  `https://${process.env.FIREBASE_PROJECT_ID || 'unionspace-w9v242'}.web.app`, // Production domain
+  `https://${process.env.FIREBASE_PROJECT_ID || 'unionspace-w9v242'}.firebaseapp.com`, // Firebase app domain
 ];
 
 const corsOptions = {

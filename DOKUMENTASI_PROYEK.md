@@ -111,10 +111,111 @@ npm install
     Emulator akan menjalankan functions, firestore, dan layanan lainnya secara lokal. Frontend perlu dikonfigurasi untuk menunjuk ke emulator saat dalam mode pengembangan.
 
 ### Deploy ke Firebase
-Untuk mendeploy semua perubahan ke Firebase (Hosting dan Functions):
+
+#### Development Environment
+Untuk menjalankan dalam mode development dengan emulator:
 ```bash
-# Dari direktori root
-firebase deploy
+# Start Firebase emulators
+firebase emulators:start --project demo-unionspace-crm
+
+# Di terminal terpisah, jalankan frontend
+cd frontend
+npm run dev
+```
+
+#### Production Deployment
+Untuk mendeploy ke production environment:
+
+1. **Build Frontend untuk Production**
+   ```bash
+   cd frontend
+   npm run build
+   ```
+
+2. **Deploy ke Firebase Production**
+   ```bash
+   # Kembali ke root project
+   cd ..
+
+   # Deploy semua (hosting + functions)
+   firebase deploy --project unionspace-w9v242
+
+   # Atau deploy terpisah:
+   firebase deploy --only functions --project unionspace-w9v242
+   firebase deploy --only hosting --project unionspace-w9v242
+   ```
+
+3. **Quick Production Deploy (Single Command)**
+   ```bash
+   # Build frontend + deploy everything
+   cd frontend && npm run build && cd .. && firebase deploy --project unionspace-w9v242
+   ```
+
+#### Environment Configuration
+Proyek ini menggunakan konfigurasi environment yang dynamic:
+
+**Development Environment:**
+- Frontend: File `.env.development`
+  - `VITE_FIREBASE_PROJECT_ID=demo-unionspace-crm`
+  - `VITE_API_BASE="http://localhost:5555/demo-unionspace-crm/asia-southeast1"`
+- Backend: Firebase Emulator dengan project `demo-unionspace-crm`
+
+**Production Environment:**
+- Frontend: File `.env.production`
+  - `VITE_FIREBASE_PROJECT_ID=unionspace-w9v242`
+  - `VITE_API_BASE="/api"` (menggunakan Firebase Hosting rewrites)
+- Backend: Firebase Functions dengan project `unionspace-w9v242`
+
+#### Environment Switching Commands
+
+**Development:**
+```bash
+# Start emulators
+firebase emulators:start --project demo-unionspace-crm
+
+# Frontend dev server
+cd frontend && npm run dev
+```
+
+**Production Build Test:**
+```bash
+# Build frontend
+cd frontend && npm run build
+
+# Serve production build locally
+npm run preview
+
+# Test with production Firebase
+firebase hosting:channel:deploy preview --project unionspace-w9v242
+```
+
+#### Monitoring & Verification
+Setelah deploy production, verifikasi:
+- ✅ **Frontend**: `https://unionspace-w9v242.web.app`
+- ✅ **API**: `https://unionspace-w9v242.web.app/api/dashboard/stats`
+- ✅ **Functions**: Firebase Console > Functions
+- ✅ **Database**: Firebase Console > Firestore
+
+#### Rollback (jika ada masalah)
+```bash
+# Lihat deployment history
+firebase hosting:releases:list --project unionspace-w9v242
+
+# Rollback ke versi sebelumnya
+firebase hosting:releases:rollback <RELEASE_ID> --project unionspace-w9v242
+```
+
+#### Firebase Hosting Rewrites
+File `firebase.json` sudah dikonfigurasi untuk redirect API calls di production:
+```json
+"rewrites": [
+  { "source": "/api/dashboard/**", "function": "dashboard" },
+  { "source": "/api/spaces/**", "function": "spaces" },
+  { "source": "/api/orders/**", "function": "orders" },
+  { "source": "/api/customers/**", "function": "customers" },
+  // ... dll
+  { "source": "**", "destination": "/index.html" }
+]
 ```
 
 ## 6. Rekomendasi

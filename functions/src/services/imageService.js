@@ -14,7 +14,7 @@ const getBucket = () => {
     admin.initializeApp();
   }
 
-  const projectId = process.env.GCLOUD_PROJECT || 'unionspace-w9v242';
+  const projectId = process.env.GCLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID || 'demo-unionspace-crm';
   const bucketName = `${projectId}.firebasestorage.app`;
 
   console.log(`📦 Using bucket: ${bucketName}`);
@@ -25,7 +25,7 @@ const getBucket = () => {
 const getImageUrl = (fileName) => {
   if (!fileName) return null;
 
-  const projectId = process.env.GCLOUD_PROJECT || 'unionspace-w9v242';
+  const projectId = process.env.GCLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID || 'demo-unionspace-crm';
   const bucketName = `${projectId}.firebasestorage.app`;
 
   if (isEmulator()) {

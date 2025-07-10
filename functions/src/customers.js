@@ -1,5 +1,5 @@
 const {onRequest} = require('firebase-functions/v2/https');
-const cors = require('cors')({origin: true});
+const cors = require('./utils/corsConfig');
 const admin = require('firebase-admin');
 const {
   getDb,

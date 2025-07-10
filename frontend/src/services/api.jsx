@@ -7,7 +7,7 @@ import { auth } from '../config/firebase.jsx';
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.DEV
-    ? 'http://localhost:5555/unionspace-w9v242/asia-southeast1'
+    ? `http://localhost:5555/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/asia-southeast1`
     : '/api');
 
 // Export API_BASE_URL for use in other services

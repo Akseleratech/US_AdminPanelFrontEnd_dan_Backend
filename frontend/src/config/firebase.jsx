@@ -5,18 +5,15 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
-// Your web app's Firebase configuration
+// Your web app's Firebase configuration is loaded from environment variables
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-key",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "demo-unionspace-crm.appspot.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-unionspace-crm",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "demo-unionspace-crm.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789:web:demo",
-  // measurementId is optional - only include if available
-  ...(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID && {
-    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
-  })
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
@@ -46,7 +43,6 @@ if ((import.meta.env.DEV || window.location.hostname === 'localhost') && !emulat
   }
 }
 
-// Analytics is optional - only initialize if measurementId is provided
-export const analytics = import.meta.env.VITE_FIREBASE_MEASUREMENT_ID ? getAnalytics(app) : null;
+export const analytics = getAnalytics(app);
 
 export default app; 

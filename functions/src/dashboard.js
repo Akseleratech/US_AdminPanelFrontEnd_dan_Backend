@@ -1,5 +1,5 @@
 const {onRequest} = require('firebase-functions/v2/https');
-const cors = require('cors')({origin: true});
+const cors = require('./utils/corsConfig');
 const {getDb, handleResponse, handleError} = require('./utils/helpers');
 
 // Main dashboard function that handles all dashboard routes
