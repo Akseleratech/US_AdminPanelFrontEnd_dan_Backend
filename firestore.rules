@@ -72,14 +72,26 @@ service cloud.firestore {
     }
 
     match /buildings/{buildingId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Allow anonymous read access for mobile apps
+      allow write, delete: if isAdmin();
+    }
+
+    // Added promos collection rules
+    match /promos/{promoId} {
+      allow read: if true; // Allow anonymous read access for mobile apps
+      allow write, delete: if isAdmin();
+    }
+
+    // Added articles collection rules
+    match /articles/{articleId} {
+      allow read: if true; // Allow anonymous read access for mobile apps
       allow write, delete: if isAdmin();
     }
 
     // ----- Spaces collection -----
     // Admins: full access. Staff: allowed to manage spaces they belong to (based on cityId field)
     match /spaces/{spaceId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Allow anonymous read access for mobile apps
       allow write, delete: if isAdmin() || (isStaff() && request.resource.data.cityId == getUserDoc().data.cityId);
     }
 

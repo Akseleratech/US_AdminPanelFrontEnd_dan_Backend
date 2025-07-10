@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Eye, Edit, Trash2, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const LayananTable = ({ layananList, onEdit, onDelete, loading = false, usedLayananIds }) => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
+
+  const { userRole } = useAuth();
   const itemsPerPage = 15;
 
   // Sorting state
@@ -227,7 +230,7 @@ const LayananTable = ({ layananList, onEdit, onDelete, loading = false, usedLaya
   return (
     <div className="bg-white border border-primary-200 table-green-theme rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full table-auto divide-y divide-primary-200">
+        <table className="table-auto min-w-full divide-y divide-primary-200">
           <thead className="bg-primary-50 border-b border-primary-200">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">
@@ -314,6 +317,8 @@ const LayananTable = ({ layananList, onEdit, onDelete, loading = false, usedLaya
                   </td>
                   <td className="px-6 py-4 text-sm font-medium align-middle whitespace-nowrap">
                     <div className="flex items-center justify-start space-x-2">
+                      {userRole === 'admin' && (
+                        <>
                       <button 
                         className="text-primary-600 hover:text-primary-800 p-1"
                         title="Lihat Detail"
@@ -337,11 +342,13 @@ const LayananTable = ({ layananList, onEdit, onDelete, loading = false, usedLaya
                           <Trash2 className="w-4 h-4" />
                         </button>
                         {usedLayananIds.has(layanan.id) && (
-                          <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md hidden group-hover:block pointer-events-none">
                             Layanan ini tidak bisa dihapus karena sedang digunakan oleh satu atau lebih space.
                           </div>
                         )}
                       </div>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

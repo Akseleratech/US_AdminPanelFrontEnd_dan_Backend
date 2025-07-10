@@ -1,5 +1,6 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { Edit, Trash2, User, Eye, Image, Upload, Phone, Mail, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, loading, activeCustomerEmails = new Set() }) => {
   const fileInputRefs = useRef({});
@@ -10,6 +11,9 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
 
   // Sorting state
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  // Get current user role
+  const { userRole } = useAuth();
 
   // Sort customers
   const sortedCustomers = useMemo(() => {
@@ -393,20 +397,24 @@ const CustomersTable = ({ customers, onEdit, onDelete, onUploadImage, onView, lo
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => onEdit(customer)}
-                        className="text-green-600 hover:text-green-900 p-1"
-                        aria-label="Edit customer"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onDelete(customer.id)}
-                        className="text-red-600 hover:text-red-900 p-1"
-                        aria-label="Delete customer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {userRole !== 'finance' && (
+                        <>
+                        <button
+                          onClick={() => onEdit(customer)}
+                          className="text-green-600 hover:text-green-900 p-1"
+                          aria-label="Edit customer"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onDelete(customer.id)}
+                          className="text-red-600 hover:text-red-900 p-1"
+                          aria-label="Delete customer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

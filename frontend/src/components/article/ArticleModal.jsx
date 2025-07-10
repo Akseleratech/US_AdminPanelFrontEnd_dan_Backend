@@ -198,11 +198,14 @@ const ArticleModal = ({ isOpen, onClose, article, onSave }) => {
         savedArticle = await articlesAPI.create(formData);
       }
 
+      // Extract article ID from API wrapper or direct object
+      const articleId = savedArticle?.data?.id || savedArticle?.data?.articleId || savedArticle?.id;
+
       // Upload image if selected
-      if (imageFile) {
+      if (imageFile && articleId) {
         setUploadingImage(true);
         try {
-          await articlesAPI.uploadImage(savedArticle.id, imageFile);
+          await articlesAPI.uploadImage(articleId, imageFile);
         } catch (imageUploadError) {
           console.error('Image upload failed:', imageUploadError);
           setImageError('Failed to upload image. The article was saved without image.');
@@ -248,23 +251,24 @@ const ArticleModal = ({ isOpen, onClose, article, onSave }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+    <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-gray-50/50 z-10">
           <h2 className="text-xl font-bold text-gray-900">
             {article ? 'Edit Article' : 'Tambah Article Baru'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
             disabled={loading || uploadingImage}
           >
-            <X className="h-6 w-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Content */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Title */}
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
@@ -577,18 +581,18 @@ const ArticleModal = ({ isOpen, onClose, article, onSave }) => {
           </div>
 
           {/* Form Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-6 border-t">
+          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200 bg-gray-50/50 -mx-6 px-6 pb-6 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 ring-primary transition-all duration-200"
               disabled={loading || uploadingImage}
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              className="px-6 py-2.5 bg-gradient-primary text-white rounded-lg hover:bg-gradient-primary-hover focus:outline-none focus:ring-2 ring-primary shadow-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               disabled={loading || uploadingImage}
             >
               {loading ? (

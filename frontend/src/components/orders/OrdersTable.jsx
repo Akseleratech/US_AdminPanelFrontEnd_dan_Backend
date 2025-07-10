@@ -257,6 +257,35 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
 
   // Keep track of orders we have already processed to avoid duplicate invoice creation
   const [processedOrders, setProcessedOrders] = useState(new Set());
+  const [generatingInvoice, setGeneratingInvoice] = useState(new Set());
+
+  // Handle manual invoice generation
+  const handleGenerateInvoice = async (order) => {
+    if (generatingInvoice.has(order.id)) {
+      return; // Already generating
+    }
+
+    try {
+      setGeneratingInvoice(prev => new Set(prev).add(order.id));
+      
+      const invoice = await generateInvoiceFromOrder(order);
+      
+      if (invoice && invoice.id && typeof onOrdersRefresh === 'function') {
+        onOrdersRefresh(); // Refresh orders list to show updated invoice status
+      }
+      
+      console.log('✅ Invoice generated successfully:', invoice);
+    } catch (error) {
+      console.error('❌ Failed to generate invoice:', error);
+      // You might want to show a notification here
+    } finally {
+      setGeneratingInvoice(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(order.id);
+        return newSet;
+      });
+    }
+  };
 
   // Auto-generate invoice when an order moves to "confirmed" and has no invoice yet
   useEffect(() => {
@@ -625,7 +654,11 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
                         className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
                         title="Generate Invoice"
                       >
-                        Generate
+                        {generatingInvoice.has(order.id) ? (
+                          <div className="animate-spin h-3 w-3 mr-1 text-blue-500" />
+                        ) : (
+                          'Generate'
+                        )}
                       </button>
                     )}
                   </td>
@@ -641,20 +674,34 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
                   {/* Actions */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <button 
-                        onClick={() => onEdit && onEdit(order)}
-                        className="text-green-600 hover:text-green-900 transition-colors"
-                        title="Edit Order"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => onDelete && onDelete(order.id)}
-                        className="text-red-600 hover:text-red-900 transition-colors"
-                        title="Delete Order"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {userRole !== 'finance' && (
+                        <>
+                          <button 
+                            onClick={() => {
+                              console.log('🔍 Edit button clicked for order:', order.id);
+                              if (onEdit) {
+                                onEdit(order);
+                              }
+                            }}
+                            className="text-green-600 hover:text-green-900 transition-colors"
+                            title="Edit Order"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              console.log('🔍 Delete button clicked for order:', order.id);
+                              if (onDelete) {
+                                onDelete(order.id);
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-900 transition-colors"
+                            title="Delete Order"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

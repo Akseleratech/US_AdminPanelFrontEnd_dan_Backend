@@ -206,6 +206,9 @@ const SimpleCityModal = ({ isOpen, onClose, onSubmit, initialData, isEditing }) 
       await onSubmit(cityData);
       console.log('✅ SimpleCityModal: City submitted successfully');
       
+      // Close modal after successful submission
+      handleClose();
+      
     } catch (error) {
       console.error('💥 SimpleCityModal: Error during submission:', error);
       setErrors(prev => ({

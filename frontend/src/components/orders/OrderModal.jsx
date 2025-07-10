@@ -586,6 +586,43 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
   const validateForm = () => {
     const newErrors = {};
 
+    // Determine role-based conditions
+    const isStaffEditing = editingOrder && userRole === 'staff';
+    const isAdminEditing = editingOrder && userRole === 'admin';
+
+    // If staff editing → simple status/notes validation
+    if (isStaffEditing) {
+      if (!formData.status) newErrors.status = 'Status is required';
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    }
+
+    // Admin editing: require core fields but skip heavy operational/availability checks
+    if (isAdminEditing) {
+      if (!formData.customerId) newErrors.customerId = 'Customer is required';
+      if (!formData.spaceId) newErrors.spaceId = 'Space is required';
+      if (!formData.startDate) newErrors.startDate = 'Start date is required';
+      if (!formData.endDate) newErrors.endDate = 'End date is required';
+
+      // Basic date order check
+      if (formData.startDate && formData.endDate) {
+        const startDate = new Date(formData.startDate);
+        const endDate = new Date(formData.endDate);
+        if (startDate > endDate) {
+          newErrors.endDate = 'End date cannot be before start date';
+        }
+      }
+
+      // Allow amountBase 0 during edit
+      if (formData.amountBase < 0) {
+        newErrors.amountBase = 'Base amount must be 0 or greater';
+      }
+
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    }
+
+    // General validation for admins or new orders
     if (!formData.customerId) newErrors.customerId = 'Customer is required';
     if (!formData.spaceId) newErrors.spaceId = 'Space is required';
     if (!formData.startDate) newErrors.startDate = 'Start date is required';
@@ -659,7 +696,10 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
     }
 
     if (!formData.amountBase || formData.amountBase <= 0) {
-      newErrors.amountBase = 'Base amount must be greater than Rp. 0';
+      // Allow zero amountBase when editing an existing order (admin may keep original)
+      if (!editingOrder) {
+        newErrors.amountBase = 'Base amount must be greater than Rp. 0';
+      }
     }
 
     // Check availability for the selected dates

@@ -37,6 +37,27 @@ const Layout = ({ children }) => (
   </div>
 );
 
+const ProtectedRoute = ({ element, allowedRoles }) => {
+  const { userRole } = useAuth();
+  
+  if (!allowedRoles.includes(userRole)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full space-y-8 text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Access Denied
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            You don't have permission to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  return element;
+};
+
 const PrivateRoutes = () => {
   const { user, loading, isAdmin, userRole, logout } = useAuth();
   const navigate = useNavigate();
@@ -94,8 +115,8 @@ const PrivateRoutes = () => {
           <Route path="/amenities" element={<Amenities />} />
           <Route path="/promo" element={<Promo />} />
           <Route path="/articles" element={<Article />} />
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/finance/*" element={<Finance />} />
+          <Route path="/customers" element={<ProtectedRoute element={<Customers />} allowedRoles={['admin', 'finance']} />} />
+          <Route path="/finance/*" element={<ProtectedRoute element={<Finance />} allowedRoles={['admin', 'finance']} />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

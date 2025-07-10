@@ -2,11 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Edit, Trash2, Image, Package, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const AmenitiesTable = ({ amenities, onEdit, onDelete, onToggleStatus, loading, usedAmenityIds }) => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+
+  const { userRole } = useAuth();
 
   // Sorting state
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -229,7 +232,7 @@ const AmenitiesTable = ({ amenities, onEdit, onDelete, onToggleStatus, loading, 
   return (
     <div className="bg-white border border-primary-200 table-green-theme rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-primary-200">
+        <table className="table-auto min-w-full divide-y divide-primary-200">
           <thead className="bg-primary-50 border-b border-primary-200">
             <tr>
               <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider">Icon</th>
@@ -334,28 +337,32 @@ const AmenitiesTable = ({ amenities, onEdit, onDelete, onToggleStatus, loading, 
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
-                      <button
-                        onClick={() => onEdit(amenity)}
-                        className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-100"
-                        title="Edit Fasilitas"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <div className="relative group">
-                        <button 
-                          onClick={() => onDelete(amenity.id)}
-                          className={`text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100 ${usedAmenityIds && usedAmenityIds.has(amenity.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          title="Hapus Fasilitas"
-                          disabled={usedAmenityIds && usedAmenityIds.has(amenity.id)}
+                       {userRole === 'admin' && (
+                         <>
+                        <button
+                          onClick={() => onEdit(amenity)}
+                          className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-100"
+                          title="Edit Fasilitas"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
                         </button>
-                        {usedAmenityIds && usedAmenityIds.has(amenity.id) && (
-                          <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                            Fasilitas ini tidak bisa dihapus karena sedang digunakan oleh satu atau lebih space.
-                          </div>
-                        )}
-                      </div>
+                        <div className="relative group">
+                          <button 
+                            onClick={() => onDelete(amenity.id)}
+                            className={`text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100 ${usedAmenityIds && usedAmenityIds.has(amenity.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            title="Hapus Fasilitas"
+                            disabled={usedAmenityIds && usedAmenityIds.has(amenity.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          {usedAmenityIds && usedAmenityIds.has(amenity.id) && (
+                            <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md hidden group-hover:block pointer-events-none">
+                              Fasilitas ini tidak bisa dihapus karena sedang digunakan oleh satu atau lebih space.
+                            </div>
+                          )}
+                        </div>
+                         </>
+                       )}
                     </div>
                   </td>
                 </tr>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Edit, Trash2, LayoutGrid, Building, Users, Tag, CheckSquare, DollarSign, Clock, Power, Calendar, User, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, Plus } from 'lucide-react';
 import LoadingSpinner from '../common/LoadingSpinner';
 import SpaceDetailModal from './SpaceDetailModal';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const SpacesGrid = ({ 
   spaces, 
@@ -20,6 +21,9 @@ const SpacesGrid = ({
   // Modal state
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState(null);
+
+  // Get user role
+  const { userRole } = useAuth();
 
   // Calculate pagination values
   const totalItems = spaces?.length || 0;
@@ -542,7 +546,9 @@ const SpacesGrid = ({
                   >
                     <Eye className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
                   </button>
-                  <button 
+                  {userRole === 'admin' && (
+                    <>
+                    <button 
                     onClick={() => onToggleActive && onToggleActive(space)} 
                     className={`p-2 rounded-lg transition-colors duration-200 group/btn ${
                       space.isActive 
@@ -567,6 +573,8 @@ const SpacesGrid = ({
                   >
                     <Trash2 className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
                   </button>
+                  </>
+                  )}
                 </div>
               </div>
             </div>

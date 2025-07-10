@@ -44,18 +44,25 @@ const Article = () => {
   const loadArticles = async () => {
     try {
       setLoading(true);
-      const response = await articlesAPI.getAll(filters);
+      // Clean up filters to avoid sending empty strings
+      const apiFilters = { ...filters };
+      Object.keys(apiFilters).forEach(key => {
+        if (apiFilters[key] === '') delete apiFilters[key];
+      });
+
+      const respWrapper = await articlesAPI.getAll(apiFilters);
+      const payload = respWrapper?.data;
       
-      if (response.articles) {
-        setArticles(response.articles);
+      if (payload && payload.articles) {
+        setArticles(payload.articles);
         
         // Calculate stats
         const stats = {
-          total: response.total || response.articles.length,
-          published: response.articles.filter(a => a.status === 'published').length,
-          draft: response.articles.filter(a => a.status === 'draft').length,
-          archived: response.articles.filter(a => a.status === 'archived').length,
-          featured: response.articles.filter(a => a.isFeatured).length
+          total: payload.total || payload.articles.length,
+          published: payload.articles.filter(a => a.status === 'published').length,
+          draft: payload.articles.filter(a => a.status === 'draft').length,
+          archived: payload.articles.filter(a => a.status === 'archived').length,
+          featured: payload.articles.filter(a => a.isFeatured).length
         };
         setStats(stats);
       }
@@ -161,13 +168,6 @@ const Article = () => {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
-          </button>
-          <button
-            onClick={handleCreateNew}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Tambah Article
           </button>
         </div>
       </div>

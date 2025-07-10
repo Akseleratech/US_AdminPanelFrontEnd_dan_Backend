@@ -85,7 +85,7 @@ const Sidebar = () => {
   ];
 
   // Restrict certain nav items based on role
-  const restrictedForStaff = ['/promo', '/articles', '/finance', '/settings'];
+  const restrictedForStaff = ['/promo', '/articles', '/finance', '/settings', '/customers'];
   const restrictedForFinance = ['/promo', '/articles', '/settings'];
 
   const filteredLinks = navLinks.filter(link => {

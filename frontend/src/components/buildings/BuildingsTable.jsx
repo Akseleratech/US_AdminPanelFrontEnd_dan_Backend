@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { Eye, Edit, Trash2, MapPin, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds }) => {
   // Debug log to see building data
   console.log('🏢 BuildingsTable: Received buildings data:', buildings);
   
+  const { userRole } = useAuth();
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
@@ -231,10 +234,10 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
   return (
     <div className="bg-white border border-primary-200 table-green-theme rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full table-auto divide-y divide-primary-200">
+        <table className="table-auto min-w-full divide-y divide-primary-200">
           <thead className="bg-primary-50 border-b border-primary-200">
             <tr>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-20">
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[5rem]">
                 Image
               </th>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider max-w-[200px]">
@@ -246,7 +249,7 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
                   <SortIcon column="name" />
                 </button>
               </th>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-28">
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[7rem]">
                 <button 
                   onClick={() => handleSort('brand')}
                   className="group flex items-center space-x-1 hover:text-primary-900"
@@ -264,7 +267,7 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
                   <SortIcon column="location" />
                 </button>
               </th>
-              <th className="px-3 md:px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider w-28">
+              <th className="px-3 md:px-6 py-3 text-center text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[7rem]">
                 <button 
                   onClick={() => handleSort('totalSpaces')}
                   className="group flex items-center space-x-1 hover:text-primary-900"
@@ -273,7 +276,7 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
                   <SortIcon column="totalSpaces" />
                 </button>
               </th>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-28">
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[7rem]">
                 <button 
                   onClick={() => handleSort('isActive')}
                   className="group flex items-center space-x-1 hover:text-primary-900"
@@ -282,7 +285,7 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
                   <SortIcon column="isActive" />
                 </button>
               </th>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-28">
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider min-w-[7rem]">
                 Actions
               </th>
             </tr>
@@ -374,29 +377,35 @@ const BuildingsTable = ({ buildings, onEdit, onDelete, loading, usedBuildingIds 
                   </td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
-                      <button className="text-primary-600 hover:text-primary-800 p-1">
+                      <button className="text-primary-600 hover:text-primary-800 p-1" title="View Detail">
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => onEdit(building)}
-                        className="text-green-600 hover:text-green-900 p-1"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <div className="relative group">
-                        <button 
-                          onClick={() => onDelete('building', building.id)}
-                          className={`text-red-600 hover:text-red-900 p-1 ${usedBuildingIds.has(building.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          disabled={usedBuildingIds.has(building.id)}
+                      {userRole === 'admin' && (
+                        <>
+                        <button
+                          onClick={() => onEdit(building)}
+                          className="text-green-600 hover:text-green-900 p-1"
+                          title="Edit Gedung"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
                         </button>
-                        {usedBuildingIds.has(building.id) && (
-                          <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                            Gedung ini tidak bisa dihapus karena sedang digunakan oleh satu atau lebih space.
-                          </div>
-                        )}
-                      </div>
+                        <div className="relative group">
+                          <button 
+                            onClick={() => onDelete('building', building.id)}
+                            className={`text-red-600 hover:text-red-900 p-1 ${usedBuildingIds.has(building.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={usedBuildingIds.has(building.id)}
+                            title="Delete Gedung"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          {usedBuildingIds.has(building.id) && (
+                            <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md hidden group-hover:block pointer-events-none z-10">
+                              Gedung ini tidak bisa dihapus karena sedang digunakan oleh satu atau lebih space.
+                            </div>
+                          )}
+                        </div>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

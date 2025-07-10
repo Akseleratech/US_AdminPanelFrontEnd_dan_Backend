@@ -37,32 +37,6 @@ const Promo = () => {
     loadPromos();
   }, [filters]);
 
-  // Test API connection
-  const testAPI = async () => {
-    try {
-      console.log('🧪 Testing API connection...');
-      const response = await fetch('/api/promos');
-      console.log('🔗 API Response status:', response.status);
-      
-      if (!response.ok) {
-        console.error('❌ API Error:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('Error details:', errorText);
-        return;
-      }
-      
-      const data = await response.json();
-      console.log('✅ API Test successful:', data);
-      
-      if (data.promos) {
-        setPromos(data.promos);
-        console.log(`📊 Loaded ${data.promos.length} promos directly`);
-      }
-    } catch (error) {
-      console.error('❌ API Test failed:', error);
-    }
-  };
-
   // Load promos from API
   const loadPromos = async () => {
     try {
@@ -88,24 +62,26 @@ const Promo = () => {
       }
       
       console.log('📡 Calling API with filters:', apiFilters);
-      const response = await promosAPI.getAll(apiFilters);
-      console.log('✅ API response received:', response);
-      
-      if (response && response.promos) {
-        setPromos(response.promos);
-        console.log(`📊 Loaded ${response.promos.length} promos`);
-        
+      const respWrapper = await promosAPI.getAll(apiFilters);
+      console.log('✅ API response received:', respWrapper);
+
+      const payload = respWrapper?.data;
+
+      if (payload && payload.promos) {
+        setPromos(payload.promos);
+        console.log(`📊 Loaded ${payload.promos.length} promos`);
+
         // Calculate stats
         const stats = {
-          total: response.total || response.promos.length,
-          banners: response.promos.filter(p => p.type === 'banner').length,
-          sections: response.promos.filter(p => p.type === 'section').length,
-          active: response.promos.filter(p => p.isActive).length
+          total: payload.total || payload.promos.length,
+          banners: payload.promos.filter(p => p.type === 'banner').length,
+          sections: payload.promos.filter(p => p.type === 'section').length,
+          active: payload.promos.filter(p => p.isActive).length
         };
         setStats(stats);
         console.log('📈 Updated stats:', stats);
       } else {
-        console.warn('⚠️ No promos data in response:', response);
+        console.warn('⚠️ No promos data in response:', respWrapper);
         setPromos([]);
         setStats({ total: 0, banners: 0, sections: 0, active: 0 });
       }
@@ -207,25 +183,12 @@ const Promo = () => {
         </div>
         <div className="flex items-center space-x-3">
           <button
-            onClick={testAPI}
-            className="inline-flex items-center px-3 py-2 border border-yellow-300 shadow-sm text-sm leading-4 font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-          >
-            🧪 Test API
-          </button>
-          <button
             onClick={handleRefresh}
             className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             disabled={refreshing}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
-          </button>
-          <button
-            onClick={handleCreateNew}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Tambah Promo
           </button>
         </div>
       </div>

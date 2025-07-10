@@ -1,8 +1,11 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { Edit, Trash2, MapPin, Image, Upload, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCityIds }) => {
   const fileInputRefs = useRef({});
+
+  const { userRole } = useAuth();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -242,7 +245,7 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
   return (
     <div className="bg-white border border-primary-200 table-green-theme rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
-        <table className=" w-full divide-y">
+        <table className="table-auto min-w-full divide-y">
           <thead className="bg-primary-50">
             <tr>
               <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider">Thumbnail</th>
@@ -314,8 +317,6 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
                           src={city.thumbnail} 
                           alt={`${city.name} thumbnail`}
                           className="w-full h-full object-cover"
-                          crossOrigin="anonymous"
-                          referrerPolicy="no-referrer"
                           onError={(e) => {
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';
@@ -327,7 +328,7 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
                       
                       {/* Upload overlay */}
                       <div 
-                        className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden group-hover:block transition-opacity cursor-pointer"
                         onClick={() => triggerFileInput(city.id)}
                         title="Upload thumbnail"
                       >
@@ -371,6 +372,8 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
                   <td className="px-3 md:px-6 py-4 text-sm text-gray-900 text-center align-middle whitespace-nowrap">{city.totalSpaces}</td>
                   <td className="px-3 md:px-6 py-4 text-sm font-medium align-middle whitespace-nowrap">
                     <div className="flex items-center justify-start space-x-2">
+                      {userRole === 'admin' && (
+                        <>
                       <button
                         onClick={() => onEdit(city)}
                         className="text-green-600 hover:text-blue-900 transition-colors duration-150 p-1"
@@ -388,11 +391,13 @@ const CitiesTable = ({ cities, onEdit, onDelete, onUploadImage, loading, usedCit
                           <Trash2 className="w-4 h-4" />
                         </button>
                         {usedCityIds.has(city.id) && (
-                          <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                          <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-max max-w-xs p-2 text-xs text-white bg-gray-800 rounded-md hidden group-hover:block pointer-events-none z-10">
                             Kota ini tidak bisa dihapus karena sedang digunakan oleh satu atau lebih gedung.
                           </div>
                         )}
                       </div>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
