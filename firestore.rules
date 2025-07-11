@@ -28,10 +28,11 @@ service cloud.firestore {
     }
 
     function isOrderOwner() {
-      return resource.data.userId == request.auth.uid;
+      return resource.data.userId == request.auth.uid || resource.data.customersId == request.auth.uid;
     }
+    
     function isOrderOwnerInRequest() {
-      return request.resource.data.userId == request.auth.uid;
+      return request.resource.data.userId == request.auth.uid || request.resource.data.customersId == request.auth.uid;
     }
 
     // ----- Global lock-down -----
@@ -95,6 +96,21 @@ service cloud.firestore {
       allow write, delete: if isAdmin() || (isStaff() && request.resource.data.cityId == getUserDoc().data.cityId);
     }
 
+    // ----- Customers -----
+    match /customers/{customerId} {
+      // Users can read their own customer document; admins/staff can read all
+      allow read: if isAdmin() || isStaff() || (isUser() && request.auth.uid == resource.data.createdBy.uid);
+
+      // Cloud Function can create customer documents for new users
+      allow create: if isAdmin() || isStaff() || (isUser() && request.auth.uid == request.resource.data.createdBy.uid);
+
+      // Users can update their own customer document; admins/staff can update any
+      allow update: if isAdmin() || isStaff() || (isUser() && request.auth.uid == resource.data.createdBy.uid);
+
+      // Only admins/staff can delete customer documents
+      allow delete: if isAdmin() || isStaff();
+    }
+
     // ----- Orders & Invoices -----
     match /orders/{orderId} {
       // All authenticated users can read their own orders; admins/staff can read all
@@ -112,54 +128,5 @@ service cloud.firestore {
       allow create, update: if isAdmin() || isStaff();
       allow delete: if isAdmin();
     }
-
-    // ----- Customers collection -----
-    match /customers/{customerId} {
-      // Helper function to check if user owns this customer document
-      function isCustomerOwner() {
-        return isUser() && (
-          resource.data.createdBy.uid == request.auth.uid ||
-          resource.data.userId == request.auth.uid ||
-          customerId == request.auth.uid
-        );
-      }
-
-      // Helper function to check if user can create this customer document
-      function canCreateCustomer() {
-        // Allow both regular users (with email in token) and anonymous users (no email) to create
-        // their own customer document.
-        return isUser() &&
-          (
-            request.resource.data.createdBy.uid == request.auth.uid ||
-            request.resource.data.userId == request.auth.uid ||
-            customerId == request.auth.uid
-          ) &&
-          (
-            // Case 1: Regular user – email must match token
-            (request.auth.token.email != null && request.resource.data.email == request.auth.token.email) ||
-            // Case 2: Anonymous sign-in – token has no email, bypass this check
-            (request.auth.token.email == null)
-          );
-      }
-
-      // Admins and staff have full access; users can access their own profile
-      allow read: if isAdmin() || isStaff() || isCustomerOwner();
-
-      // Standard users can update their own profile; admins/staff can update any
-      allow update: if isAdmin() || isStaff() || isCustomerOwner();
-
-      /*
-       * Allow account creation from client side when:
-       *  - User is signed-in (isUser())
-       *  - The document's createdBy.uid or userId equals the requester's UID
-       *  - OR the document ID equals the requester's UID
-       *  - The email stored matches the authenticated user's email (helps prevent impersonation)
-       * Admin & staff retain full rights.
-       */
-      allow create: if isAdmin() || isStaff() || canCreateCustomer();
-
-      // Delete remains restricted to admin/staff only
-      allow delete: if isAdmin() || isStaff();
-    }
   }
-} 
+}
