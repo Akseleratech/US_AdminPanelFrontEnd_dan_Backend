@@ -205,6 +205,30 @@ const useCities = () => {
     }
   }, [searchTerm, filters, searchCities, fetchCities]);
 
+  // Geocode city for mobile apps
+  const geocodeCity = useCallback(async (cityName, provinceName, countryName = 'Indonesia') => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await cityAPI.geocodeCity(cityName, provinceName, countryName);
+      if (response.success) {
+        // Add the new city to the list if it's newly created
+        if (!response.data.isExisting) {
+          setCities(prev => [response.data, ...prev]);
+        }
+        return response.data;
+      } else {
+        throw new Error(response.message || 'Failed to geocode city');
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('Error geocoding city:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     fetchCities();
@@ -243,6 +267,7 @@ const useCities = () => {
     createCity,
     updateCity,
     deleteCity,
+    geocodeCity,
     uploadCityImage,
     getCity,
     filterByStatus,

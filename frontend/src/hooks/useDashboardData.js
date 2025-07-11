@@ -20,7 +20,7 @@ const useDashboardData = () => {
       ]);
 
       setStats(statsRes.data);
-      setRecentOrders(recentOrdersRes.data.orders);
+      setRecentOrders(recentOrdersRes.data);
       setQuickStats(quickStatsRes.data);
 
     } catch (err) {

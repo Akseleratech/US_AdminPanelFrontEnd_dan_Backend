@@ -286,6 +286,27 @@ class CityAPI {
 
     return uploadData;
   }
+
+  // Geocode city for mobile apps
+  async geocodeCity(cityName, provinceName, countryName = 'Indonesia') {
+    try {
+      console.log('🌍 CityAPI: Geocoding city:', { cityName, provinceName, countryName });
+      
+      const response = await axios.post(`${API_BASE_URL}/geocode`, {
+        cityName,
+        provinceName,
+        countryName
+      }, {
+        headers: await buildHeaders(),
+      });
+      
+      console.log('✅ CityAPI: Geocoding successful:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ CityAPI: Geocoding failed:', error);
+      throw new Error(error.response?.data?.message || 'Failed to geocode city');
+    }
+  }
 }
 
 // Create singleton instance

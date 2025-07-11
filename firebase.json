@@ -37,6 +37,9 @@
 
       { "source": "/api/cities/**",   "function": "cities" },
       { "source": "/api/cities",      "function": "cities" },
+      { "source": "/api/cities/geocode", "function": "cities" },
+      { "source": "/api/cities/calculate-coordinates", "function": "cities" },
+      { "source": "/api/cities/migrate-coordinates", "function": "cities" },
 
       { "source": "/api/buildings/**", "function": "buildings" },
       { "source": "/api/buildings",    "function": "buildings" },

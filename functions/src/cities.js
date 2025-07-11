@@ -9,6 +9,7 @@ const {
   getUserRoleAndCity,
 } = require('./utils/helpers');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
+const admin = require('firebase-admin');
 
 // Enhanced validation function for cities
 function validateCityData(data, isUpdate = false) {
@@ -182,6 +183,103 @@ async function calculateCityStatistics(cityName) {
   }
 }
 
+// Add centroid coordinate calculation helper
+async function calculateCityCoordinates(cityName) {
+  try {
+    const db = getDb();
+
+    // Fetch all buildings that belong to this city and have coordinates
+    const buildingSnapshot = await db.collection('buildings')
+        .where('location.city', '==', cityName)
+        .get();
+
+    let latSum = 0;
+    let lonSum = 0;
+    let count = 0;
+
+    buildingSnapshot.forEach((doc) => {
+      const data = doc.data();
+      const lat = data.location?.latitude;
+      const lon = data.location?.longitude;
+
+      if (typeof lat === 'number' && typeof lon === 'number') {
+        latSum += lat;
+        lonSum += lon;
+        count += 1;
+      }
+    });
+
+    if (count === 0) {
+      console.warn(`[CITY COORD] No building coordinates found for city "${cityName}" – skipping centroid calculation.`);
+      return null;
+    }
+
+    const centroidLat = latSum / count;
+    const centroidLon = lonSum / count;
+
+    console.log(`[CITY COORD] Calculated centroid for ${cityName}: (${centroidLat}, ${centroidLon}) from ${count} buildings.`);
+
+    return {
+      latitude: centroidLat,
+      longitude: centroidLon,
+      meta: {
+        type: 'centroid',
+        source: 'calculated_from_buildings',
+        buildingsCount: count,
+        lastCalculated: new Date(),
+      },
+    };
+  } catch (error) {
+    console.error('Error in calculateCityCoordinates:', error);
+    return null;
+  }
+}
+
+// Update (or create) the centroid coordinates on the relevant city
+async function updateCityCoordinates(cityName) {
+  try {
+    const db = getDb();
+    const coords = await calculateCityCoordinates(cityName);
+    if (!coords) return; // Nothing to update
+
+    const citySnapshot = await db.collection('cities')
+        .where('name', '==', cityName)
+        .limit(10)
+        .get();
+
+    if (citySnapshot.empty) {
+      console.warn(`[CITY COORD] No city document found with name "${cityName}".`);
+      return;
+    }
+
+    const FieldValue = admin.firestore.FieldValue;
+    const updatePayloadBase = {
+      'latitude': coords.latitude,
+      'longitude': coords.longitude,
+      'updatedAt': new Date(),
+      // Set metadata inside coordinates object via dot-notation
+      'coordinates.type': coords.meta.type,
+      'coordinates.source': coords.meta.source,
+      'coordinates.buildingsCount': coords.meta.buildingsCount,
+      'coordinates.lastCalculated': coords.meta.lastCalculated,
+      // Remove nested lat/lon if they exist inside coordinates
+      'coordinates.latitude': FieldValue.delete(),
+      'coordinates.longitude': FieldValue.delete(),
+    };
+
+    // Update all matching city docs (normally only one)
+    const batch = db.batch();
+    citySnapshot.forEach((doc) => {
+      batch.update(doc.ref, updatePayloadBase);
+    });
+    await batch.commit();
+
+    console.log(`[CITY COORD] Updated coordinates for city "${cityName}".`);
+  } catch (error) {
+    console.error('Error in updateCityCoordinates:', error);
+  }
+}
+
 // Main cities function that handles all city routes
 const cities = onRequest(async (req, res) => {
   return cors(req, res, async () => {
@@ -206,6 +304,9 @@ const cities = onRequest(async (req, res) => {
           // GET /cities/:id
           return await getCityById(pathParts[0], req, res);
         }
+      } else if (method === 'POST' && pathParts.length === 1 && pathParts[0] === 'geocode') {
+        // POST /cities/geocode - For mobile app geocoding
+        return await geocodeCity(req, res);
       } else if (method === 'POST') {
         // Require admin auth for all POST operations
         const isAdmin = await verifyAdminAuth(req);
@@ -716,4 +817,97 @@ const uploadCityImage = async (cityId, req, res) => {
   }
 };
 
-module.exports = {cities};
+// POST /cities/geocode - For mobile app geocoding
+const geocodeCity = async (req, res) => {
+  try {
+    const db = getDb();
+    console.log('🌍 POST /cities/geocode - Request received');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+
+    const {cityName, provinceName, countryName = 'Indonesia'} = req.body;
+
+    if (!cityName || !provinceName) {
+      return handleResponse(res, {
+        message: 'City name and province are required',
+      }, 400);
+    }
+
+    // First, try to find existing city
+    const citySnapshot = await db.collection('cities')
+        .where('name', '==', cityName)
+        .where('province', '==', provinceName)
+        .limit(1)
+        .get();
+
+    if (!citySnapshot.empty) {
+      console.log(`✅ Found existing city: ${cityName}`);
+      const existingCity = citySnapshot.docs[0];
+      return handleResponse(res, {
+        success: true,
+        data: {
+          id: existingCity.id,
+          ...existingCity.data(),
+          isExisting: true,
+        },
+        message: 'City already exists',
+      });
+    }
+
+    // If city doesn't exist, create it
+    console.log(`🏗️ Creating new city: ${cityName}`);
+
+    // Generate city ID
+    const cityId = await generateSequentialCityId();
+
+    // Prepare city data
+    const cityData = {
+      cityId,
+      name: cityName,
+      province: provinceName,
+      country: countryName,
+      postalCodes: [],
+      timezone: 'Asia/Jakarta',
+      utcOffset: '+07:00',
+      statistics: {
+        totalSpaces: 0,
+        activeSpaces: 0,
+        totalOrders: 0,
+        totalRevenue: 0,
+      },
+      search: {
+        keywords: [
+          cityName.toLowerCase(),
+          provinceName.toLowerCase(),
+          ...(cityName.split(' ').map((word) => word.toLowerCase())),
+          ...(provinceName.split(' ').map((word) => word.toLowerCase())),
+        ],
+        aliases: [],
+      },
+      thumbnail: null,
+      isActive: true,
+      createdBy: 'mobile-geocoding',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // Save to Firestore using structured ID as document ID
+    await db.collection('cities').doc(cityId).set(cityData);
+
+    console.log(`✅ City created successfully with ID: ${cityId}`);
+
+    return handleResponse(res, {
+      success: true,
+      data: {
+        id: cityId,
+        ...cityData,
+        isExisting: false,
+      },
+      message: 'City created successfully',
+    });
+  } catch (error) {
+    console.error('Error in geocodeCity:', error);
+    handleError(res, error);
+  }
+};
+
+module.exports = {cities, calculateCityCoordinates, updateCityCoordinates};

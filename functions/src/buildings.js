@@ -9,6 +9,9 @@ const {
 } = require('./utils/helpers');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
 
+// Import city coordinate functions
+const {updateCityCoordinates} = require('./cities');
+
 // Enhanced validation schema for Buildings
 const _buildingValidationSchema = {
   name: {type: 'string', required: true, minLength: 2, maxLength: 100},
@@ -556,6 +559,9 @@ const createBuilding = async (req, res) => {
     // Update city statistics
     await updateCityStatistics(sanitizedData.location.city);
 
+    // Update city coordinates
+    await updateCityCoordinates(sanitizedData.location.city);
+
     console.log(`✅ Building created successfully with ID: ${buildingId}`);
 
     handleResponse(res, {
@@ -640,6 +646,14 @@ const updateBuilding = async (buildingId, req, res) => {
       await updateCityStatistics(sanitizedData.location.city);
     }
 
+    // Update city coordinates for both old and new cities
+    if (oldCityName && oldCityName !== sanitizedData.location?.city) {
+      await updateCityCoordinates(oldCityName);
+    }
+    if (sanitizedData.location?.city) {
+      await updateCityCoordinates(sanitizedData.location.city);
+    }
+
     // Get updated building
     const updatedDoc = await db.collection('buildings').doc(buildingId).get();
     const updatedBuilding = {
@@ -680,9 +694,10 @@ const deleteBuilding = async (buildingId, req, res) => {
 
     await db.collection('buildings').doc(buildingId).delete();
 
-    // Update city statistics
+    // Update city statistics and coordinates
     if (cityName) {
       await updateCityStatistics(cityName);
+      await updateCityCoordinates(cityName);
     }
 
     handleResponse(res, {message: 'Building deleted successfully'});
