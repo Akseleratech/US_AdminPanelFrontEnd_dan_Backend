@@ -26,17 +26,35 @@ const useInvoices = () => {
 
   const createInvoice = async (invoiceData) => {
     try {
-      const newInvoice = await invoicesAPI.create(invoiceData);
+      const response = await invoicesAPI.create(invoiceData);
+      // Handle response structure consistently
+      const newInvoice = response.data?.invoice || response.invoice || response.data || response;
+      
+      if (!newInvoice || !newInvoice.id) {
+        console.error('Invalid invoice response:', response);
+        throw new Error('Invalid invoice data received from server');
+      }
+      
       setInvoices(prev => [newInvoice, ...prev]);
       return newInvoice;
     } catch (err) {
+      console.error('Error creating invoice:', err);
       throw new Error(err.message);
     }
   };
 
   const updateInvoice = async (id, invoiceData) => {
     try {
-      const updatedInvoice = await invoicesAPI.update(id, invoiceData);
+      const response = await invoicesAPI.update(id, invoiceData);
+      // Handle response structure consistently with getAll
+      const updatedInvoice = response.data?.invoice || response.invoice || response.data || response;
+      
+      // Validate that we have a proper invoice object
+      if (!updatedInvoice || !updatedInvoice.id) {
+        console.error('Invalid invoice response:', response);
+        throw new Error('Invalid invoice data received from server');
+      }
+      
       setInvoices(prev => 
         prev.map(invoice => 
           invoice.id === id ? updatedInvoice : invoice
@@ -44,6 +62,7 @@ const useInvoices = () => {
       );
       return updatedInvoice;
     } catch (err) {
+      console.error('Error updating invoice:', err);
       throw new Error(err.message);
     }
   };
@@ -59,10 +78,19 @@ const useInvoices = () => {
 
   const generateInvoiceFromOrder = async (order) => {
     try {
-      const newInvoice = await invoicesAPI.generateFromOrder(order.id);
+      const response = await invoicesAPI.generateFromOrder(order.id);
+      // Handle response structure consistently
+      const newInvoice = response.data?.invoice || response.invoice || response.data || response;
+      
+      if (!newInvoice || !newInvoice.id) {
+        console.error('Invalid invoice response:', response);
+        throw new Error('Invalid invoice data received from server');
+      }
+      
       setInvoices(prev => [newInvoice, ...prev]);
       return newInvoice;
     } catch (err) {
+      console.error('Error generating invoice from order:', err);
       throw new Error(err.message);
     }
   };

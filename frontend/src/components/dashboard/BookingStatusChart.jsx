@@ -35,11 +35,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
  */
 const BookingStatusChart = ({ data = [] }) => {
   const COLORS = {
-    pending: '#d97706',      // Yellow-600 to match helpers.jsx
-    confirmed: '#059669',     // Green-600 to match helpers.jsx  
-    active: '#059669',       // Green-600 to match helpers.jsx
-    completed: '#0ea5e9',    // Primary-500 (sky-500) to match helpers.jsx
-    cancelled: '#dc2626'     // Red-600 to match helpers.jsx
+    pending: '#ca8a04',      // yellow-600 to match helpers.jsx
+    confirmed: '#059669',    // green-600 to match helpers.jsx  
+    active: '#059669',       // green-600 to match helpers.jsx
+    completed: '#2563eb',    // primary-600 (blue-600) to match helpers.jsx
+    cancelled: '#dc2626'     // red-600 to match helpers.jsx
   };
 
   const RADIAN = Math.PI / 180;
@@ -117,6 +117,7 @@ const BookingStatusChart = ({ data = [] }) => {
             outerRadius={80}
             fill="#8884d8"
             dataKey="value"
+            nameKey="status"
           >
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[entry.status]} />

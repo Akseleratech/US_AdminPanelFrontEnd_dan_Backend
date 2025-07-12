@@ -61,21 +61,40 @@ const Dashboard = () => {
     const totalOrders = dashboardStats.overview?.totalOrders || 0;
     const pendingOrders = dashboardStats.overview?.pendingOrders || 0;
     const completedOrders = dashboardStats.overview?.completedOrders || 0;
+    const confirmedOrders = dashboardStats.overview?.confirmedOrders || 0;
+    const activeOrders = dashboardStats.overview?.activeOrders || 0;
+    const cancelledOrders = dashboardStats.overview?.cancelledOrders || 0;
     
     if (totalOrders === 0) return [];
     
-    const remaining = totalOrders - pendingOrders - completedOrders;
-    const confirmed = Math.floor(remaining * 0.6);
-    const active = Math.floor(remaining * 0.3);
-    const cancelled = remaining - confirmed - active;
+    // Use real data if available, otherwise fallback to calculation
+    const actualTotal = pendingOrders + confirmedOrders + activeOrders + completedOrders + cancelledOrders;
+    const useRealData = actualTotal > 0;
     
-    return [
-      { status: 'pending', value: pendingOrders, total: totalOrders },
-      { status: 'confirmed', value: confirmed, total: totalOrders },
-      { status: 'active', value: active, total: totalOrders },
-      { status: 'completed', value: completedOrders, total: totalOrders },
-      { status: 'cancelled', value: Math.max(0, cancelled), total: totalOrders },
-    ];
+    if (useRealData) {
+      // Use actual data from backend
+      return [
+        { status: 'pending', value: pendingOrders, total: actualTotal },
+        { status: 'confirmed', value: confirmedOrders, total: actualTotal },
+        { status: 'active', value: activeOrders, total: actualTotal },
+        { status: 'completed', value: completedOrders, total: actualTotal },
+        { status: 'cancelled', value: cancelledOrders, total: actualTotal },
+      ].filter(item => item.value > 0); // Only show statuses with data
+    } else {
+      // Fallback calculation for partial data
+      const remaining = totalOrders - pendingOrders - completedOrders;
+      const confirmed = Math.floor(remaining * 0.6);
+      const active = Math.floor(remaining * 0.3);
+      const cancelled = remaining - confirmed - active;
+      
+      return [
+        { status: 'pending', value: pendingOrders, total: totalOrders },
+        { status: 'confirmed', value: confirmed, total: totalOrders },
+        { status: 'active', value: active, total: totalOrders },
+        { status: 'completed', value: completedOrders, total: totalOrders },
+        { status: 'cancelled', value: Math.max(0, cancelled), total: totalOrders },
+      ].filter(item => item.value > 0);
+    }
   };
 
   const generateSpaceUtilizationData = () => {

@@ -53,7 +53,10 @@ const getDashboardStats = async (req, res) => {
 
     const _totalOrders = ordersSnapshot.size;
     const pendingOrders = ordersSnapshot.docs.filter((doc) => doc.data().status === 'pending').length;
+    const confirmedOrders = ordersSnapshot.docs.filter((doc) => doc.data().status === 'confirmed').length;
+    const activeOrders = ordersSnapshot.docs.filter((doc) => doc.data().status === 'active').length;
     const completedOrders = ordersSnapshot.docs.filter((doc) => doc.data().status === 'completed').length;
+    const cancelledOrders = ordersSnapshot.docs.filter((doc) => doc.data().status === 'cancelled').length;
 
     // Calculate revenue from completed orders
     let totalRevenue = 0;
@@ -74,11 +77,14 @@ const getDashboardStats = async (req, res) => {
         activeSpaces,
         totalOrders: _totalOrders,
         pendingOrders,
+        confirmedOrders,
+        activeOrders,
         completedOrders,
+        cancelledOrders,
         totalRevenue,
       },
       performance: {
-        occupancyRate: activeSpaces > 0 ? Math.round((completedOrders / totalSpaces) * 100) : 0,
+        occupancyRate: activeSpaces > 0 ? Math.round(((activeOrders + completedOrders) / totalSpaces) * 100) : 0,
         completionRate: _totalOrders > 0 ? Math.round((completedOrders / _totalOrders) * 100) : 0,
         averageOrderValue: completedOrders > 0 ? Math.round(totalRevenue / completedOrders) : 0,
       },
