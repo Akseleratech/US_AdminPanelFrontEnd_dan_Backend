@@ -3,9 +3,7 @@ import { Calendar, DollarSign, Building2, Users, RefreshCw } from 'lucide-react'
 import StatCard from '../common/StatCard.jsx';
 import RecentOrders from './RecentOrders.jsx';
 import QuickStats from './QuickStats.jsx';
-import RevenueChart from './RevenueChart.jsx';
 import BookingStatusChart from './BookingStatusChart.jsx';
-import SpaceUtilizationChart from './SpaceUtilizationChart.jsx';
 import useDashboardData from '../../hooks/useDashboardData.js';
 import LoadingSpinner from '../common/LoadingSpinner.jsx';
 
@@ -36,26 +34,6 @@ const Dashboard = () => {
   const orders = recentOrders || [];
   const qStats = quickStats || {};
 
-  // Generate basic chart data from available stats
-  const generateRevenueData = () => {
-    const currentRevenue = dashboardStats.overview?.totalRevenue || 0;
-    const months = [];
-    const currentDate = new Date();
-    
-    // Generate 6 months of data with some variation
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(currentDate);
-      date.setMonth(date.getMonth() - i);
-      const period = date.toISOString().substring(0, 7);
-      const baseRevenue = currentRevenue / 6;
-      const variation = (Math.random() - 0.5) * 0.3;
-      const revenue = Math.floor(baseRevenue * (1 + variation));
-      const target = Math.floor(baseRevenue * 1.2);
-      
-      months.push({ period, revenue, target });
-    }
-    return months;
-  };
 
   const generateBookingStatusData = () => {
     const totalOrders = dashboardStats.overview?.totalOrders || 0;
@@ -97,32 +75,6 @@ const Dashboard = () => {
     }
   };
 
-  const generateSpaceUtilizationData = () => {
-    const totalSpaces = dashboardStats.overview?.totalSpaces || 0;
-    const activeSpaces = dashboardStats.overview?.activeSpaces || 0;
-    const occupancyRate = dashboardStats.performance?.occupancyRate || 0;
-    
-    if (totalSpaces === 0) return [];
-    
-    // Generate sample space data
-    const spaces = [];
-    const spaceTypes = ['Meeting Room', 'Office Space', 'Coworking Area', 'Conference Room', 'Hot Desk Zone'];
-    const numSpaces = Math.min(5, Math.max(1, Math.floor(activeSpaces / 5)));
-    
-    for (let i = 0; i < numSpaces; i++) {
-      const baseOccupancy = occupancyRate;
-      const variation = (Math.random() - 0.5) * 20;
-      const occupancy = Math.max(0, Math.min(100, baseOccupancy + variation));
-      
-      spaces.push({
-        spaceName: `${spaceTypes[i % spaceTypes.length]} ${String.fromCharCode(65 + i)}`,
-        occupancy: Math.floor(occupancy),
-        capacity: 100
-      });
-    }
-    
-    return spaces;
-  };
 
   return (
     <div className="space-y-6">
@@ -156,13 +108,11 @@ const Dashboard = () => {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <RevenueChart data={generateRevenueData()} period="monthly" />
         <BookingStatusChart data={generateBookingStatusData()} />
       </div>
 
-      {/* Space Utilization */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <SpaceUtilizationChart data={generateSpaceUtilizationData()} />
+      {/* Business Metrics */}
+      <div className="grid grid-cols-2 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Metrics</h3>
           <div className="grid grid-cols-2 gap-4">
@@ -187,7 +137,7 @@ const Dashboard = () => {
       </div>
 
       {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-2">
           <RecentOrders recentOrders={orders} />
         </div>
