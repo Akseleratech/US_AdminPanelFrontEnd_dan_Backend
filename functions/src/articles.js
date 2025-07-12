@@ -8,20 +8,6 @@ const {
 } = require('./utils/helpers');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
 
-// Enhanced validation schema for Articles
-const _articleValidationSchema = {
-  title: {type: 'string', required: true, minLength: 2, maxLength: 200},
-  excerpt: {type: 'string', required: false, maxLength: 500},
-  content: {type: 'string', required: true, minLength: 10},
-  author: {type: 'string', required: false, maxLength: 100},
-  category: {type: 'string', required: false, maxLength: 50},
-  tags: {type: 'array', required: false},
-  status: {type: 'string', required: false, enum: ['draft', 'published', 'archived']},
-  featuredImage: {type: 'string', required: false},
-  isFeatured: {type: 'boolean', required: false, default: false},
-  publishedAt: {type: 'date', required: false},
-};
-
 // Enhanced validation function for articles
 function validateArticleData(data, isUpdate = false) {
   const errors = [];

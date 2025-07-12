@@ -34,7 +34,6 @@ const Dashboard = () => {
   const orders = recentOrders || [];
   const qStats = quickStats || {};
 
-
   const generateBookingStatusData = () => {
     const totalOrders = dashboardStats.overview?.totalOrders || 0;
     const pendingOrders = dashboardStats.overview?.pendingOrders || 0;
@@ -75,7 +74,6 @@ const Dashboard = () => {
     }
   };
 
-
   return (
     <div className="space-y-6">
       {/* Header Stats */}
@@ -106,68 +104,43 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <BookingStatusChart data={generateBookingStatusData()} />
-      </div>
-
-      {/* Business Metrics */}
-      <div className="grid grid-cols-2 xl:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Metrics</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">Occupancy Rate</h4>
-              <p className="text-2xl font-bold text-blue-600">{dashboardStats.performance?.occupancyRate || 0}%</p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg">
-              <h4 className="font-medium text-green-900 mb-2">Completion Rate</h4>
-              <p className="text-2xl font-bold text-green-600">{dashboardStats.performance?.completionRate || 0}%</p>
-            </div>
-            <div className="p-4 bg-purple-50 rounded-lg">
-              <h4 className="font-medium text-purple-900 mb-2">Avg Order Value</h4>
-              <p className="text-2xl font-bold text-purple-600">Rp {(dashboardStats.performance?.averageOrderValue || 0).toLocaleString()}</p>
-            </div>
-            <div className="p-4 bg-orange-50 rounded-lg">
-              <h4 className="font-medium text-orange-900 mb-2">Published Services</h4>
-              <p className="text-2xl font-bold text-orange-600">{dashboardStats.overview?.publishedServices || 0}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-2">
+      {/* Main Dashboard Content - 3 Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Column 1: Recent Orders */}
+        <div className="lg:col-span-1">
           <RecentOrders recentOrders={orders} />
         </div>
-        <QuickStats quickStats={qStats} />
+
+        {/* Column 2: Quick Stats */}
+        <div className="lg:col-span-1">
+          <QuickStats quickStats={qStats} />
+        </div>
+
+        {/* Column 3: Booking Status Distribution */}
+        <div className="lg:col-span-1">
+          <BookingStatusChart data={generateBookingStatusData()} />
+        </div>
       </div>
 
-      {/* Performance Insights */}
+      {/* Business Metrics Section */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Insights</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Metrics</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">Revenue Performance</h4>
-            <p className="text-sm text-blue-700">
-              Total revenue: Rp {(dashboardStats.overview?.totalRevenue || 0).toLocaleString()} 
-              from {dashboardStats.overview?.completedOrders || 0} completed orders.
-            </p>
+            <h4 className="font-medium text-blue-900 mb-2">Occupancy Rate</h4>
+            <p className="text-2xl font-bold text-blue-600">{dashboardStats.performance?.occupancyRate || 0}%</p>
           </div>
           <div className="p-4 bg-green-50 rounded-lg">
-            <h4 className="font-medium text-green-900 mb-2">Space Utilization</h4>
-            <p className="text-sm text-green-700">
-              {dashboardStats.overview?.activeSpaces || 0} of {dashboardStats.overview?.totalSpaces || 0} spaces are active 
-              with {dashboardStats.performance?.occupancyRate || 0}% occupancy rate.
-            </p>
+            <h4 className="font-medium text-green-900 mb-2">Completion Rate</h4>
+            <p className="text-2xl font-bold text-green-600">{dashboardStats.performance?.completionRate || 0}%</p>
           </div>
           <div className="p-4 bg-purple-50 rounded-lg">
-            <h4 className="font-medium text-purple-900 mb-2">Order Management</h4>
-            <p className="text-sm text-purple-700">
-              {dashboardStats.overview?.pendingOrders || 0} pending orders need attention. 
-              {dashboardStats.performance?.completionRate || 0}% completion rate.
-            </p>
+            <h4 className="font-medium text-purple-900 mb-2">Avg Order Value</h4>
+            <p className="text-2xl font-bold text-purple-600">Rp {(dashboardStats.performance?.averageOrderValue || 0).toLocaleString()}</p>
+          </div>
+          <div className="p-4 bg-orange-50 rounded-lg">
+            <h4 className="font-medium text-orange-900 mb-2">Published Services</h4>
+            <p className="text-2xl font-bold text-orange-600">{dashboardStats.overview?.publishedServices || 0}</p>
           </div>
         </div>
       </div>

@@ -4,9 +4,10 @@ export const getStatusColor = (status) => {
   switch (status) {
     case 'published':
     case 'confirmed': 
-    case 'active': 
     case 'available': 
       return 'text-green-600 bg-green-100';
+    case 'active': 
+      return 'text-blue-600 bg-blue-100';
     case 'draft':
       return 'text-gray-600 bg-gray-100';
     case 'archived':

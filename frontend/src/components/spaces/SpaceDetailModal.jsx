@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Calendar, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getStatusColor } from '../../utils/helpers.jsx';
 
 const SpaceDetailModal = ({ 
   isOpen, 
@@ -262,9 +263,7 @@ const SpaceDetailModal = ({
                               {formatBookingDateRange(booking)}
                             </div>
                           </div>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            booking.status === 'confirmed' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(booking.status)}`}>
                             {booking.status}
                           </span>
                         </div>
@@ -299,13 +298,7 @@ const SpaceDetailModal = ({
                               {formatBookingDateRange(order)}
                             </div>
                           </div>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            order.status === 'confirmed' ? 'bg-yellow-100 text-yellow-800' : 
-                            order.status === 'active' ? 'bg-green-100 text-green-800' :
-                            order.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                            order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
                             {order.status}
                           </span>
                         </div>

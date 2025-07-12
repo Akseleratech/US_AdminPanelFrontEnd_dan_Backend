@@ -28,7 +28,7 @@ const Sidebar = () => {
       icon: LayoutDashboard
     },
     {
-      name: 'Orders',
+      name: 'Pemesanan',
       path: '/orders',
       icon: ClipboardList
     },

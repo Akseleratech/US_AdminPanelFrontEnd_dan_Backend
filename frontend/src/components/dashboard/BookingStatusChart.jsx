@@ -37,8 +37,8 @@ const BookingStatusChart = ({ data = [] }) => {
   const COLORS = {
     pending: '#ca8a04',      // yellow-600 to match helpers.jsx
     confirmed: '#059669',    // green-600 to match helpers.jsx  
-    active: '#059669',       // green-600 to match helpers.jsx
-    completed: '#2563eb',    // primary-600 (blue-600) to match helpers.jsx
+    active: '#2563EB',       // green-600 to match helpers.jsx
+    completed: '#445d48',    // primary-600 (blue-600) to match helpers.jsx
     cancelled: '#dc2626'     // red-600 to match helpers.jsx
   };
 
@@ -57,7 +57,7 @@ const BookingStatusChart = ({ data = [] }) => {
         fill="white" 
         textAnchor={x > cx ? 'start' : 'end'} 
         dominantBaseline="central"
-        fontSize="12"
+        fontSize="10"
         fontWeight="bold"
       >
         {`${(percent * 100).toFixed(0)}%`}
@@ -81,8 +81,8 @@ const BookingStatusChart = ({ data = [] }) => {
       const data = payload[0].payload;
       return (
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-medium text-gray-900">{getStatusLabel(data.status)}</p>
-          <p className="text-sm text-gray-600">
+          <p className="font-medium text-gray-900 text-sm">{getStatusLabel(data.status)}</p>
+          <p className="text-xs text-gray-600">
             {data.value} bookings ({((data.value / data.total) * 100).toFixed(1)}%)
           </p>
         </div>
@@ -93,20 +93,23 @@ const BookingStatusChart = ({ data = [] }) => {
 
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 h-full">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Booking Status Distribution</h3>
-        <div className="h-300 flex items-center justify-center text-gray-500">
-          No booking data available
+        <div className="h-64 flex items-center justify-center text-gray-500">
+          <div className="text-center">
+            <div className="text-gray-400 text-lg mb-2">📊</div>
+            <p className="text-sm">No booking data available</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 h-full">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Booking Status Distribution</h3>
       
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={250}>
         <PieChart>
           <Pie
             data={data}
@@ -114,7 +117,7 @@ const BookingStatusChart = ({ data = [] }) => {
             cy="50%"
             labelLine={false}
             label={renderCustomizedLabel}
-            outerRadius={80}
+            outerRadius={70}
             fill="#8884d8"
             dataKey="value"
             nameKey="status"
@@ -127,7 +130,7 @@ const BookingStatusChart = ({ data = [] }) => {
           <Legend 
             verticalAlign="bottom" 
             height={36}
-            formatter={(value) => <span className="text-sm">{getStatusLabel(value)}</span>}
+            formatter={(value) => <span className="text-xs">{getStatusLabel(value)}</span>}
           />
         </PieChart>
       </ResponsiveContainer>
