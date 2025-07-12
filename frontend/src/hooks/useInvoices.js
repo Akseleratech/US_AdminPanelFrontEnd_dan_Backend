@@ -1,27 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { invoicesAPI } from '../services/api';
 
 const useInvoices = () => {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const intervalRef = useRef(null);
 
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
+  const fetchInvoices = async (isBackgroundRefresh = false) => {
+    try {
+      if (!isBackgroundRefresh) {
         setLoading(true);
-        setError(null);
-        const response = await invoicesAPI.getAll();
-        setInvoices(response.data?.invoices || response.invoices || []);
-      } catch (err) {
-        setError(err.message);
-        console.error('Error fetching invoices:', err);
-      } finally {
+      }
+      setError(null);
+      const response = await invoicesAPI.getAll();
+      setInvoices(response.data?.invoices || response.invoices || []);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching invoices:', err);
+    } finally {
+      if (!isBackgroundRefresh) {
         setLoading(false);
       }
-    };
+    }
+  };
 
+  // Auto-refresh every 30 seconds for webhook updates
+  useEffect(() => {
     fetchInvoices();
+    
+    // Set up auto-refresh interval
+    intervalRef.current = setInterval(() => {
+      fetchInvoices(true); // Background refresh
+    }, 30000); // 30 seconds
+
+    // Cleanup interval on unmount
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, []);
 
   const createInvoice = async (invoiceData) => {
@@ -128,19 +146,7 @@ const useInvoices = () => {
     generateInvoiceFromOrder,
     getInvoicesByOrderId,
     getInvoiceStats,
-    refresh: async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await invoicesAPI.getAll();
-        setInvoices(response.data?.invoices || response.invoices || []);
-      } catch (err) {
-        setError(err.message);
-        console.error('Error refreshing invoices:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
+    refresh: () => fetchInvoices()
   };
 };
 

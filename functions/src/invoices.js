@@ -55,6 +55,9 @@ const invoices = onRequest(async (req, res) => {
           return handleResponse(res, {message: 'Admin access required'}, 403);
         }
         return await deleteInvoice(pathParts[0], req, res);
+      } else if (method === 'PATCH' && pathParts.length === 2 && pathParts[1] === 'status') {
+        // PATCH /invoices/:id/status - Update invoice status (for webhooks)
+        return await updateInvoiceStatus(pathParts[0], req, res);
       }
 
       handleResponse(res, {message: 'Invoice route not found'}, 404);
@@ -587,6 +590,92 @@ const generateInvoiceId = async () => {
 
   const nextSequence = maxSequence + 1;
   return `${prefix}-${String(nextSequence).padStart(3, '0')}`;
+};
+
+// PATCH /invoices/:id/status - Update invoice status
+const updateInvoiceStatus = async (invoiceId, req, res) => {
+  try {
+    const { status, paymentData, paymentMethod, paidDate, reason } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        error: 'Status is required'
+      });
+    }
+    
+    // Validate status
+    const validStatuses = ['draft', 'sent', 'paid', 'overdue', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+    
+    const db = getDb();
+    
+    // Find invoice by ID
+    const invoiceDoc = await db.collection('invoices').doc(invoiceId).get();
+    
+    if (!invoiceDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'Invoice not found'
+      });
+    }
+    
+    const invoiceData = invoiceDoc.data();
+    const currentStatus = invoiceData.status;
+    
+    // Prepare update data
+    const updateData = {
+      status: status,
+      updatedAt: new Date().toISOString(),
+      statusHistory: [
+        ...(invoiceData.statusHistory || []),
+        {
+          from: currentStatus,
+          to: status,
+          timestamp: new Date().toISOString(),
+          reason: reason || 'Webhook update',
+          updatedBy: 'webhook'
+        }
+      ]
+    };
+    
+    // Add payment-specific fields for paid status
+    if (status === 'paid') {
+      updateData.paidDate = paidDate || new Date().toISOString();
+      updateData.paymentMethod = paymentMethod || 'Midtrans';
+      
+      if (paymentData) {
+        updateData.paymentData = paymentData;
+      }
+    }
+    
+    // Update invoice
+    await invoiceDoc.ref.update(updateData);
+    
+    console.log(`✅ Invoice ${invoiceId} status updated from ${currentStatus} to ${status}`);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Invoice status updated successfully',
+      invoiceId: invoiceId,
+      previousStatus: currentStatus,
+      newStatus: status,
+      data: updateData
+    });
+    
+  } catch (error) {
+    console.error('❌ Error updating invoice status:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
 };
 
 module.exports = {invoices};

@@ -58,6 +58,7 @@ const customersFunctions = require('./src/customers');
 const promosFunctions = require('./src/promos');
 const articlesFunctions = require('./src/articles');
 const authTriggers = require('./src/authTriggers');
+const webhooksFunctions = require('./src/webhooks');
 
 // Export all functions
 exports.cities = citiesFunctions.cities;
@@ -73,6 +74,7 @@ exports.customers = customersFunctions.customers;
 exports.promos = promosFunctions.promos;
 exports.articles = articlesFunctions.articles;
 exports.createCustomerOnSignup = authTriggers.createCustomerOnSignup;
+exports.webhooks = webhooksFunctions.handleMidtransWebhook;
 
 // Health check endpoint
 exports.health = onRequest((req, res) => {

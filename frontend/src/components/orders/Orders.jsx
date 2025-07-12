@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Filter, Plus, RefreshCw } from 'lucide-react';
 import OrdersTable from './OrdersTable';
 import OrderModal from './OrderModal';
@@ -17,6 +17,7 @@ const Orders = () => {
   const [editingOrder, setEditingOrder] = useState(null);
   const [viewInvoiceModalOpen, setViewInvoiceModalOpen] = useState(false);
   const [invoiceToView, setInvoiceToView] = useState(null);
+  const intervalRef = useRef(null);
 
   // Global refresh context
   const { triggerRefresh } = useGlobalRefresh();
@@ -27,9 +28,11 @@ const Orders = () => {
   const { invoices } = useInvoices();
 
   // Fetch orders
-  const fetchOrders = async () => {
+  const fetchOrders = async (isBackgroundRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh) {
+        setLoading(true);
+      }
       setError(null);
       const response = await ordersAPI.getAll();
       // Extract orders from nested response structure
@@ -39,13 +42,27 @@ const Orders = () => {
       setError(err.message);
       console.error('Error fetching orders:', err);
     } finally {
-      setLoading(false);
+      if (!isBackgroundRefresh) {
+        setLoading(false);
+      }
     }
   };
 
-  // Initial load
+  // Auto-refresh every 30 seconds for webhook updates
   useEffect(() => {
     fetchOrders();
+    
+    // Set up auto-refresh interval
+    intervalRef.current = setInterval(() => {
+      fetchOrders(true); // Background refresh
+    }, 30000); // 30 seconds
+
+    // Cleanup interval on unmount
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, []);
 
   const handleRefresh = () => {
