@@ -16,15 +16,6 @@ const getUserFromToken = async (req) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      // In development mode, provide a default user if no token is provided
-      const isDevelopment = process.env.NODE_ENV === 'development' || process.env.FUNCTIONS_EMULATOR === 'true';
-      if (isDevelopment) {
-        return {
-          uid: 'dev-user-123',
-          email: 'dev@unionspace.com',
-          displayName: 'Dev User',
-        };
-      }
       return null;
     }
 
@@ -38,16 +29,6 @@ const getUserFromToken = async (req) => {
     };
   } catch (error) {
     console.warn('Failed to verify auth token:', error.message);
-
-    // In development mode, provide a default user if token verification fails
-    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.FUNCTIONS_EMULATOR === 'true';
-    if (isDevelopment) {
-      return {
-        uid: 'dev-user-123',
-        email: 'dev@unionspace.com',
-        displayName: 'Dev User',
-      };
-    }
     return null;
   }
 };
