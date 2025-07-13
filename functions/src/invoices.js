@@ -2,8 +2,6 @@ const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('cors')({origin: true});
 const {
   getDb,
-  handleResponse,
-  handleError,
   validateRequired,
   sanitizeString,
   verifyAuthToken,
@@ -11,6 +9,12 @@ const {
   getCurrentTaxRate,
   verifyAdminAuth,
 } = require('./utils/helpers');
+const {
+  handleResponse,
+  handleError,
+  handleValidationError,
+  handleAuthError,
+} = require('./utils/errorHandler');
 const admin = require('firebase-admin');
 
 // Main invoices function
@@ -33,7 +37,7 @@ const invoices = onRequest(async (req, res) => {
         // Require admin auth for all POST operations
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
 
         if (pathParts.length === 0) {
@@ -45,14 +49,14 @@ const invoices = onRequest(async (req, res) => {
         // PUT /invoices/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await updateInvoice(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /invoices/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await deleteInvoice(pathParts[0], req, res);
       } else if (method === 'PATCH' && pathParts.length === 2 && pathParts[1] === 'status') {
@@ -60,9 +64,9 @@ const invoices = onRequest(async (req, res) => {
         return await updateInvoiceStatus(pathParts[0], req, res);
       }
 
-      handleResponse(res, {message: 'Invoice route not found'}, 404);
+      return handleError(res, 'Invoice route not found', 404, req);
     } catch (error) {
-      handleError(res, error);
+      return handleError(res, error, 500, req);
     }
   });
 });
@@ -131,7 +135,7 @@ const getAllInvoices = async (req, res) => {
     const limitNum = parseInt(limit) || invoices.length;
     invoices = invoices.slice(offsetNum, offsetNum + limitNum);
 
-    handleResponse(res, {
+    return handleResponse(res, {
       invoices,
       pagination: {
         total: totalInvoices,
@@ -141,7 +145,7 @@ const getAllInvoices = async (req, res) => {
       },
     });
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -152,7 +156,7 @@ const getInvoiceById = async (invoiceId, req, res) => {
     const doc = await db.collection('invoices').doc(invoiceId).get();
 
     if (!doc.exists) {
-      return handleResponse(res, {message: 'Invoice not found'}, 404);
+      return handleError(res, 'Invoice not found', 404, req);
     }
 
     const data = doc.data();
@@ -161,7 +165,7 @@ const getInvoiceById = async (invoiceId, req, res) => {
     const paidDate = data.paidDate && data.paidDate.toDate ? data.paidDate.toDate().toISOString() : data.paidDate;
     const createdAt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toISOString() : data.createdAt;
 
-    handleResponse(res, {
+    return handleResponse(res, {
       id: doc.id,
       ...data,
       issuedDate,
@@ -170,7 +174,7 @@ const getInvoiceById = async (invoiceId, req, res) => {
       createdAt,
     });
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -247,12 +251,12 @@ const createInvoice = async (req, res) => {
 
     await db.collection('invoices').doc(invoiceId).set(invoiceData);
 
-    handleResponse(res, {
+    return handleResponse(res, {
       id: invoiceId,
       ...invoiceData,
     }, 201);
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -269,7 +273,7 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
 
     if (!orderDoc.exists) {
       console.log('❌ DEBUG - Order not found:', orderId);
-      return handleResponse(res, {message: 'Order not found'}, 404);
+      return handleError(res, 'Order not found', 404, req);
     }
 
     console.log('✅ DEBUG - Order found, extracting data...');
@@ -279,24 +283,24 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
     // Check if invoice already exists for this order
     if (order.invoiceId) {
       console.log('⚠️ DEBUG - Invoice already exists:', order.invoiceId);
-      return handleResponse(res, {message: 'Invoice already exists for this order', invoiceId: order.invoiceId}, 400);
+      return handleValidationError(res, [{ field: 'order', message: 'Invoice already exists for this order' }], req);
     }
 
     // Validate required fields
     console.log('🔍 DEBUG - Validating required fields...');
     if (!order.amountBase) {
       console.log('❌ DEBUG - Missing amountBase field');
-      return handleResponse(res, {message: 'Order missing amountBase field'}, 400);
+      return handleValidationError(res, [{ field: 'amountBase', message: 'Order missing amountBase field' }], req);
     }
 
     if (!order.customerName) {
       console.log('❌ DEBUG - Missing customerName field');
-      return handleResponse(res, {message: 'Order missing customerName field'}, 400);
+      return handleValidationError(res, [{ field: 'customerName', message: 'Order missing customerName field' }], req);
     }
 
     if (!order.customerEmail) {
       console.log('❌ DEBUG - Missing customerEmail field');
-      return handleResponse(res, {message: 'Order missing customerEmail field'}, 400);
+      return handleValidationError(res, [{ field: 'customerEmail', message: 'Order missing customerEmail field' }], req);
     }
 
     // Get customer data to fetch complete information including phone
@@ -455,14 +459,12 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
     console.log('✅ DEBUG - Order updated successfully');
 
     console.log('🔍 DEBUG - Sending response...');
-    handleResponse(res, {
+    return handleResponse(res, {
       id: invoiceId,
       ...invoiceData,
     }, 201);
   } catch (error) {
-    console.error('❌ DEBUG - Error in generateInvoiceFromOrder:', error);
-    console.error('❌ DEBUG - Error stack:', error.stack);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -473,7 +475,7 @@ const updateInvoice = async (invoiceId, req, res) => {
 
     const invoiceDoc = await db.collection('invoices').doc(invoiceId).get();
     if (!invoiceDoc.exists) {
-      return handleResponse(res, {message: 'Invoice not found'}, 404);
+      return handleError(res, 'Invoice not found', 404, req);
     }
 
     const updateData = {...req.body};
@@ -516,12 +518,12 @@ const updateInvoice = async (invoiceId, req, res) => {
     const updatedDoc = await db.collection('invoices').doc(invoiceId).get();
     const data = updatedDoc.data();
 
-    handleResponse(res, {
+    return handleResponse(res, {
       id: invoiceId,
       ...data,
     });
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -532,7 +534,7 @@ const deleteInvoice = async (invoiceId, req, res) => {
 
     const invoiceDoc = await db.collection('invoices').doc(invoiceId).get();
     if (!invoiceDoc.exists) {
-      return handleResponse(res, {message: 'Invoice not found'}, 404);
+      return handleError(res, 'Invoice not found', 404, req);
     }
 
     const invoiceData = invoiceDoc.data();
@@ -554,9 +556,9 @@ const deleteInvoice = async (invoiceId, req, res) => {
 
     await db.collection('invoices').doc(invoiceId).delete();
 
-    handleResponse(res, {message: 'Invoice deleted successfully'});
+    return handleResponse(res, {message: 'Invoice deleted successfully'});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -669,12 +671,7 @@ const updateInvoiceStatus = async (invoiceId, req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Error updating invoice status:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      details: error.message
-    });
+    return handleError(res, error, 500, req);
   }
 };
 

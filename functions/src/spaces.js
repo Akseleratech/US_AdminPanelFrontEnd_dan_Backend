@@ -2,13 +2,17 @@ const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('./utils/corsConfig');
 const {
   getDb,
-  handleResponse,
-  handleError,
   sanitizeString,
   generateSequentialId,
   verifyAdminAuth,
   getUserRoleAndCity,
 } = require('./utils/helpers');
+const {
+  handleResponse,
+  handleError,
+  handleValidationError,
+  handleAuthError,
+} = require('./utils/errorHandler');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
 const {
   getOperationalStatus,
@@ -55,7 +59,7 @@ const spaces = onRequest(async (req, res) => {
         // Require admin auth for all POST operations
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
 
         if (pathParts.length === 0) {
@@ -69,22 +73,22 @@ const spaces = onRequest(async (req, res) => {
         // PUT /spaces/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await updateSpace(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /spaces/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await deleteSpace(pathParts[0], req, res);
       }
 
       // 404 for unknown routes
-      handleResponse(res, {message: 'Space route not found'}, 404);
+      return handleError(res, 'Space route not found', 404, req);
     } catch (error) {
-      handleError(res, error);
+      return handleError(res, error, 500, req);
     }
   });
 });
@@ -272,7 +276,6 @@ const _findOrCreateCity = async (locationData) => {
 
     return docRef.id;
   } catch (error) {
-    console.error('Error in findOrCreateCity:', error);
     throw error;
   }
 };
@@ -413,14 +416,13 @@ const getAllSpaces = async (req, res) => {
       spaces = spaces.slice(0, parseInt(limit));
     }
 
-    handleResponse(res, {
+    return handleResponse(res, {
       data: spaces,
       total: spaces.length,
       success: true,
     });
   } catch (error) {
-    console.error('Error fetching spaces:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -441,10 +443,9 @@ const getSpaceById = async (spaceId, req, res) => {
       status: data.isActive ? 'active' : 'inactive',
     };
 
-    handleResponse(res, spaceData);
+    return handleResponse(res, spaceData);
   } catch (error) {
-    console.error('Error fetching space:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -457,10 +458,7 @@ const createSpace = async (req, res) => {
     // Validate request data
     const validationErrors = validateSpaceData(req.body);
     if (validationErrors.length > 0) {
-      return handleResponse(res, {
-        message: 'Validation failed',
-        errors: validationErrors,
-      }, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ field: 'unknown', message: error })), req);
     }
 
     // Sanitize data
@@ -469,7 +467,7 @@ const createSpace = async (req, res) => {
     // Get building data for location info
     const buildingDoc = await db.collection('buildings').doc(sanitizedData.buildingId).get();
     if (!buildingDoc.exists) {
-      return handleResponse(res, {message: 'Building not found'}, 404);
+      return handleError(res, 'Building not found', 404, req);
     }
     const buildingData = buildingDoc.data();
 
@@ -528,13 +526,12 @@ const createSpace = async (req, res) => {
 
     console.log(`✅ Space created: ${spaceId} - ${sanitizedData.name}`);
 
-    handleResponse(res, {
+    return handleResponse(res, {
       id: spaceId,
       ...spaceData,
     }, 201);
   } catch (error) {
-    console.error('Error creating space:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -546,16 +543,13 @@ const updateSpace = async (spaceId, req, res) => {
     // Check if space exists
     const spaceDoc = await db.collection('spaces').doc(spaceId).get();
     if (!spaceDoc.exists) {
-      return handleResponse(res, {message: 'Space not found'}, 404);
+      return handleError(res, 'Space not found', 404, req);
     }
 
     // Validate update data
     const validationErrors = validateSpaceData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleResponse(res, {
-        message: 'Validation failed',
-        errors: validationErrors,
-      }, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ field: 'unknown', message: error })), req);
     }
 
     // Sanitize data
@@ -595,13 +589,12 @@ const updateSpace = async (spaceId, req, res) => {
 
     console.log(`✅ Space updated: ${spaceId} - ${data.name}`);
 
-    handleResponse(res, {
+    return handleResponse(res, {
       id: spaceId,
       ...data,
     });
   } catch (error) {
-    console.error('Error updating space:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -613,7 +606,7 @@ const deleteSpace = async (spaceId, req, res) => {
     // Check if space exists
     const spaceDoc = await db.collection('spaces').doc(spaceId).get();
     if (!spaceDoc.exists) {
-      return handleResponse(res, {message: 'Space not found'}, 404);
+      return handleError(res, 'Space not found', 404, req);
     }
 
     const spaceData = spaceDoc.data();
@@ -639,10 +632,9 @@ const deleteSpace = async (spaceId, req, res) => {
 
     console.log(`✅ Space deleted: ${spaceId} - ${spaceData.name}`);
 
-    handleResponse(res, {message: 'Space deleted successfully'});
+    return handleResponse(res, {message: 'Space deleted successfully'});
   } catch (error) {
-    console.error('Error deleting space:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -653,13 +645,13 @@ const uploadSpaceImages = async (spaceId, req, res) => {
     const {images} = req.body;
 
     if (!images || !Array.isArray(images) || images.length === 0) {
-      return handleResponse(res, {message: 'No images provided'}, 400);
+      return handleValidationError(res, [{ field: 'images', message: 'No images provided' }], req);
     }
 
     // Check if space exists
     const spaceDoc = await db.collection('spaces').doc(spaceId).get();
     if (!spaceDoc.exists) {
-      return handleResponse(res, {message: 'Space not found'}, 404);
+      return handleError(res, 'Space not found', 404, req);
     }
 
     // Upload all images
@@ -685,14 +677,13 @@ const uploadSpaceImages = async (spaceId, req, res) => {
 
     console.log(`✅ Successfully uploaded ${uploadResults.length} images for space ${spaceId}`);
 
-    handleResponse(res, {
+    return handleResponse(res, {
       uploadedImages: uploadResults,
       allImages: allImages,
       count: uploadResults.length,
     });
   } catch (error) {
-    console.error('Error uploading space images:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -732,7 +723,6 @@ const updateCityStatistics = async (cityName) => {
 
     console.log(`✅ Updated statistics for city ${cityName}: ${totalSpaces} total, ${activeSpaces} active`);
   } catch (error) {
-    console.error('Error updating city statistics:', error);
     // Don't throw error, just log it
   }
 };
@@ -743,19 +733,18 @@ const updateSingleSpaceOperationalStatus = async (spaceId, req, res) => {
     const updated = await updateSpaceOperationalStatus(spaceId);
 
     if (updated) {
-      handleResponse(res, {
+      return handleResponse(res, {
         message: `Operational status updated for space ${spaceId}`,
         updated: true,
       });
     } else {
-      handleResponse(res, {
+      return handleResponse(res, {
         message: `No update needed for space ${spaceId}`,
         updated: false,
       });
     }
   } catch (error) {
-    console.error('Error updating single space operational status:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -764,13 +753,12 @@ const updateAllOperationalStatusEndpoint = async (req, res) => {
   try {
     const updatedCount = await updateAllSpacesOperationalStatus();
 
-    handleResponse(res, {
+    return handleResponse(res, {
       message: `Updated operational status for ${updatedCount} spaces`,
       updatedCount,
     });
   } catch (error) {
-    console.error('Error updating all spaces operational status:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -795,7 +783,6 @@ const updateBuildingStatistics = async (buildingId) => {
 
     console.log(`✅ Updated building ${buildingId} statistics: ${totalSpaces} total, ${activeSpaces} active`);
   } catch (error) {
-    console.error('Error updating building statistics:', error);
     // Do not throw to avoid failing main operation
   }
 };
@@ -809,7 +796,7 @@ const getSpaceAvailability = async (spaceId, req, res) => {
     // Check if space exists
     const spaceDoc = await db.collection('spaces').doc(spaceId).get();
     if (!spaceDoc.exists) {
-      return handleResponse(res, {message: 'Space not found'}, 404);
+      return handleError(res, 'Space not found', 404, req);
     }
 
     // Set default date range if not provided (next 30 days)
@@ -891,7 +878,7 @@ const getSpaceAvailability = async (spaceId, req, res) => {
 
     console.log(`✅ Retrieved availability for space ${spaceId}: ${bookedRanges.length} bookings found`);
 
-    handleResponse(res, {
+    return handleResponse(res, {
       spaceId,
       spaceName: spaceDoc.data().name,
       dateRange: {
@@ -909,8 +896,7 @@ const getSpaceAvailability = async (spaceId, req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error getting space availability:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 

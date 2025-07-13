@@ -10,6 +10,9 @@ const {
   verifyAdminAuth,
   _getUserRoleAndCity,
 } = require('./utils/helpers');
+const {
+  handleValidationError,
+} = require('./utils/errorHandler');
 
 // Middleware to get user info from auth token
 const getUserFromToken = async (req) => {
@@ -244,7 +247,7 @@ const customers = onRequest(async (req, res) => {
         // Require admin auth for all POST operations
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleError(res, 'Admin access required', 403, req);
         }
 
         if (pathParts.length === 0) {
@@ -258,7 +261,7 @@ const customers = onRequest(async (req, res) => {
         // PUT /customers/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleError(res, 'Admin access required', 403, req);
         }
 
         if (pathParts.length === 1) {
@@ -269,7 +272,7 @@ const customers = onRequest(async (req, res) => {
         // DELETE /customers/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleError(res, 'Admin access required', 403, req);
         }
 
         if (pathParts.length === 1) {
@@ -279,10 +282,10 @@ const customers = onRequest(async (req, res) => {
       }
 
       // If no route matches
-      return handleError(res, `Route not found: ${method} ${path}`, 404);
+      return handleError(res, `Route not found: ${method} ${path}`, 404, req);
     } catch (error) {
       console.error('[CUSTOMERS ROUTER] Unhandled error:', error);
-      return handleError(res, 'Internal server error', 500);
+      return handleError(res, 'Internal server error', 500, req);
     }
   });
 });
@@ -330,7 +333,7 @@ const getAllCustomers = async (req, res) => {
     return handleResponse(res, result, 200);
   } catch (error) {
     console.error('Error in getAllCustomers:', error);
-    return handleError(res, error, 500);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -343,7 +346,7 @@ const getCustomerById = async (customerId, req, res) => {
     const customerDoc = await db.collection('customers').doc(customerId).get();
 
     if (!customerDoc.exists) {
-      return handleError(res, 'Customer not found', 404);
+      return handleError(res, 'Customer not found', 404, req);
     }
 
     const customerData = {
@@ -355,10 +358,10 @@ const getCustomerById = async (customerId, req, res) => {
     };
 
     console.log(`✅ Retrieved customer: ${customerData.name}`);
-    return handleResponse(res, customerData, 'Customer retrieved successfully');
+    return handleResponse(res, customerData, 200, 'Customer retrieved successfully');
   } catch (error) {
     console.error(`Error in getCustomerById for ${customerId}:`, error);
-    return handleError(res, `Failed to retrieve customer: ${error.message}`, 500);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -375,13 +378,13 @@ const createCustomer = async (req, res) => {
     // Validate required fields
     const validationErrors = validateCustomerData(req.body);
     if (validationErrors.length > 0) {
-      return handleError(res, `Validation failed: ${validationErrors.join(', ')}`, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
     }
 
     // Check for duplicate email
     const isDuplicate = await checkDuplicateEmail(req.body.email);
     if (isDuplicate) {
-      return handleError(res, 'A customer with this email already exists', 409);
+      return handleError(res, 'A customer with this email already exists', 409, req);
     }
 
     // Sanitize input data
@@ -435,7 +438,7 @@ const createCustomer = async (req, res) => {
     return handleResponse(res, result, 201);
   } catch (error) {
     console.error('Error in createCustomer:', error);
-    return handleError(res, `Failed to create customer: ${error.message}`, 500);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -454,20 +457,20 @@ const updateCustomer = async (customerId, req, res) => {
     // Check if customer exists
     const customerDoc = await db.collection('customers').doc(customerId).get();
     if (!customerDoc.exists) {
-      return handleError(res, 'Customer not found', 404);
+      return handleError(res, 'Customer not found', 404, req);
     }
 
     // Validate updated data
     const validationErrors = validateCustomerData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleError(res, `Validation failed: ${validationErrors.join(', ')}`, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
     }
 
     // Check for duplicate email (excluding current customer)
     if (req.body.email) {
       const isDuplicate = await checkDuplicateEmail(req.body.email, customerId);
       if (isDuplicate) {
-        return handleError(res, 'A customer with this email already exists', 409);
+        return handleError(res, 'A customer with this email already exists', 409, req);
       }
     }
 
@@ -510,10 +513,10 @@ const updateCustomer = async (customerId, req, res) => {
     };
 
     console.log(`✅ Customer ${customerId} updated successfully by ${user?.displayName || 'Unknown'}.`);
-    return handleResponse(res, {data: responseData, message: 'Customer updated successfully'}, 200);
+    return handleResponse(res, responseData, 200, 'Customer updated successfully');
   } catch (error) {
     console.error(`Error in updateCustomer for ${customerId}:`, error);
-    return handleError(res, `Failed to update customer: ${error.message}`, 500);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -531,7 +534,7 @@ const deleteCustomer = async (customerId, req, res) => {
     // Check if customer exists and get data first
     const customerDoc = await db.collection('customers').doc(customerId).get();
     if (!customerDoc.exists) {
-      return handleError(res, 'Customer not found', 404);
+      return handleError(res, 'Customer not found', 404, req);
     }
 
     const customerData = customerDoc.data();
@@ -541,10 +544,10 @@ const deleteCustomer = async (customerId, req, res) => {
     await db.collection('customers').doc(customerId).delete();
 
     console.log(`✅ Customer deleted: ${customerData.name} (${customerId}) by ${user?.displayName || 'Unknown'}`);
-    return handleResponse(res, {id: customerId}, 'Customer deleted successfully');
+    return handleResponse(res, {id: customerId}, 200, 'Customer deleted successfully');
   } catch (error) {
     console.error(`Error in deleteCustomer for ${customerId}:`, error);
-    return handleError(res, `Failed to delete customer: ${error.message}`, 500);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -556,7 +559,7 @@ const searchCustomers = async (req, res) => {
     const {search, limit = 50, offset = 0, ...filters} = parseQueryParams(req.query);
 
     if (!search) {
-      return handleError(res, 'Search term is required', 400);
+      return handleValidationError(res, [{ field: 'search', message: 'Search term is required' }], req);
     }
 
     const db = getDb();
@@ -597,10 +600,10 @@ const searchCustomers = async (req, res) => {
     };
 
     console.log(`✅ Found ${customers.length} customers matching "${search}"`);
-    return handleResponse(res, result, 'Customer search completed');
+    return handleResponse(res, result, 200, 'Customer search completed');
   } catch (error) {
     console.error('Error in searchCustomers:', error);
-    return handleError(res, `Failed to search customers: ${error.message}`, 500);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -628,10 +631,10 @@ const getActiveCustomers = async (req, res) => {
     }));
 
     console.log(`✅ Retrieved ${customers.length} active customers`);
-    return handleResponse(res, {customers}, 'Active customers retrieved successfully');
+    return handleResponse(res, {customers}, 200, 'Active customers retrieved successfully');
   } catch (error) {
     console.error('Error in getActiveCustomers:', error);
-    return handleError(res, `Failed to retrieve active customers: ${error.message}`, 500);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -677,10 +680,10 @@ const getCustomerStatistics = async (req, res) => {
     };
 
     console.log('✅ Customer statistics calculated');
-    return handleResponse(res, statistics, 'Customer statistics retrieved successfully');
+    return handleResponse(res, statistics, 200, 'Customer statistics retrieved successfully');
   } catch (error) {
     console.error('Error in getCustomerStatistics:', error);
-    return handleError(res, `Failed to get customer statistics: ${error.message}`, 500);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -754,7 +757,7 @@ const migrateCustomers = async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Customer migration failed:', error);
-    return handleError(res, `Customer migration failed: ${error.message}`, 500);
+    return handleError(res, error, 500, req);
   }
 };
 

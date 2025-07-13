@@ -2,8 +2,6 @@ const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('./utils/corsConfig');
 const {
   getDb,
-  handleResponse,
-  handleError,
   validateRequired,
   sanitizeString,
   generateSequentialId,
@@ -14,6 +12,12 @@ const {
   getUserRoleAndCity,
   getCurrentTaxRate,
 } = require('./utils/helpers');
+const {
+  handleResponse,
+  handleError,
+  handleValidationError,
+  handleAuthError,
+} = require('./utils/errorHandler');
 const admin = require('firebase-admin');
 
 // Helper function to update space booking status intelligently
@@ -213,35 +217,35 @@ const orders = onRequest(async (req, res) => {
         // POST /orders - Allow admin or staff
         const {role: requesterRole} = await getUserRoleAndCity(req);
         if (requesterRole !== 'admin' && requesterRole !== 'staff') {
-          return handleResponse(res, {message: 'Admin or Staff access required'}, 403);
+          return handleAuthError(res, 'Admin or Staff access required', req);
         }
         return await createOrder(req, res, requesterRole);
       } else if (method === 'PUT' && pathParts.length === 1) {
         // PUT /orders/:id - Allow admin or staff (city-scoped)
         const {role: requesterRole} = await getUserRoleAndCity(req);
         if (requesterRole !== 'admin' && requesterRole !== 'staff') {
-          return handleResponse(res, {message: 'Admin or Staff access required'}, 403);
+          return handleAuthError(res, 'Admin or Staff access required', req);
         }
         return await updateOrder(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /orders/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await deleteOrder(pathParts[0], req, res);
       } else if (method === 'POST' && pathParts.length === 1 && pathParts[0] === 'migrate') {
         // POST /orders/migrate - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await migrateOrders(req, res);
       }
 
-      handleResponse(res, {message: 'Order route not found'}, 404);
+      return handleError(res, 'Order route not found', 404, req);
     } catch (error) {
-      handleError(res, error);
+      return handleError(res, error, 500, req);
     }
   });
 });
@@ -325,7 +329,7 @@ const getAllOrders = async (req, res) => {
     orders = orders.slice(offsetNum, offsetNum + limitNum);
 
     console.log(`✅ Retrieved ${orders.length} orders (${offsetNum + 1}-${offsetNum + orders.length} of ${totalOrders})${customerEmail ? ` for customer ${customerEmail}` : ''}${customerId ? ` for customer ID ${customerId}` : ''}${spaceId ? ` for space ID ${spaceId}` : ''}`);
-    handleResponse(res, {
+    return handleResponse(res, {
       orders,
       total: totalOrders,
       pagination: {
@@ -336,8 +340,7 @@ const getAllOrders = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error in getAllOrders:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -348,21 +351,21 @@ const getOrderById = async (orderId, req, res) => {
     const doc = await db.collection('orders').doc(orderId).get();
 
     if (!doc.exists) {
-      return handleResponse(res, {message: 'Order not found'}, 404);
+      return handleError(res, 'Order not found', 404, req);
     }
 
     const data = doc.data();
 
     const startDate = data.startDate && data.startDate.toDate ? data.startDate.toDate().toISOString() : data.startDate;
     const endDate = data.endDate && data.endDate.toDate ? data.endDate.toDate().toISOString() : data.endDate;
-    handleResponse(res, {
+    return handleResponse(res, {
       id: doc.id, // This will now be the orderId (e.g., ORD-20250701-GEN-MAN-0001)
       ...data,
       startDate,
       endDate,
     });
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -462,7 +465,7 @@ const createOrder = async (req, res, requesterRole) => {
     if (requesterRole === 'staff') {
       const {cityId: requesterCityId} = await getUserRoleAndCity(req);
       if (requesterCityId && orderData.cityId && orderData.cityId !== requesterCityId) {
-        return handleResponse(res, {message: 'Access denied'}, 403);
+        return handleAuthError(res, 'Access denied', req);
       }
     }
 
@@ -480,12 +483,12 @@ const createOrder = async (req, res, requesterRole) => {
     await autoGenerateInvoiceForOrder(db, orderId);
 
     // Return response with orderId as the main ID
-    handleResponse(res, {
+    return handleResponse(res, {
       id: orderId,
       ...orderData,
     }, 201);
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -496,7 +499,7 @@ const updateOrder = async (orderId, req, res) => {
 
     const orderDoc = await db.collection('orders').doc(orderId).get();
     if (!orderDoc.exists) {
-      return handleResponse(res, {message: 'Order not found'}, 404);
+      return handleError(res, 'Order not found', 404, req);
     }
 
     // Get user info from auth token if available
@@ -530,7 +533,7 @@ const updateOrder = async (orderId, req, res) => {
     if (requesterRole === 'staff') {
       // Ensure the order belongs to the staff's city
       if (prevData.cityId && requesterCityId && prevData.cityId !== requesterCityId) {
-        return handleResponse(res, {message: 'Access denied'}, 403);
+        return handleAuthError(res, 'Access denied', req);
       }
 
       // Limit editable fields for staff
@@ -569,13 +572,12 @@ const updateOrder = async (orderId, req, res) => {
     // Auto-generate invoice if necessary
     await autoGenerateInvoiceForOrder(db, orderId);
 
-    handleResponse(res, {
+    return handleResponse(res, {
       id: orderId, // This will now be the orderId (e.g., ORD-20250701-GEN-MAN-0001)
       ...data,
     });
   } catch (error) {
-    console.error('Error updating order:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -586,7 +588,7 @@ const deleteOrder = async (orderId, req, res) => {
 
     const orderDoc = await db.collection('orders').doc(orderId).get();
     if (!orderDoc.exists) {
-      return handleResponse(res, {message: 'Order not found'}, 404);
+      return handleError(res, 'Order not found', 404, req);
     }
 
     const orderData = orderDoc.data();
@@ -613,10 +615,9 @@ const deleteOrder = async (orderId, req, res) => {
       await db.collection('orders').doc(orderId).delete();
     }
 
-    handleResponse(res, {message: 'Order deleted successfully'});
+    return handleResponse(res, {message: 'Order deleted successfully'});
   } catch (error) {
-    console.error('❌ Error deleting order:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -703,20 +704,19 @@ const migrateOrders = async (req, res) => {
       await batch.commit();
       console.log(`✅ Successfully migrated ${migrationResults.length} orders.`);
 
-      handleResponse(res, {
+      return handleResponse(res, {
         message: `Successfully migrated ${migrationResults.length} orders.`,
         migratedCount: migrationResults.length,
         results: migrationResults,
       });
     } else {
-      handleResponse(res, {
+      return handleResponse(res, {
         message: 'All orders already have correct structure.',
         migratedCount: 0,
       });
     }
   } catch (error) {
-    console.error('❌ Migration failed:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -811,7 +811,6 @@ const updateOrderStatuses = async () => {
 
     return updatedCount;
   } catch (error) {
-    console.error('❌ Error updating order statuses:', error);
     throw error;
   }
 };
@@ -820,12 +819,12 @@ const updateOrderStatuses = async () => {
 const updateOrderStatusesEndpoint = async (req, res) => {
   try {
     const results = await updateOrderStatuses();
-    handleResponse(res, {
+    return handleResponse(res, {
       message: 'Order statuses updated successfully',
       updated: results,
     });
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -936,7 +935,6 @@ const fixSpacesBookingStatus = async () => {
 
     return {fixed: fixedCount};
   } catch (error) {
-    console.error('❌ Error fixing space booking statuses:', error);
     throw error;
   }
 };
@@ -945,12 +943,12 @@ const fixSpacesBookingStatus = async () => {
 const fixSpacesBookingStatusEndpoint = async (req, res) => {
   try {
     const results = await fixSpacesBookingStatus();
-    handleResponse(res, {
+    return handleResponse(res, {
       message: 'Space booking statuses fixed successfully',
       fixed: results.fixed,
     });
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -1044,12 +1042,7 @@ const updateOrderStatusManual = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Error updating order status:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      details: error.message
-    });
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -1079,7 +1072,7 @@ const ordersWithStatusUpdates = onRequest(async (req, res) => {
       // Delegate to original orders function
       return await orders(req, res);
     } catch (error) {
-      handleError(res, error);
+      return handleError(res, error, 500, req);
     }
   });
 });

@@ -2,10 +2,14 @@ const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('cors')({origin: true});
 const {
   getDb,
-  handleResponse,
-  handleError,
   verifyAdminAuth,
 } = require('./utils/helpers');
+const {
+  handleResponse,
+  handleError,
+  handleValidationError,
+  handleAuthError,
+} = require('./utils/errorHandler');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
 
 // Enhanced validation function for articles
@@ -201,7 +205,7 @@ const articles = onRequest(async (req, res) => {
         // Require admin auth for all POST operations
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
 
         if (pathParts.length === 0) {
@@ -213,21 +217,21 @@ const articles = onRequest(async (req, res) => {
         // PUT /articles/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await updateArticle(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /articles/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await deleteArticle(pathParts[0], req, res);
       }
 
-      handleResponse(res, {message: 'Article route not found'}, 404);
+      return handleError(res, new Error('Article route not found'), 404, req);
     } catch (error) {
-      handleError(res, error);
+      return handleError(res, error, 500, req);
     }
   });
 });
@@ -302,7 +306,7 @@ const getAllArticles = async (req, res) => {
       total: articles.length,
     });
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -313,12 +317,12 @@ const getArticleById = async (articleId, req, res) => {
     const doc = await db.collection('articles').doc(articleId).get();
 
     if (!doc.exists) {
-      return handleResponse(res, {message: 'Article not found'}, 404);
+      return handleError(res, new Error('Article not found'), 404, req);
     }
 
     handleResponse(res, {id: doc.id, ...doc.data()});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -332,10 +336,7 @@ const createArticle = async (req, res) => {
     const validationErrors = validateArticleData(req.body);
     if (validationErrors.length > 0) {
       console.log('❌ Validation failed:', validationErrors);
-      return handleResponse(res, {
-        message: 'Validation failed',
-        errors: validationErrors,
-      }, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
     }
 
     // Sanitize data
@@ -375,7 +376,7 @@ const createArticle = async (req, res) => {
       ...articleData,
     }, 201);
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -387,16 +388,13 @@ const updateArticle = async (articleId, req, res) => {
 
     const articleDoc = await db.collection('articles').doc(articleId).get();
     if (!articleDoc.exists) {
-      return handleResponse(res, {message: 'Article not found'}, 404);
+      return handleError(res, new Error('Article not found'), 404, req);
     }
 
     // Validate data
     const validationErrors = validateArticleData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleResponse(res, {
-        message: 'Validation failed',
-        errors: validationErrors,
-      }, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
     }
 
     // Sanitize data
@@ -434,7 +432,7 @@ const updateArticle = async (articleId, req, res) => {
 
     handleResponse(res, updatedArticle);
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -445,7 +443,7 @@ const deleteArticle = async (articleId, req, res) => {
 
     const articleDoc = await db.collection('articles').doc(articleId).get();
     if (!articleDoc.exists) {
-      return handleResponse(res, {message: 'Article not found'}, 404);
+      return handleError(res, new Error('Article not found'), 404, req);
     }
 
     const articleData = articleDoc.data();
@@ -459,7 +457,7 @@ const deleteArticle = async (articleId, req, res) => {
 
     handleResponse(res, {message: 'Article deleted successfully'});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -470,13 +468,13 @@ const uploadArticleImage = async (articleId, req, res) => {
     const {imageData, fileName} = req.body;
 
     if (!imageData) {
-      return handleResponse(res, {message: 'No image data provided'}, 400);
+      return handleValidationError(res, [{ message: 'No image data provided' }], req);
     }
 
     // Check if article exists
     const articleDoc = await db.collection('articles').doc(articleId).get();
     if (!articleDoc.exists) {
-      return handleResponse(res, {message: 'Article not found'}, 404);
+      return handleError(res, new Error('Article not found'), 404, req);
     }
 
     const articleData = articleDoc.data();

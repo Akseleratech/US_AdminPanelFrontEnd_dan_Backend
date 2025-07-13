@@ -2,11 +2,15 @@ const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('cors')({origin: true});
 const {
   getDb,
-  handleResponse,
-  handleError,
   verifyAdminAuth,
   getUserRoleAndCity,
 } = require('./utils/helpers');
+const {
+  handleResponse,
+  handleError,
+  handleValidationError,
+  handleAuthError,
+} = require('./utils/errorHandler');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
 
 // Import city coordinate functions
@@ -360,35 +364,35 @@ const buildings = onRequest(async (req, res) => {
         // POST /buildings - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await createBuilding(req, res);
       } else if (method === 'POST' && pathParts.length === 2 && pathParts[1] === 'upload-image') {
         // POST /buildings/:id/upload-image - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await uploadBuildingImage(pathParts[0], req, res);
       } else if (method === 'PUT' && pathParts.length === 1) {
         // PUT /buildings/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await updateBuilding(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /buildings/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await deleteBuilding(pathParts[0], req, res);
       }
 
-      handleResponse(res, {message: 'Building route not found'}, 404);
+      return handleError(res, 'Building route not found', 404, req);
     } catch (error) {
-      handleError(res, error);
+      return handleError(res, error, 500, req);
     }
   });
 });
@@ -463,7 +467,7 @@ const getAllBuildings = async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const paginatedBuildings = buildings.slice(offset, offset + parseInt(limit));
 
-    handleResponse(res, {
+    return handleResponse(res, {
       buildings: paginatedBuildings,
       pagination: {
         page: parseInt(page),
@@ -474,7 +478,7 @@ const getAllBuildings = async (req, res) => {
       total: buildings.length,
     });
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -485,12 +489,12 @@ const getBuildingById = async (buildingId, req, res) => {
     const doc = await db.collection('buildings').doc(buildingId).get();
 
     if (!doc.exists) {
-      return handleResponse(res, {message: 'Building not found'}, 404);
+      return handleError(res, 'Building not found', 404, req);
     }
 
-    handleResponse(res, {id: doc.id, ...doc.data()});
+    return handleResponse(res, {id: doc.id, ...doc.data()});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -505,10 +509,7 @@ const createBuilding = async (req, res) => {
     const validationErrors = validateBuildingData(req.body);
     if (validationErrors.length > 0) {
       console.log('❌ Validation failed:', validationErrors);
-      return handleResponse(res, {
-        message: 'Validation failed',
-        errors: validationErrors,
-      }, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ field: 'unknown', message: error })), req);
     }
 
     // Sanitize data
@@ -522,9 +523,7 @@ const createBuilding = async (req, res) => {
     );
 
     if (isDuplicate) {
-      return handleResponse(res, {
-        message: 'A building with this name already exists in the same city',
-      }, 409);
+      return handleError(res, 'A building with this name already exists in the same city', 409, req);
     }
 
     // Generate building ID
@@ -564,12 +563,12 @@ const createBuilding = async (req, res) => {
 
     console.log(`✅ Building created successfully with ID: ${buildingId}`);
 
-    handleResponse(res, {
+    return handleResponse(res, {
       id: buildingId,
       ...buildingData,
     }, 201);
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -581,16 +580,13 @@ const updateBuilding = async (buildingId, req, res) => {
 
     const buildingDoc = await db.collection('buildings').doc(buildingId).get();
     if (!buildingDoc.exists) {
-      return handleResponse(res, {message: 'Building not found'}, 404);
+      return handleError(res, 'Building not found', 404, req);
     }
 
     // Validate data
     const validationErrors = validateBuildingData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleResponse(res, {
-        message: 'Validation failed',
-        errors: validationErrors,
-      }, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ field: 'unknown', message: error })), req);
     }
 
     // Sanitize data
@@ -605,9 +601,7 @@ const updateBuilding = async (buildingId, req, res) => {
       );
 
       if (isDuplicate) {
-        return handleResponse(res, {
-          message: 'A building with this name already exists in the same city',
-        }, 409);
+        return handleError(res, 'A building with this name already exists in the same city', 409, req);
       }
     }
 
@@ -661,9 +655,9 @@ const updateBuilding = async (buildingId, req, res) => {
       ...updatedDoc.data(),
     };
 
-    handleResponse(res, updatedBuilding);
+    return handleResponse(res, updatedBuilding);
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -674,7 +668,7 @@ const deleteBuilding = async (buildingId, req, res) => {
 
     const buildingDoc = await db.collection('buildings').doc(buildingId).get();
     if (!buildingDoc.exists) {
-      return handleResponse(res, {message: 'Building not found'}, 404);
+      return handleError(res, 'Building not found', 404, req);
     }
 
     const buildingData = buildingDoc.data();
@@ -700,9 +694,9 @@ const deleteBuilding = async (buildingId, req, res) => {
       await updateCityCoordinates(cityName);
     }
 
-    handleResponse(res, {message: 'Building deleted successfully'});
+    return handleResponse(res, {message: 'Building deleted successfully'});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -713,13 +707,13 @@ const uploadBuildingImage = async (buildingId, req, res) => {
     const {imageData, fileName} = req.body;
 
     if (!imageData) {
-      return handleResponse(res, {message: 'No image data provided'}, 400);
+      return handleValidationError(res, [{ field: 'imageData', message: 'No image data provided' }], req);
     }
 
     // Check if building exists
     const buildingDoc = await db.collection('buildings').doc(buildingId).get();
     if (!buildingDoc.exists) {
-      return handleResponse(res, {message: 'Building not found'}, 404);
+      return handleError(res, 'Building not found', 404, req);
     }
 
     const buildingData = buildingDoc.data();
@@ -748,7 +742,7 @@ const uploadBuildingImage = async (buildingId, req, res) => {
 
     console.log(`✅ Successfully updated building ${buildingId} with image: ${uploadResult.url}`);
 
-    handleResponse(res, {
+    return handleResponse(res, {
       image: uploadResult.url,
       filename: uploadResult.filename,
     });

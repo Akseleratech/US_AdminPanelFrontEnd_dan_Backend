@@ -1,4 +1,11 @@
 const admin = require('firebase-admin');
+const {
+  handleError: secureHandleError,
+  handleResponse: secureHandleResponse,
+  handleValidationError,
+  handleAuthError,
+  handleRateLimitError,
+} = require('./errorHandler');
 
 // Get Firestore instance
 const getDb = () => {
@@ -8,23 +15,14 @@ const getDb = () => {
   return admin.firestore();
 };
 
-// Common response handler
-const handleResponse = (res, data, statusCode = 200) => {
-  res.status(statusCode).json({
-    success: statusCode < 400,
-    data: statusCode < 400 ? data : null,
-    error: statusCode >= 400 ? data : null,
-    timestamp: new Date().toISOString(),
-  });
+// Common response handler - use secure version
+const handleResponse = (res, data, statusCode = 200, message = null) => {
+  return secureHandleResponse(res, data, statusCode, message);
 };
 
-// Error handler
-const handleError = (res, error, statusCode = 500) => {
-  console.error('Function Error:', error);
-  handleResponse(res, {
-    message: error.message || 'Internal server error',
-    code: error.code || 'INTERNAL_ERROR',
-  }, statusCode);
+// Error handler - use secure version
+const handleError = (res, error, statusCode = 500, req = null) => {
+  return secureHandleError(res, error, statusCode, req);
 };
 
 // Validation helpers
@@ -200,17 +198,17 @@ const requireAdmin = async (req, res, next) => {
   try {
     const token = verifyAuthToken(req);
     if (!token) {
-      return handleResponse(res, {message: 'Authentication required'}, 401);
+      return handleAuthError(res, 'Authentication required', req);
     }
 
     const user = await getUserFromToken(token);
     if (!user) {
-      return handleResponse(res, {message: 'Invalid authentication token'}, 401);
+      return handleAuthError(res, 'Invalid authentication token', req);
     }
 
     const isAdmin = await checkIsAdmin(user.uid);
     if (!isAdmin) {
-      return handleResponse(res, {message: 'Admin access required'}, 403);
+      return handleError(res, 'Admin access required', 403, req);
     }
 
     // Attach user info to request for use in handlers
@@ -223,8 +221,7 @@ const requireAdmin = async (req, res, next) => {
       return true; // For non-express usage
     }
   } catch (error) {
-    console.error('Error in requireAdmin middleware:', error);
-    return handleResponse(res, {message: 'Authentication error'}, 500);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -407,6 +404,9 @@ module.exports = {
   getDb,
   handleResponse,
   handleError,
+  handleValidationError,
+  handleAuthError,
+  handleRateLimitError,
   validateRequired,
   validateString,
   validateEmail,
@@ -428,4 +428,5 @@ module.exports = {
   parseOrderId,
   getCurrentTaxRate,
   getUserRoleAndCity,
+  _getUserRoleAndCity: getUserRoleAndCity, // Alias for backward compatibility
 };

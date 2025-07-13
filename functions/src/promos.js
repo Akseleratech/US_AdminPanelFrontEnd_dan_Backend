@@ -2,10 +2,14 @@ const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('cors')({origin: true});
 const {
   getDb,
-  handleResponse,
-  handleError,
   verifyAdminAuth,
 } = require('./utils/helpers');
+const {
+  handleResponse,
+  handleError,
+  handleValidationError,
+  handleAuthError,
+} = require('./utils/errorHandler');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
 
 // Enhanced validation schema for Promos
@@ -186,7 +190,7 @@ const promos = onRequest(async (req, res) => {
         // Require admin auth for all POST operations
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
 
         if (pathParts.length === 0) {
@@ -198,21 +202,21 @@ const promos = onRequest(async (req, res) => {
         // PUT /promos/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await updatePromo(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /promos/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await deletePromo(pathParts[0], req, res);
       }
 
-      handleResponse(res, {message: 'Promo route not found'}, 404);
+      return handleError(res, new Error('Promo route not found'), 404, req);
     } catch (error) {
-      handleError(res, error);
+      return handleError(res, error, 500, req);
     }
   });
 });
@@ -306,7 +310,7 @@ const getAllPromos = async (req, res) => {
     handleResponse(res, response);
   } catch (error) {
     console.error('❌ Error in getAllPromos:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -317,12 +321,12 @@ const getPromoById = async (promoId, req, res) => {
     const doc = await db.collection('promos').doc(promoId).get();
 
     if (!doc.exists) {
-      return handleResponse(res, {message: 'Promo not found'}, 404);
+      return handleError(res, new Error('Promo not found'), 404, req);
     }
 
     handleResponse(res, {id: doc.id, ...doc.data()});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -337,10 +341,7 @@ const createPromo = async (req, res) => {
     const validationErrors = validatePromoData(req.body);
     if (validationErrors.length > 0) {
       console.log('❌ Validation failed:', validationErrors);
-      return handleResponse(res, {
-        message: 'Validation failed',
-        errors: validationErrors,
-      }, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
     }
 
     // Sanitize data
@@ -376,7 +377,7 @@ const createPromo = async (req, res) => {
       ...promoData,
     }, 201);
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -388,16 +389,13 @@ const updatePromo = async (promoId, req, res) => {
 
     const promoDoc = await db.collection('promos').doc(promoId).get();
     if (!promoDoc.exists) {
-      return handleResponse(res, {message: 'Promo not found'}, 404);
+      return handleError(res, new Error('Promo not found'), 404, req);
     }
 
     // Validate data
     const validationErrors = validatePromoData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleResponse(res, {
-        message: 'Validation failed',
-        errors: validationErrors,
-      }, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
     }
 
     // Sanitize data
@@ -431,7 +429,7 @@ const updatePromo = async (promoId, req, res) => {
 
     handleResponse(res, updatedPromo);
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -442,7 +440,7 @@ const deletePromo = async (promoId, req, res) => {
 
     const promoDoc = await db.collection('promos').doc(promoId).get();
     if (!promoDoc.exists) {
-      return handleResponse(res, {message: 'Promo not found'}, 404);
+      return handleError(res, new Error('Promo not found'), 404, req);
     }
 
     const promoData = promoDoc.data();
@@ -456,7 +454,7 @@ const deletePromo = async (promoId, req, res) => {
 
     handleResponse(res, {message: 'Promo deleted successfully'});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -467,13 +465,13 @@ const uploadPromoImage = async (promoId, req, res) => {
     const {imageData, fileName} = req.body;
 
     if (!imageData) {
-      return handleResponse(res, {message: 'No image data provided'}, 400);
+      return handleValidationError(res, [{ message: 'No image data provided' }], req);
     }
 
     // Check if promo exists
     const promoDoc = await db.collection('promos').doc(promoId).get();
     if (!promoDoc.exists) {
-      return handleResponse(res, {message: 'Promo not found'}, 404);
+      return handleError(res, new Error('Promo not found'), 404, req);
     }
 
     const promoData = promoDoc.data();

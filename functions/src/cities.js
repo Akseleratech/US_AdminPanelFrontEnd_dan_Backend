@@ -2,12 +2,16 @@ const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('cors')({origin: true});
 const {
   getDb,
-  handleResponse,
-  handleError,
   sanitizeString,
   verifyAdminAuth,
   getUserRoleAndCity,
 } = require('./utils/helpers');
+const {
+  handleResponse,
+  handleError,
+  handleValidationError,
+  handleAuthError,
+} = require('./utils/errorHandler');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
 const admin = require('firebase-admin');
 
@@ -311,7 +315,7 @@ const cities = onRequest(async (req, res) => {
         // Require admin auth for all POST operations
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
 
         if (pathParts.length === 0) {
@@ -325,23 +329,23 @@ const cities = onRequest(async (req, res) => {
         // PUT /cities/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await updateCity(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /cities/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await deleteCity(pathParts[0], req, res);
       }
 
       // 404 for unknown routes
       console.log(`[CITIES ROUTER] No route matched for ${method} ${url}. Sending 404.`);
-      handleResponse(res, {message: 'City route not found'}, 404);
+      return handleError(res, new Error('City route not found'), 404, req);
     } catch (error) {
-      handleError(res, error);
+      return handleError(res, error, 500, req);
     }
   });
 });
@@ -453,7 +457,7 @@ const getAllCities = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching cities:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -464,7 +468,7 @@ const getCityById = async (cityId, req, res) => {
     const doc = await db.collection('cities').doc(cityId).get();
 
     if (!doc.exists) {
-      return handleResponse(res, {message: 'City not found'}, 404);
+      return handleError(res, new Error('City not found'), 404, req);
     }
 
     const data = doc.data();
@@ -502,7 +506,7 @@ const getCityById = async (cityId, req, res) => {
     handleResponse(res, responseData);
   } catch (error) {
     console.error('Error fetching city:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -517,10 +521,7 @@ const createCity = async (req, res) => {
     const validationErrors = validateCityData(req.body);
     if (validationErrors.length > 0) {
       console.log('❌ Validation failed:', validationErrors);
-      return handleResponse(res, {
-        message: 'Validation failed',
-        errors: validationErrors,
-      }, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
     }
 
     // Sanitize data
@@ -534,9 +535,7 @@ const createCity = async (req, res) => {
     );
 
     if (isDuplicate) {
-      return handleResponse(res, {
-        message: 'A city with this name already exists in the same province',
-      }, 409);
+      return handleValidationError(res, [{ message: 'A city with this name already exists in the same province' }], req);
     }
 
     // Generate city ID
@@ -580,7 +579,7 @@ const createCity = async (req, res) => {
     handleResponse(res, responseData, 201);
   } catch (error) {
     console.error('Error creating city:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -592,16 +591,13 @@ const updateCity = async (cityId, req, res) => {
 
     const cityDoc = await db.collection('cities').doc(cityId).get();
     if (!cityDoc.exists) {
-      return handleResponse(res, {message: 'City not found'}, 404);
+      return handleError(res, new Error('City not found'), 404, req);
     }
 
     // Validate data
     const validationErrors = validateCityData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleResponse(res, {
-        message: 'Validation failed',
-        errors: validationErrors,
-      }, 400);
+      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
     }
 
     // Sanitize data
@@ -616,9 +612,7 @@ const updateCity = async (cityId, req, res) => {
       );
 
       if (isDuplicate) {
-        return handleResponse(res, {
-          message: 'A city with this name already exists in the same province',
-        }, 409);
+        return handleValidationError(res, [{ message: 'A city with this name already exists in the same province' }], req);
       }
     }
 
@@ -659,7 +653,7 @@ const updateCity = async (cityId, req, res) => {
     handleResponse(res, responseData);
   } catch (error) {
     console.error('Error updating city:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -672,7 +666,7 @@ const deleteCity = async (cityId, req, res) => {
 
     const cityDoc = await db.collection('cities').doc(cityId).get();
     if (!cityDoc.exists) {
-      return handleResponse(res, {message: 'City not found'}, 404);
+      return handleError(res, new Error('City not found'), 404, req);
     }
 
     const cityData = cityDoc.data();
@@ -748,13 +742,13 @@ const deleteCity = async (cityId, req, res) => {
         console.log(`   Space: ${space.name} in "${space.location?.city}"`);
       });
 
-      return handleResponse(res, {
+      return handleValidationError(res, [{ 
         message: 'Cannot delete city that has buildings or spaces',
         details: {
           buildingCount: relatedBuildings.length,
           spaceCount: relatedSpaces.length,
-        },
-      }, 409);
+        }
+      }], req);
     }
 
     // Safe to delete
@@ -765,7 +759,7 @@ const deleteCity = async (cityId, req, res) => {
     handleResponse(res, {message: 'City deleted successfully'});
   } catch (error) {
     console.error('Error deleting city:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -776,13 +770,13 @@ const uploadCityImage = async (cityId, req, res) => {
     const {imageData, fileName} = req.body;
 
     if (!imageData) {
-      return handleResponse(res, {message: 'No image data provided'}, 400);
+      return handleValidationError(res, [{ message: 'No image data provided' }], req);
     }
 
     // Check if city exists
     const cityDoc = await db.collection('cities').doc(cityId).get();
     if (!cityDoc.exists) {
-      return handleResponse(res, {message: 'City not found'}, 404);
+      return handleError(res, new Error('City not found'), 404, req);
     }
 
     const cityData = cityDoc.data();
@@ -813,7 +807,7 @@ const uploadCityImage = async (cityId, req, res) => {
     });
   } catch (error) {
     console.error('Error uploading city image:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -827,9 +821,7 @@ const geocodeCity = async (req, res) => {
     const {cityName, provinceName, countryName = 'Indonesia'} = req.body;
 
     if (!cityName || !provinceName) {
-      return handleResponse(res, {
-        message: 'City name and province are required',
-      }, 400);
+      return handleValidationError(res, [{ message: 'City name and province are required' }], req);
     }
 
     // First, try to find existing city
@@ -906,7 +898,7 @@ const geocodeCity = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in geocodeCity:', error);
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 

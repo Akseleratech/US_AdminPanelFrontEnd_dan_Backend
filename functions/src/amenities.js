@@ -7,12 +7,16 @@ const path = require('path');
 const fs = require('fs');
 const {
   getDb,
-  handleResponse,
-  handleError,
   validateRequired,
   sanitizeString,
   verifyAdminAuth,
 } = require('./utils/helpers');
+const {
+  handleResponse,
+  handleError,
+  handleValidationError,
+  handleAuthError,
+} = require('./utils/errorHandler');
 
 // Main amenities function
 const amenities = onRequest(async (req, res) => {
@@ -35,35 +39,35 @@ const amenities = onRequest(async (req, res) => {
         // POST /amenities - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await createAmenity(req, res);
       } else if (method === 'PUT' && pathParts.length === 1) {
         // PUT /amenities/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await updateAmenity(pathParts[0], req, res);
       } else if (method === 'DELETE' && pathParts.length === 1) {
         // DELETE /amenities/:id - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await deleteAmenity(pathParts[0], req, res);
       } else if (method === 'PATCH' && pathParts.length === 2 && pathParts[1] === 'toggle') {
         // PATCH /amenities/:id/toggle - Require admin auth
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {
-          return handleResponse(res, {message: 'Admin access required'}, 403);
+          return handleAuthError(res, 'Admin access required', req);
         }
         return await toggleAmenityStatus(pathParts[0], req, res);
       }
 
-      handleResponse(res, {message: 'Amenity route not found'}, 404);
+      return handleError(res, new Error('Amenity route not found'), 404, req);
     } catch (error) {
-      handleError(res, error);
+      return handleError(res, error, 500, req);
     }
   });
 });
@@ -117,7 +121,7 @@ const getAllAmenities = async (req, res) => {
 
     handleResponse(res, {amenities, total: amenities.length});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -128,12 +132,12 @@ const getAmenityById = async (amenityId, req, res) => {
     const doc = await db.collection('amenities').doc(amenityId).get();
 
     if (!doc.exists) {
-      return handleResponse(res, {message: 'Amenity not found'}, 404);
+      return handleError(res, new Error('Amenity not found'), 404, req);
     }
 
     handleResponse(res, {id: doc.id, ...doc.data()});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -225,7 +229,7 @@ const updateAmenity = async (amenityId, req, res) => {
       const db = getDb();
       const amenityDoc = await db.collection('amenities').doc(amenityId).get();
       if (!amenityDoc.exists) {
-        return handleResponse(res, {message: 'Amenity not found'}, 404);
+        return handleError(res, new Error('Amenity not found'), 404, req);
       }
 
       let iconUrl = fields.icon || amenityDoc.data().icon; // Keep old icon if not updated
@@ -288,7 +292,7 @@ const deleteAmenity = async (amenityId, req, res) => {
     const db = getDb();
     const amenityDoc = await db.collection('amenities').doc(amenityId).get();
     if (!amenityDoc.exists) {
-      return handleResponse(res, {message: 'Amenity not found'}, 404);
+      return handleError(res, new Error('Amenity not found'), 404, req);
     }
 
     // Check if amenity is being used by any spaces
@@ -297,9 +301,7 @@ const deleteAmenity = async (amenityId, req, res) => {
         .get();
 
     if (!spacesSnapshot.empty) {
-      return handleResponse(res, {
-        message: 'Cannot delete amenity because it is being used by one or more spaces',
-      }, 400);
+      return handleValidationError(res, [{ message: 'Cannot delete amenity because it is being used by one or more spaces' }], req);
     }
 
     // Delete icon from storage
@@ -319,7 +321,7 @@ const deleteAmenity = async (amenityId, req, res) => {
     await db.collection('amenities').doc(amenityId).delete();
     handleResponse(res, {message: 'Amenity deleted successfully'});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 
@@ -329,7 +331,7 @@ const toggleAmenityStatus = async (amenityId, req, res) => {
     const db = getDb();
     const amenityDoc = await db.collection('amenities').doc(amenityId).get();
     if (!amenityDoc.exists) {
-      return handleResponse(res, {message: 'Amenity not found'}, 404);
+      return handleError(res, new Error('Amenity not found'), 404, req);
     }
 
     const currentStatus = amenityDoc.data().isActive;
@@ -342,7 +344,7 @@ const toggleAmenityStatus = async (amenityId, req, res) => {
     const updatedDoc = await db.collection('amenities').doc(amenityId).get();
     handleResponse(res, {id: amenityId, ...updatedDoc.data()});
   } catch (error) {
-    handleError(res, error);
+    return handleError(res, error, 500, req);
   }
 };
 

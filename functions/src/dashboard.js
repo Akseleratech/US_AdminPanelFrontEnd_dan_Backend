@@ -1,6 +1,10 @@
 const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('./utils/corsConfig');
-const {getDb, handleResponse, handleError} = require('./utils/helpers');
+const {getDb} = require('./utils/helpers');
+const {
+  handleResponse,
+  handleError,
+} = require('./utils/errorHandler');
 
 // Main dashboard function that handles all dashboard routes
 const dashboard = onRequest(async (req, res) => {
@@ -23,7 +27,7 @@ const dashboard = onRequest(async (req, res) => {
       // 404 for unknown routes
       handleResponse(res, {message: 'Dashboard route not found'}, 404);
     } catch (error) {
-      handleError(res, error);
+      return handleError(res, error, 500, req);
     }
   });
 });

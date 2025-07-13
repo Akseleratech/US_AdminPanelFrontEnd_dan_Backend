@@ -3,7 +3,12 @@
 const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('cors')({origin: true});
 const admin = require('firebase-admin');
-const {getDb, generateSequentialId, handleResponse, handleError} = require('./utils/helpers');
+const {getDb, generateSequentialId} = require('./utils/helpers');
+const {
+  handleResponse,
+  handleError,
+  handleValidationError,
+} = require('./utils/errorHandler');
 
 // HTTP function to create customer document when user signs up
 // Called from frontend after successful Firebase Auth signup
@@ -104,7 +109,7 @@ exports.createCustomerOnSignup = onRequest(async (req, res) => {
       
     } catch (error) {
       console.error('Error creating customer on signup:', error);
-      return handleError(res, `Failed to create customer: ${error.message}`, 500);
+      return handleError(res, error, 500, req);
     }
   });
 });
@@ -229,7 +234,7 @@ exports.getOrCreateCustomer = onRequest(async (req, res) => {
       
     } catch (error) {
       console.error('Error in getOrCreateCustomer:', error);
-      return handleError(res, `Failed to get or create customer: ${error.message}`, 500);
+      return handleError(res, error, 500, req);
     }
   });
 });
