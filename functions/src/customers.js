@@ -295,6 +295,12 @@ const getAllCustomers = async (req, res) => {
   try {
     console.log('[GET /customers] Fetching all customers');
 
+    // Require admin authentication
+    const isAdmin = await verifyAdminAuth(req);
+    if (!isAdmin) {
+      return handleError(res, 'Admin access required', 403, req);
+    }
+
     const db = getDb();
     const {limit = 50, offset = 0, sortBy = 'createdAt', sortOrder = 'desc', ...filters} = parseQueryParams(req.query);
 
@@ -341,6 +347,12 @@ const getAllCustomers = async (req, res) => {
 const getCustomerById = async (customerId, req, res) => {
   try {
     console.log(`[GET /customers/${customerId}] Fetching customer by ID`);
+
+    // Require admin authentication
+    const isAdmin = await verifyAdminAuth(req);
+    if (!isAdmin) {
+      return handleError(res, 'Admin access required', 403, req);
+    }
 
     const db = getDb();
     const customerDoc = await db.collection('customers').doc(customerId).get();
@@ -556,6 +568,12 @@ const searchCustomers = async (req, res) => {
   try {
     console.log('[GET /customers/search] Searching customers');
 
+    // Require admin authentication
+    const isAdmin = await verifyAdminAuth(req);
+    if (!isAdmin) {
+      return handleError(res, 'Admin access required', 403, req);
+    }
+
     const {search, limit = 50, offset = 0, ...filters} = parseQueryParams(req.query);
 
     if (!search) {
@@ -612,6 +630,12 @@ const getActiveCustomers = async (req, res) => {
   try {
     console.log('[GET /customers/active] Fetching active customers');
 
+    // Require admin authentication
+    const isAdmin = await verifyAdminAuth(req);
+    if (!isAdmin) {
+      return handleError(res, 'Admin access required', 403, req);
+    }
+
     const db = getDb();
     const {limit = 100, offset = 0} = parseQueryParams(req.query);
 
@@ -642,6 +666,12 @@ const getActiveCustomers = async (req, res) => {
 const getCustomerStatistics = async (req, res) => {
   try {
     console.log('[GET /customers/statistics] Calculating customer statistics');
+
+    // Require admin authentication
+    const isAdmin = await verifyAdminAuth(req);
+    if (!isAdmin) {
+      return handleError(res, 'Admin access required', 403, req);
+    }
 
     const db = getDb();
 
