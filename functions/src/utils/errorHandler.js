@@ -9,7 +9,7 @@ const generateErrorId = () => {
 // Define safe error messages for different error types
 const getSafeErrorMessage = (error, statusCode) => {
   const isDevelopment = process.env.NODE_ENV === 'development';
-  
+
   // Common safe messages based on status codes
   const safeMessages = {
     400: 'Invalid request parameters',
@@ -20,7 +20,7 @@ const getSafeErrorMessage = (error, statusCode) => {
     429: 'Too many requests',
     500: 'Internal server error',
     502: 'Service temporarily unavailable',
-    503: 'Service unavailable'
+    503: 'Service unavailable',
   };
 
   // In development, show more details
@@ -60,16 +60,16 @@ const logError = (error, errorId, req = null) => {
 // Secure error response handler
 const handleError = (res, error, statusCode = 500, req = null) => {
   const errorId = generateErrorId();
-  
+
   // Log the actual error for debugging
   logError(error, errorId, req);
-  
+
   // Determine if this is an Error object or string
   const errorObj = typeof error === 'string' ? new Error(error) : error;
-  
+
   // Get safe message for client
   const safeMessage = getSafeErrorMessage(errorObj, statusCode);
-  
+
   // Response structure
   const response = {
     success: false,
@@ -77,7 +77,7 @@ const handleError = (res, error, statusCode = 500, req = null) => {
       message: safeMessage,
       errorId: errorId,
       timestamp: new Date().toISOString(),
-    }
+    },
   };
 
   // Add error code only if it's safe to expose
@@ -120,7 +120,7 @@ const handleResponse = (res, data, statusCode = 200, message = null) => {
 // Validation error handler
 const handleValidationError = (res, validationErrors, req = null) => {
   const errorId = generateErrorId();
-  
+
   // Log validation errors
   console.warn('VALIDATION_ERROR:', {
     errorId,
@@ -136,11 +136,11 @@ const handleValidationError = (res, validationErrors, req = null) => {
       message: 'Validation failed',
       errorId: errorId,
       timestamp: new Date().toISOString(),
-      validation: validationErrors.map(error => ({
+      validation: validationErrors.map((error) => ({
         field: error.field || 'unknown',
         message: error.message || error,
-      }))
-    }
+      })),
+    },
   };
 
   return res.status(400).json(response);
@@ -149,7 +149,7 @@ const handleValidationError = (res, validationErrors, req = null) => {
 // Authentication error handler
 const handleAuthError = (res, message = 'Authentication required', req = null) => {
   const errorId = generateErrorId();
-  
+
   console.warn('AUTH_ERROR:', {
     errorId,
     timestamp: new Date().toISOString(),
@@ -166,7 +166,7 @@ const handleAuthError = (res, message = 'Authentication required', req = null) =
       errorId: errorId,
       timestamp: new Date().toISOString(),
       code: 401,
-    }
+    },
   };
 
   return res.status(401).json(response);
@@ -175,7 +175,7 @@ const handleAuthError = (res, message = 'Authentication required', req = null) =
 // Rate limiting error handler
 const handleRateLimitError = (res, req = null) => {
   const errorId = generateErrorId();
-  
+
   console.warn('RATE_LIMIT_ERROR:', {
     errorId,
     timestamp: new Date().toISOString(),
@@ -191,7 +191,7 @@ const handleRateLimitError = (res, req = null) => {
       errorId: errorId,
       timestamp: new Date().toISOString(),
       code: 429,
-    }
+    },
   };
 
   return res.status(429).json(response);

@@ -336,7 +336,7 @@ const createArticle = async (req, res) => {
     const validationErrors = validateArticleData(req.body);
     if (validationErrors.length > 0) {
       console.log('❌ Validation failed:', validationErrors);
-      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
+      return handleValidationError(res, validationErrors.map((error) => ({message: error})), req);
     }
 
     // Sanitize data
@@ -394,7 +394,7 @@ const updateArticle = async (articleId, req, res) => {
     // Validate data
     const validationErrors = validateArticleData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
+      return handleValidationError(res, validationErrors.map((error) => ({message: error})), req);
     }
 
     // Sanitize data
@@ -468,7 +468,7 @@ const uploadArticleImage = async (articleId, req, res) => {
     const {imageData, fileName} = req.body;
 
     if (!imageData) {
-      return handleValidationError(res, [{ message: 'No image data provided' }], req);
+      return handleValidationError(res, [{message: 'No image data provided'}], req);
     }
 
     // Check if article exists

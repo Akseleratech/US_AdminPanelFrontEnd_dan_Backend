@@ -271,7 +271,7 @@ const createService = async (req, res) => {
     // Check for duplicate slug
     const slugQuery = await db.collection('layanan').where('slug', '==', finalSlug).get();
     if (!slugQuery.empty) {
-      return handleValidationError(res, [{ message: 'Service slug already exists' }], req);
+      return handleValidationError(res, [{message: 'Service slug already exists'}], req);
     }
 
     const serviceData = {
@@ -337,7 +337,7 @@ const updateService = async (serviceId, req, res) => {
 
       const duplicateSlug = slugQuery.docs.find((doc) => doc.id !== serviceId);
       if (duplicateSlug) {
-        return handleValidationError(res, [{ message: 'Service slug already exists' }], req);
+        return handleValidationError(res, [{message: 'Service slug already exists'}], req);
       }
     }
 
@@ -381,7 +381,7 @@ const deleteService = async (serviceId, req, res) => {
         .get();
 
     if (!spacesSnapshot.empty) {
-      return handleValidationError(res, [{ message: 'Cannot delete service with associated spaces' }], req);
+      return handleValidationError(res, [{message: 'Cannot delete service with associated spaces'}], req);
     }
 
     await db.collection('layanan').doc(serviceId).delete();

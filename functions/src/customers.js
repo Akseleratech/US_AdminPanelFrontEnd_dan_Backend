@@ -378,7 +378,7 @@ const createCustomer = async (req, res) => {
     // Validate required fields
     const validationErrors = validateCustomerData(req.body);
     if (validationErrors.length > 0) {
-      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
+      return handleValidationError(res, validationErrors.map((error) => ({message: error})), req);
     }
 
     // Check for duplicate email
@@ -463,7 +463,7 @@ const updateCustomer = async (customerId, req, res) => {
     // Validate updated data
     const validationErrors = validateCustomerData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
+      return handleValidationError(res, validationErrors.map((error) => ({message: error})), req);
     }
 
     // Check for duplicate email (excluding current customer)
@@ -559,7 +559,7 @@ const searchCustomers = async (req, res) => {
     const {search, limit = 50, offset = 0, ...filters} = parseQueryParams(req.query);
 
     if (!search) {
-      return handleValidationError(res, [{ field: 'search', message: 'Search term is required' }], req);
+      return handleValidationError(res, [{field: 'search', message: 'Search term is required'}], req);
     }
 
     const db = getDb();

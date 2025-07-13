@@ -41,6 +41,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ----- Test collection for connection testing -----
+    match /test/{docId} {
+      allow read, write: if true; // Allow all access for testing
+    }
+
     // ----- Settings -----
     match /settings/{docId} {
       allow read: if isSignedIn();
@@ -58,17 +63,22 @@ service cloud.firestore {
 
     // ----- Reference data collections (cities, amenities, services, buildings) -----
     match /cities/{cityId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Allow anonymous read access for mobile apps
       allow write, delete: if isAdmin();
     }
 
     match /amenities/{amenityId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Allow anonymous read access for mobile apps
       allow write, delete: if isAdmin();
     }
 
     match /services/{serviceId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Allow anonymous read access for mobile apps
+      allow write, delete: if isAdmin();
+    }
+
+    match /layanans/{layananId} {
+      allow read: if true; // Allow anonymous read access for mobile apps
       allow write, delete: if isAdmin();
     }
 
@@ -77,20 +87,19 @@ service cloud.firestore {
       allow write, delete: if isAdmin();
     }
 
-    // Added promos collection rules
+    // Promos collection rules
     match /promos/{promoId} {
       allow read: if true; // Allow anonymous read access for mobile apps
       allow write, delete: if isAdmin();
     }
 
-    // Added articles collection rules
+    // Articles collection rules
     match /articles/{articleId} {
       allow read: if true; // Allow anonymous read access for mobile apps
       allow write, delete: if isAdmin();
     }
 
     // ----- Spaces collection -----
-    // Admins: full access. Staff: allowed to manage spaces they belong to (based on cityId field)
     match /spaces/{spaceId} {
       allow read: if true; // Allow anonymous read access for mobile apps
       allow write, delete: if isAdmin() || (isStaff() && request.resource.data.cityId == getUserDoc().data.cityId);
@@ -99,25 +108,44 @@ service cloud.firestore {
     // ----- Customers -----
     match /customers/{customerId} {
       // Users can read their own customer document; admins/staff can read all
-      allow read: if isAdmin() || isStaff() || (isUser() && request.auth.uid == resource.data.createdBy.uid);
+      allow read: if isAdmin() || isStaff() || (isSignedIn() && (
+        resource.data.createdBy.uid == request.auth.uid || 
+        resource.data.uid == request.auth.uid
+      ));
 
       // Cloud Function can create customer documents for new users
-      allow create: if isAdmin() || isStaff() || (isUser() && request.auth.uid == request.resource.data.createdBy.uid);
+      allow create: if isAdmin() || isStaff() || (isSignedIn() && (
+        request.resource.data.createdBy.uid == request.auth.uid || 
+        request.resource.data.uid == request.auth.uid
+      ));
 
       // Users can update their own customer document; admins/staff can update any
-      allow update: if isAdmin() || isStaff() || (isUser() && request.auth.uid == resource.data.createdBy.uid);
+      allow update: if isAdmin() || isStaff() || (isSignedIn() && (
+        resource.data.createdBy.uid == request.auth.uid || 
+        resource.data.uid == request.auth.uid
+      ));
 
       // Only admins/staff can delete customer documents
       allow delete: if isAdmin() || isStaff();
     }
 
+    // ----- Customers collection queries -----
+    match /customers/{customerId} {
+      // Allow users to query customers collection by createdBy.uid or uid
+      allow list: if isAdmin() || isStaff() || (isSignedIn() && (
+        request.query.createdBy.uid == request.auth.uid ||
+        request.query.uid == request.auth.uid
+      ));
+    }
+
     // ----- Orders & Invoices -----
     match /orders/{orderId} {
       // All authenticated users can read their own orders; admins/staff can read all
-      allow read: if isAdmin() || isStaff() || (isUser() && isOrderOwner());
+      // Also allow anonymous read for checking booking availability
+      allow read: if isAdmin() || isStaff() || (isSignedIn() && isOrderOwner()) || true;
 
       // Mobile user creates a booking order for themselves
-      allow create: if isUser() && isOrderOwnerInRequest();
+      allow create: if isSignedIn() && isOrderOwnerInRequest();
 
       // Users cannot modify an order once created; only admin/staff can update/delete
       allow update, delete: if isAdmin() || isStaff();
@@ -128,5 +156,6 @@ service cloud.firestore {
       allow create, update: if isAdmin() || isStaff();
       allow delete: if isAdmin();
     }
+
   }
-}
+} 

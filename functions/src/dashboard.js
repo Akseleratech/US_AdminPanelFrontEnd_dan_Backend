@@ -122,12 +122,12 @@ const getRecentOrders = async (req, res) => {
     const recentOrders = [];
     ordersSnapshot.forEach((doc) => {
       const data = doc.data();
-      
+
       // Ensure date fields are serialized as ISO strings (same as in orders.js)
       const startDate = data.startDate && data.startDate.toDate ? data.startDate.toDate().toISOString() : data.startDate;
       const endDate = data.endDate && data.endDate.toDate ? data.endDate.toDate().toISOString() : data.endDate;
       const createdAt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toISOString() : data.createdAt;
-      
+
       recentOrders.push({
         id: doc.id,
         ...data,

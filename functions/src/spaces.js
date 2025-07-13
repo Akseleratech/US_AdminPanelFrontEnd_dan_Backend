@@ -276,6 +276,7 @@ const _findOrCreateCity = async (locationData) => {
 
     return docRef.id;
   } catch (error) {
+    console.error('Error finding or creating city:', error);
     throw error;
   }
 };
@@ -458,7 +459,7 @@ const createSpace = async (req, res) => {
     // Validate request data
     const validationErrors = validateSpaceData(req.body);
     if (validationErrors.length > 0) {
-      return handleValidationError(res, validationErrors.map(error => ({ field: 'unknown', message: error })), req);
+      return handleValidationError(res, validationErrors.map((error) => ({field: 'unknown', message: error})), req);
     }
 
     // Sanitize data
@@ -549,7 +550,7 @@ const updateSpace = async (spaceId, req, res) => {
     // Validate update data
     const validationErrors = validateSpaceData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleValidationError(res, validationErrors.map(error => ({ field: 'unknown', message: error })), req);
+      return handleValidationError(res, validationErrors.map((error) => ({field: 'unknown', message: error})), req);
     }
 
     // Sanitize data
@@ -645,7 +646,7 @@ const uploadSpaceImages = async (spaceId, req, res) => {
     const {images} = req.body;
 
     if (!images || !Array.isArray(images) || images.length === 0) {
-      return handleValidationError(res, [{ field: 'images', message: 'No images provided' }], req);
+      return handleValidationError(res, [{field: 'images', message: 'No images provided'}], req);
     }
 
     // Check if space exists

@@ -7,7 +7,7 @@ const {getDb, generateSequentialId} = require('./utils/helpers');
 const {
   handleResponse,
   handleError,
-  handleValidationError,
+  handleValidationError: _handleValidationError,
 } = require('./utils/errorHandler');
 
 // HTTP function to create customer document when user signs up

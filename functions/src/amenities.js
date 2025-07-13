@@ -301,7 +301,7 @@ const deleteAmenity = async (amenityId, req, res) => {
         .get();
 
     if (!spacesSnapshot.empty) {
-      return handleValidationError(res, [{ message: 'Cannot delete amenity because it is being used by one or more spaces' }], req);
+      return handleValidationError(res, [{message: 'Cannot delete amenity because it is being used by one or more spaces'}], req);
     }
 
     // Delete icon from storage

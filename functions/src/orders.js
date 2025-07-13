@@ -15,7 +15,7 @@ const {
 const {
   handleResponse,
   handleError,
-  handleValidationError,
+  handleValidationError: _handleValidationError,
   handleAuthError,
 } = require('./utils/errorHandler');
 const admin = require('firebase-admin');
@@ -811,6 +811,7 @@ const updateOrderStatuses = async () => {
 
     return updatedCount;
   } catch (error) {
+    console.error('Error updating order statuses:', error);
     throw error;
   }
 };
@@ -935,6 +936,7 @@ const fixSpacesBookingStatus = async () => {
 
     return {fixed: fixedCount};
   } catch (error) {
+    console.error('Error fixing spaces booking status:', error);
     throw error;
   }
 };
@@ -958,47 +960,47 @@ const updateOrderStatusManual = async (req, res) => {
     const {url} = req;
     const pathParts = url.split('/').filter((part) => part);
     const orderId = pathParts[0];
-    
+
     if (!orderId) {
       return res.status(400).json({
         success: false,
-        error: 'Order ID is required'
+        error: 'Order ID is required',
       });
     }
-    
-    const { status, paymentData, reason } = req.body;
-    
+
+    const {status, paymentData, reason} = req.body;
+
     if (!status) {
       return res.status(400).json({
         success: false,
-        error: 'Status is required'
+        error: 'Status is required',
       });
     }
-    
+
     // Validate status
     const validStatuses = ['pending', 'confirmed', 'active', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
       });
     }
-    
+
     const db = getDb();
-    
+
     // Find order by ID
     const orderDoc = await db.collection('orders').doc(orderId).get();
-    
+
     if (!orderDoc.exists) {
       return res.status(404).json({
         success: false,
-        error: 'Order not found'
+        error: 'Order not found',
       });
     }
-    
+
     const orderData = orderDoc.data();
     const currentStatus = orderData.status;
-    
+
     // Prepare update data
     const updateData = {
       status: status,
@@ -1010,37 +1012,36 @@ const updateOrderStatusManual = async (req, res) => {
           to: status,
           timestamp: new Date().toISOString(),
           reason: reason || 'Manual update',
-          updatedBy: 'webhook' // Can be changed to actual user
-        }
-      ]
+          updatedBy: 'webhook', // Can be changed to actual user
+        },
+      ],
     };
-    
+
     // Add payment data if provided
     if (paymentData) {
       updateData.paymentData = paymentData;
       updateData.paymentStatus = 'paid';
       updateData.paidAt = new Date().toISOString();
     }
-    
+
     // Update order
     await orderDoc.ref.update(updateData);
-    
+
     // Handle space booking status update
     if (orderData.spaceId) {
       await updateSpaceBookingStatus(orderData.spaceId, status, orderId);
     }
-    
+
     console.log(`✅ Order ${orderId} status updated from ${currentStatus} to ${status}`);
-    
+
     return res.status(200).json({
       success: true,
       message: 'Order status updated successfully',
       orderId: orderId,
       previousStatus: currentStatus,
       newStatus: status,
-      data: updateData
+      data: updateData,
     });
-    
   } catch (error) {
     return handleError(res, error, 500, req);
   }

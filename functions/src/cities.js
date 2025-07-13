@@ -521,7 +521,7 @@ const createCity = async (req, res) => {
     const validationErrors = validateCityData(req.body);
     if (validationErrors.length > 0) {
       console.log('❌ Validation failed:', validationErrors);
-      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
+      return handleValidationError(res, validationErrors.map((error) => ({message: error})), req);
     }
 
     // Sanitize data
@@ -535,7 +535,7 @@ const createCity = async (req, res) => {
     );
 
     if (isDuplicate) {
-      return handleValidationError(res, [{ message: 'A city with this name already exists in the same province' }], req);
+      return handleValidationError(res, [{message: 'A city with this name already exists in the same province'}], req);
     }
 
     // Generate city ID
@@ -597,7 +597,7 @@ const updateCity = async (cityId, req, res) => {
     // Validate data
     const validationErrors = validateCityData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleValidationError(res, validationErrors.map(error => ({ message: error })), req);
+      return handleValidationError(res, validationErrors.map((error) => ({message: error})), req);
     }
 
     // Sanitize data
@@ -612,7 +612,7 @@ const updateCity = async (cityId, req, res) => {
       );
 
       if (isDuplicate) {
-        return handleValidationError(res, [{ message: 'A city with this name already exists in the same province' }], req);
+        return handleValidationError(res, [{message: 'A city with this name already exists in the same province'}], req);
       }
     }
 
@@ -742,12 +742,12 @@ const deleteCity = async (cityId, req, res) => {
         console.log(`   Space: ${space.name} in "${space.location?.city}"`);
       });
 
-      return handleValidationError(res, [{ 
+      return handleValidationError(res, [{
         message: 'Cannot delete city that has buildings or spaces',
         details: {
           buildingCount: relatedBuildings.length,
           spaceCount: relatedSpaces.length,
-        }
+        },
       }], req);
     }
 
@@ -770,7 +770,7 @@ const uploadCityImage = async (cityId, req, res) => {
     const {imageData, fileName} = req.body;
 
     if (!imageData) {
-      return handleValidationError(res, [{ message: 'No image data provided' }], req);
+      return handleValidationError(res, [{message: 'No image data provided'}], req);
     }
 
     // Check if city exists
@@ -821,7 +821,7 @@ const geocodeCity = async (req, res) => {
     const {cityName, provinceName, countryName = 'Indonesia'} = req.body;
 
     if (!cityName || !provinceName) {
-      return handleValidationError(res, [{ message: 'City name and province are required' }], req);
+      return handleValidationError(res, [{message: 'City name and province are required'}], req);
     }
 
     // First, try to find existing city

@@ -509,7 +509,7 @@ const createBuilding = async (req, res) => {
     const validationErrors = validateBuildingData(req.body);
     if (validationErrors.length > 0) {
       console.log('❌ Validation failed:', validationErrors);
-      return handleValidationError(res, validationErrors.map(error => ({ field: 'unknown', message: error })), req);
+      return handleValidationError(res, validationErrors.map((error) => ({field: 'unknown', message: error})), req);
     }
 
     // Sanitize data
@@ -586,7 +586,7 @@ const updateBuilding = async (buildingId, req, res) => {
     // Validate data
     const validationErrors = validateBuildingData(req.body, true);
     if (validationErrors.length > 0) {
-      return handleValidationError(res, validationErrors.map(error => ({ field: 'unknown', message: error })), req);
+      return handleValidationError(res, validationErrors.map((error) => ({field: 'unknown', message: error})), req);
     }
 
     // Sanitize data
@@ -707,7 +707,7 @@ const uploadBuildingImage = async (buildingId, req, res) => {
     const {imageData, fileName} = req.body;
 
     if (!imageData) {
-      return handleValidationError(res, [{ field: 'imageData', message: 'No image data provided' }], req);
+      return handleValidationError(res, [{field: 'imageData', message: 'No image data provided'}], req);
     }
 
     // Check if building exists

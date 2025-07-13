@@ -283,24 +283,24 @@ const generateInvoiceFromOrder = async (orderId, req, res) => {
     // Check if invoice already exists for this order
     if (order.invoiceId) {
       console.log('⚠️ DEBUG - Invoice already exists:', order.invoiceId);
-      return handleValidationError(res, [{ field: 'order', message: 'Invoice already exists for this order' }], req);
+      return handleValidationError(res, [{field: 'order', message: 'Invoice already exists for this order'}], req);
     }
 
     // Validate required fields
     console.log('🔍 DEBUG - Validating required fields...');
     if (!order.amountBase) {
       console.log('❌ DEBUG - Missing amountBase field');
-      return handleValidationError(res, [{ field: 'amountBase', message: 'Order missing amountBase field' }], req);
+      return handleValidationError(res, [{field: 'amountBase', message: 'Order missing amountBase field'}], req);
     }
 
     if (!order.customerName) {
       console.log('❌ DEBUG - Missing customerName field');
-      return handleValidationError(res, [{ field: 'customerName', message: 'Order missing customerName field' }], req);
+      return handleValidationError(res, [{field: 'customerName', message: 'Order missing customerName field'}], req);
     }
 
     if (!order.customerEmail) {
       console.log('❌ DEBUG - Missing customerEmail field');
-      return handleValidationError(res, [{ field: 'customerEmail', message: 'Order missing customerEmail field' }], req);
+      return handleValidationError(res, [{field: 'customerEmail', message: 'Order missing customerEmail field'}], req);
     }
 
     // Get customer data to fetch complete information including phone
@@ -597,39 +597,39 @@ const generateInvoiceId = async () => {
 // PATCH /invoices/:id/status - Update invoice status
 const updateInvoiceStatus = async (invoiceId, req, res) => {
   try {
-    const { status, paymentData, paymentMethod, paidDate, reason } = req.body;
-    
+    const {status, paymentData, paymentMethod, paidDate, reason} = req.body;
+
     if (!status) {
       return res.status(400).json({
         success: false,
-        error: 'Status is required'
+        error: 'Status is required',
       });
     }
-    
+
     // Validate status
     const validStatuses = ['draft', 'sent', 'paid', 'overdue', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
       });
     }
-    
+
     const db = getDb();
-    
+
     // Find invoice by ID
     const invoiceDoc = await db.collection('invoices').doc(invoiceId).get();
-    
+
     if (!invoiceDoc.exists) {
       return res.status(404).json({
         success: false,
-        error: 'Invoice not found'
+        error: 'Invoice not found',
       });
     }
-    
+
     const invoiceData = invoiceDoc.data();
     const currentStatus = invoiceData.status;
-    
+
     // Prepare update data
     const updateData = {
       status: status,
@@ -641,35 +641,34 @@ const updateInvoiceStatus = async (invoiceId, req, res) => {
           to: status,
           timestamp: new Date().toISOString(),
           reason: reason || 'Webhook update',
-          updatedBy: 'webhook'
-        }
-      ]
+          updatedBy: 'webhook',
+        },
+      ],
     };
-    
+
     // Add payment-specific fields for paid status
     if (status === 'paid') {
       updateData.paidDate = paidDate || new Date().toISOString();
       updateData.paymentMethod = paymentMethod || 'Midtrans';
-      
+
       if (paymentData) {
         updateData.paymentData = paymentData;
       }
     }
-    
+
     // Update invoice
     await invoiceDoc.ref.update(updateData);
-    
+
     console.log(`✅ Invoice ${invoiceId} status updated from ${currentStatus} to ${status}`);
-    
+
     return res.status(200).json({
       success: true,
       message: 'Invoice status updated successfully',
       invoiceId: invoiceId,
       previousStatus: currentStatus,
       newStatus: status,
-      data: updateData
+      data: updateData,
     });
-    
   } catch (error) {
     return handleError(res, error, 500, req);
   }
