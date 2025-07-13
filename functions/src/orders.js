@@ -257,10 +257,10 @@ const getAllOrders = async (req, res) => {
     const {status, limit, offset = 0, search, customerEmail, customerId, spaceId, sortBy = 'createdAt', sortOrder = 'desc'} = req.query;
     let ordersRef = db.collection('orders');
 
-    // Role-based restriction: if requester is staff, restrict orders to their city
+    // Require authentication - admin or staff role
     const {role: requesterRole, cityId: requesterCityId} = await getUserRoleAndCity(req);
-    if (requesterRole === 'staff' && requesterCityId) {
-      // Orders currently don't store cityId directly. We'll filter later after fetching.
+    if (!requesterRole || !['admin', 'staff'].includes(requesterRole)) {
+      return handleAuthError(res, 'Admin or Staff access required', req);
     }
 
     // Apply filters
@@ -347,6 +347,12 @@ const getAllOrders = async (req, res) => {
 // GET /orders/:id
 const getOrderById = async (orderId, req, res) => {
   try {
+    // Require authentication - admin or staff role
+    const {role: requesterRole, cityId: requesterCityId} = await getUserRoleAndCity(req);
+    if (!requesterRole || !['admin', 'staff'].includes(requesterRole)) {
+      return handleAuthError(res, 'Admin or Staff access required', req);
+    }
+
     const db = getDb();
     const doc = await db.collection('orders').doc(orderId).get();
 
@@ -355,6 +361,11 @@ const getOrderById = async (orderId, req, res) => {
     }
 
     const data = doc.data();
+
+    // Role-based access: staff can only see orders in their city
+    if (requesterRole === 'staff' && requesterCityId && data.cityId && data.cityId !== requesterCityId) {
+      return handleError(res, 'Access denied', 403, req);
+    }
 
     const startDate = data.startDate && data.startDate.toDate ? data.startDate.toDate().toISOString() : data.startDate;
     const endDate = data.endDate && data.endDate.toDate ? data.endDate.toDate().toISOString() : data.endDate;

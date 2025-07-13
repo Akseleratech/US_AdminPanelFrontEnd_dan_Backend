@@ -74,6 +74,12 @@ const invoices = onRequest(async (req, res) => {
 // GET /invoices
 const getAllInvoices = async (req, res) => {
   try {
+    // Require admin authentication
+    const isAdmin = await verifyAdminAuth(req);
+    if (!isAdmin) {
+      return handleError(res, 'Admin access required', 403, req);
+    }
+
     const db = getDb();
     const {status, limit, offset = 0, search, customerEmail, orderId, sortBy = 'issuedDate', sortOrder = 'desc'} = req.query;
     let invoicesRef = db.collection('invoices');
@@ -152,6 +158,12 @@ const getAllInvoices = async (req, res) => {
 // GET /invoices/:id
 const getInvoiceById = async (invoiceId, req, res) => {
   try {
+    // Require admin authentication
+    const isAdmin = await verifyAdminAuth(req);
+    if (!isAdmin) {
+      return handleError(res, 'Admin access required', 403, req);
+    }
+
     const db = getDb();
     const doc = await db.collection('invoices').doc(invoiceId).get();
 
