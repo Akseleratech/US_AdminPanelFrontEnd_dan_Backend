@@ -484,6 +484,9 @@ const getAllOrders = async (req, res) => {
   try {
     const db = getDb();
     const {status, limit, offset = 0, search, customerEmail, customerId, spaceId, sortBy = 'createdAt', sortOrder = 'desc'} = req.query;
+    console.log('🔍 getAllOrders called with query params:', {
+      status, limit, offset, search, customerEmail, customerId, spaceId, sortBy, sortOrder
+    });
     let ordersRef = db.collection('orders');
 
     // Require authentication - admin or staff role
@@ -558,6 +561,7 @@ const getAllOrders = async (req, res) => {
     orders = orders.slice(offsetNum, offsetNum + limitNum);
 
     console.log(`✅ Retrieved ${orders.length} orders (${offsetNum + 1}-${offsetNum + orders.length} of ${totalOrders})${customerEmail ? ` for customer ${customerEmail}` : ''}${customerId ? ` for customer ID ${customerId}` : ''}${spaceId ? ` for space ID ${spaceId}` : ''}`);
+    console.log('📊 Orders summary:', orders.map(o => ({ id: o.id, customerId: o.customerId, customerEmail: o.customerEmail })));
     return handleResponse(res, {
       orders,
       total: totalOrders,

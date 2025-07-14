@@ -32,7 +32,12 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
     try {
       setLoadingOrders(true);
       setOrdersError(null); // Clear previous errors
-      console.log('🔍 Fetching orders for customer:', customer.name, '-', customer.email || customer.customerId, 'page:', page);
+      
+      // Extract actual customer data from API response if needed
+      const customerData = customer.data || customer;
+      console.log('🔍 Fetching orders for customer:', customerData.name, '-', customerData.email || customerData.customerId, 'page:', page);
+      console.log('🔍 Full customer object:', customer);
+      console.log('🔍 Extracted customer data:', customerData);
       
       // Calculate offset for pagination
       const offset = (page - 1) * ordersPerPage;
@@ -45,14 +50,26 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
         sortOrder: 'desc'
       };
 
-      // Try filtering by email first, then by customer ID as fallback
-      if (customer.email) {
-        filterParams.customerEmail = customer.email;
-      } else if (customer.customerId) {
-        filterParams.customerId = customer.customerId;
+      // Priority: Try customer ID first (more reliable), then email as fallback
+      if (customerData.customerId) {
+        filterParams.customerId = customerData.customerId;
+        console.log('🎯 Filtering by customerId:', customerData.customerId);
+      } else if (customerData.id) {
+        filterParams.customerId = customerData.id;
+        console.log('🎯 Filtering by customer.id:', customerData.id);
+      } else if (customerData.email) {
+        filterParams.customerEmail = customerData.email;
+        console.log('🎯 Filtering by customerEmail:', customerData.email);
+      } else {
+        console.warn('⚠️ No valid customer identifier found!', customerData);
+        setOrdersError('No valid customer identifier found');
+        setRecentOrders([]);
+        setTotalOrders(0);
+        return;
       }
 
       console.log('📤 Sending request with params:', filterParams);
+      console.log('📤 URL will be:', `/orders?${new URLSearchParams(filterParams).toString()}`);
       const response = await ordersAPI.getAll(filterParams);
       
       // Extract orders from response
@@ -60,20 +77,77 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
       const total = response.data?.total || response.total || ordersData.length;
       
       console.log('✅ Fetched customer orders:', ordersData.length, 'orders, total:', total);
+      console.log('📋 Raw orders data:', ordersData);
+      
+      // Validate that the orders actually belong to this customer
+      const expectedCustomerId = customerData.customerId || customerData.id;
+      const expectedEmail = customerData.email;
+      
+      console.log('🔍 Validating orders against customer:', {
+        expectedCustomerId,
+        expectedEmail,
+        receivedOrders: ordersData.length
+      });
+      
+      const filteredOrders = ordersData.filter((order, index) => {
+        const orderCustomerId = order.customerId;
+        const orderEmail = order.customerEmail;
+        
+        console.log(`📋 Order ${index + 1}:`, {
+          id: order.orderId || order.id,
+          customerId: orderCustomerId,
+          email: orderEmail,
+          customerName: order.customerName
+        });
+        
+        // Match by customer ID (primary)
+        if (expectedCustomerId && orderCustomerId) {
+          const matches = orderCustomerId === expectedCustomerId;
+          console.log(`🎯 ID match check: ${orderCustomerId} === ${expectedCustomerId} -> ${matches}`);
+          return matches;
+        }
+        
+        // Fallback to email matching
+        if (expectedEmail && orderEmail) {
+          const matches = orderEmail.toLowerCase() === expectedEmail.toLowerCase();
+          console.log(`📧 Email match check: ${orderEmail} === ${expectedEmail} -> ${matches}`);
+          return matches;
+        }
+        
+        // If we can't verify, log it but include it (server should have filtered correctly)
+        console.warn('⚠️ Cannot verify order ownership:', {
+          order: { id: order.orderId || order.id, customerId: orderCustomerId, email: orderEmail },
+          expected: { customerId: expectedCustomerId, email: expectedEmail }
+        });
+        return true; // Trust server filtering
+      });
+      
+      console.log('🔍 Filtered orders:', filteredOrders.length, 'out of', ordersData.length);
       
       // Transform API data to match component expectations
-      const transformedOrders = ordersData.map(order => ({
+      const transformedOrders = filteredOrders.map(order => ({
         id: order.orderId || order.id,
-        orderDate: order.startDate || order.metadata?.createdAt,
+        orderDate: order.startDate || order.createdAt || order.metadata?.createdAt,
         service: order.spaceName || order.service || 'Unknown Service',
         duration: calculateDuration(order.startDate, order.endDate),
-        amount: order.amount || 0,
+        amount: order.amountBase || order.amount || 0,
         status: order.status || 'unknown',
-        notes: order.notes
+        notes: order.notes,
+        // Additional debug info
+        customerId: order.customerId,
+        customerEmail: order.customerEmail,
+        customerName: order.customerName
       }));
       
+      console.log('🎯 Final result:', {
+        totalFetched: ordersData.length,
+        totalFiltered: filteredOrders.length,
+        totalTransformed: transformedOrders.length,
+        shouldShow: transformedOrders.length
+      });
+      
       setRecentOrders(transformedOrders);
-      setTotalOrders(total);
+      setTotalOrders(filteredOrders.length); // Use filtered count
     } catch (error) {
       console.error('❌ Error fetching recent orders:', error);
       setOrdersError(error.message || 'Failed to fetch customer orders');
@@ -153,6 +227,9 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
 
   if (!isOpen || !customer) return null;
 
+  // Extract customer data from API response if needed
+  const customerData = customer.data || customer;
+
   return (
     <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-7xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
@@ -188,33 +265,33 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 {/* Row */}
                 <div className="text-gray-500">Customer ID</div>
-                <div className="font-medium text-gray-900 break-all">{customer.customerId}</div>
+                <div className="font-medium text-gray-900 break-all">{customerData.customerId}</div>
 
                 <div className="text-gray-500">Full Name</div>
-                <div className="text-gray-900">{customer.name}</div>
+                <div className="text-gray-900">{customerData.name}</div>
 
                 <div className="text-gray-500">Email</div>
-                <div className="text-gray-900 break-all">{customer.email}</div>
+                <div className="text-gray-900 break-all">{customerData.email}</div>
 
                 <div className="text-gray-500">Phone</div>
-                <div className="text-gray-900">{customer.phone || '-'}</div>
+                <div className="text-gray-900">{customerData.phone || '-'}</div>
 
                 <div className="text-gray-500">Join Date</div>
-                <div className="text-gray-900">{formatDate(customer.joinDate)}</div>
+                <div className="text-gray-900">{formatDate(customerData.joinDate)}</div>
 
                 <div className="text-gray-500">Status</div>
                 <div>
                   <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                    customer.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    customerData.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                   }`}>
-                    {customer.isActive ? 'Active' : 'Inactive'}
+                    {customerData.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
 
-                {customer.notes && (
+                {customerData.notes && (
                   <>
                     <div className="text-gray-500">Notes</div>
-                    <div className="text-gray-900 text-xs">{customer.notes}</div>
+                    <div className="text-gray-900 text-xs">{customerData.notes}</div>
                   </>
                 )}
               </div>
@@ -339,26 +416,26 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
             </div>
 
             {/* Card 3: User Tracking */}
-            {(customer.createdBy || customer.updatedBy) && (
+            {(customerData.createdBy || customerData.updatedBy) && (
               <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm md:col-span-1">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
                   <User className="w-5 h-5 text-primary-600" />
                   <span>User Tracking</span>
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
-                  {customer.createdBy && (
+                  {customerData.createdBy && (
                     <div>
                       <p className="text-gray-500 mb-1">Created By</p>
-                      <p className="font-medium text-gray-900">{customer.createdBy.displayName}</p>
-                      <p className="text-xs text-gray-500">{customer.createdBy.email}</p>
+                      <p className="font-medium text-gray-900">{customerData.createdBy.displayName}</p>
+                      <p className="text-xs text-gray-500">{customerData.createdBy.email}</p>
                     </div>
                   )}
 
-                  {customer.updatedBy && (
+                  {customerData.updatedBy && (
                     <div>
                       <p className="text-gray-500 mb-1">Last Updated By</p>
-                      <p className="font-medium text-gray-900">{customer.updatedBy.displayName}</p>
-                      <p className="text-xs text-gray-500">{customer.updatedBy.email}</p>
+                      <p className="font-medium text-gray-900">{customerData.updatedBy.displayName}</p>
+                      <p className="text-xs text-gray-500">{customerData.updatedBy.email}</p>
                     </div>
                   )}
                 </div>
