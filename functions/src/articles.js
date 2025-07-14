@@ -11,6 +11,7 @@ const {
   handleAuthError,
 } = require('./utils/errorHandler');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
+const {applyWriteOperationRateLimit} = require('./utils/applyRateLimit');
 
 // Enhanced validation function for articles
 function validateArticleData(data, isUpdate = false) {
@@ -188,6 +189,11 @@ function generateArticleSearchKeywords(articleData) {
 const articles = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
+      // Apply rate limiting for write operations
+      if (!applyWriteOperationRateLimit(req, res)) {
+        return; // Rate limit exceeded, response already sent
+      }
+
       const {method, url} = req;
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);

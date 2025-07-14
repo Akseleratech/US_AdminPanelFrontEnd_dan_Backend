@@ -13,6 +13,7 @@ const {
 const {
   handleValidationError,
 } = require('./utils/errorHandler');
+const {applyWriteOperationRateLimit, applySearchOperationRateLimit} = require('./utils/applyRateLimit');
 
 // Middleware to get user info from auth token
 const getUserFromToken = async (req) => {
@@ -211,6 +212,15 @@ function generateCustomerSearchKeywords(customerData) {
 const customers = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
+      // Apply rate limiting - different limits for different operations
+      if (req.url.includes('/search')) {
+        if (!applySearchOperationRateLimit(req, res)) {
+          return; // Rate limit exceeded, response already sent
+        }
+      } else if (!applyWriteOperationRateLimit(req, res)) {
+        return; // Rate limit exceeded for write operations
+      }
+
       const {method, url} = req;
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);

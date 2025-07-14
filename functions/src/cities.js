@@ -13,6 +13,8 @@ const {
   handleAuthError,
 } = require('./utils/errorHandler');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
+const {checkRateLimitSync, createRateLimitResponse} = require('./utils/rateLimiter');
+const {applyWriteOperationRateLimit} = require('./utils/applyRateLimit');
 const admin = require('firebase-admin');
 
 // Enhanced validation function for cities
@@ -288,6 +290,13 @@ async function updateCityCoordinates(cityName) {
 const cities = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
+      // Apply rate limiting for write operations (except geocode which has its own limiting)
+      if (req.method !== 'GET' && !req.url.includes('/geocode')) {
+        if (!applyWriteOperationRateLimit(req, res)) {
+          return; // Rate limit exceeded, response already sent
+        }
+      }
+
       const {method, url} = req;
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);
@@ -814,6 +823,12 @@ const uploadCityImage = async (cityId, req, res) => {
 // POST /cities/geocode - For mobile app geocoding
 const geocodeCity = async (req, res) => {
   try {
+    // Apply rate limiting for geocode operations
+    const rateLimitResult = checkRateLimitSync(req, 'GEOCODE');
+    if (!rateLimitResult.allowed) {
+      return res.status(429).json(createRateLimitResponse(rateLimitResult, 'GEOCODE'));
+    }
+
     const db = getDb();
     console.log('🌍 POST /cities/geocode - Request received');
     console.log('Request body:', JSON.stringify(req.body, null, 2));

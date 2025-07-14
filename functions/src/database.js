@@ -6,6 +6,7 @@ const {
   handleError,
   handleAuthError,
 } = require('./utils/errorHandler');
+const {checkRateLimitSync, createRateLimitResponse} = require('./utils/rateLimiter');
 
 // Sanitize and format database query parameters
 function sanitizeDatabaseQuery(query) {
@@ -39,6 +40,12 @@ const database = onRequest(async (req, res) => {
           return await getDatabaseHealth(req, res);
         }
       } else if (method === 'POST') {
+        // Apply very strict rate limiting for admin operations
+        const rateLimitResult = checkRateLimitSync(req, 'ADMIN_OPERATIONS');
+        if (!rateLimitResult.allowed) {
+          return res.status(429).json(createRateLimitResponse(rateLimitResult, 'ADMIN_OPERATIONS'));
+        }
+
         // Require admin auth for all POST operations (dangerous operations)
         const isAdmin = await verifyAdminAuth(req);
         if (!isAdmin) {

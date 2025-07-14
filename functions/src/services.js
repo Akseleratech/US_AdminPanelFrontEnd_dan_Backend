@@ -13,11 +13,17 @@ const {
   handleValidationError,
   handleAuthError,
 } = require('./utils/errorHandler');
+const {applyWriteOperationRateLimit} = require('./utils/applyRateLimit');
 
 // Main services function that handles all service routes
 const services = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
+      // Apply rate limiting for write operations
+      if (!applyWriteOperationRateLimit(req, res)) {
+        return; // Rate limit exceeded, response already sent
+      }
+
       const {method, url} = req;
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);

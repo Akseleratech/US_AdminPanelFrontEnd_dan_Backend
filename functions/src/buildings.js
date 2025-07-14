@@ -12,6 +12,7 @@ const {
   handleAuthError,
 } = require('./utils/errorHandler');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
+const {applyWriteOperationRateLimit} = require('./utils/applyRateLimit');
 
 // Import city coordinate functions
 const {updateCityCoordinates} = require('./cities');
@@ -347,6 +348,11 @@ async function updateCityStatistics(cityName) {
 const buildings = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
+      // Apply rate limiting for write operations
+      if (!applyWriteOperationRateLimit(req, res)) {
+        return; // Rate limit exceeded, response already sent
+      }
+
       const {method, url} = req;
       const path = url.split('?')[0];
       const pathParts = path.split('/').filter((part) => part);

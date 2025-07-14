@@ -9,6 +9,7 @@ const {
   handleError,
   handleValidationError: _handleValidationError,
 } = require('./utils/errorHandler');
+const {checkRateLimitSync, createRateLimitResponse} = require('./utils/rateLimiter');
 
 // Sanitize and format auth data
 function sanitizeAuthData(authData) {
@@ -34,6 +35,12 @@ exports.createCustomerOnSignup = onRequest(async (req, res) => {
     try {
       if (req.method !== 'POST') {
         return handleError(res, 'Method not allowed', 405);
+      }
+
+      // Apply rate limiting for account creation
+      const rateLimitResult = checkRateLimitSync(req, 'ACCOUNT_CREATION');
+      if (!rateLimitResult.allowed) {
+        return res.status(429).json(createRateLimitResponse(rateLimitResult, 'ACCOUNT_CREATION'));
       }
 
       // Verify Firebase Auth token
@@ -140,6 +147,12 @@ exports.getOrCreateCustomer = onRequest(async (req, res) => {
     try {
       if (req.method !== 'POST') {
         return handleError(res, 'Method not allowed', 405);
+      }
+
+      // Apply rate limiting for account creation/login attempts
+      const rateLimitResult = checkRateLimitSync(req, 'ACCOUNT_CREATION');
+      if (!rateLimitResult.allowed) {
+        return res.status(429).json(createRateLimitResponse(rateLimitResult, 'ACCOUNT_CREATION'));
       }
 
       // Verify Firebase Auth token
