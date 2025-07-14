@@ -20,6 +20,34 @@ const {
 } = require('./utils/errorHandler');
 const admin = require('firebase-admin');
 
+// Sanitize and format order data
+function sanitizeOrderData(data) {
+  const sanitized = {
+    customerId: sanitizeString(data.customerId),
+    customerName: sanitizeString(data.customerName),
+    customerEmail: sanitizeString(data.customerEmail)?.toLowerCase(),
+    spaceId: sanitizeString(data.spaceId),
+    pricingType: sanitizeString(data.pricingType) || 'daily',
+    status: sanitizeString(data.status) || 'pending',
+    source: sanitizeString(data.source) || 'manual',
+  };
+
+  // Optional fields
+  if (data.customerPhone) sanitized.customerPhone = sanitizeString(data.customerPhone);
+  if (data.spaceName) sanitized.spaceName = sanitizeString(data.spaceName);
+  if (data.notes) sanitized.notes = sanitizeString(data.notes);
+  if (data.invoiceId) sanitized.invoiceId = sanitizeString(data.invoiceId);
+  
+  // Numeric fields
+  if (data.amountBase !== undefined) sanitized.amountBase = parseFloat(data.amountBase);
+  
+  // Date fields
+  if (data.startDate) sanitized.startDate = new Date(data.startDate);
+  if (data.endDate) sanitized.endDate = new Date(data.endDate);
+
+  return sanitized;
+}
+
 // Helper function to update space booking status intelligently
 const updateSpaceBookingStatus = async (db, spaceId, orderId, orderStatus, pricingType, operation = 'create') => {
   if (!spaceId) {
@@ -404,39 +432,25 @@ const createOrder = async (req, res, requesterRole) => {
     // Validate required fields (service fields are now optional)
     validateRequired(req.body, ['customerId', 'customerName', 'spaceId', 'amountBase', 'startDate', 'endDate']);
 
+    // Sanitize input data
+    const sanitizedData = sanitizeOrderData(req.body);
+
     // Generate structured OrderID (service type removed)
-    const orderId = await generateStructuredOrderId(source);
+    const orderId = await generateStructuredOrderId(sanitizedData.source);
 
     // Get user info from auth token if available
     const token = verifyAuthToken(req);
     const user = token ? await getUserFromToken(token) : null;
 
     // Debug logging for datetime values
-    console.log('📅 CREATE - Original startDate:', startDate);
-    console.log('📅 CREATE - Original endDate:', endDate);
-
-    const startDateObj = new Date(startDate);
-    const endDateObj = new Date(endDate);
-
-    console.log('📅 CREATE - Converted startDate:', startDateObj);
-    console.log('📅 CREATE - Converted endDate:', endDateObj);
+    console.log('📅 CREATE - Original startDate:', req.body.startDate);
+    console.log('📅 CREATE - Original endDate:', req.body.endDate);
+    console.log('📅 CREATE - Converted startDate:', sanitizedData.startDate);
+    console.log('📅 CREATE - Converted endDate:', sanitizedData.endDate);
 
     const orderData = {
       orderId: orderId, // Structured order ID like "ORD-20250701-GEN-MAN-0001"
-      customerId: sanitizeString(customerId), // Real customer ID from form
-      customerName: sanitizeString(customerName),
-      customerEmail: sanitizeString(customerEmail),
-      customerPhone: customerPhone ? sanitizeString(customerPhone) : null,
-      spaceId: sanitizeString(spaceId),
-      spaceName: sanitizeString(spaceName || ''),
-      amountBase: parseFloat(amountBase), // Base price before tax
-      invoiceId: invoiceId, // Reference to invoice (null if not yet generated)
-      pricingType: sanitizeString(pricingType),
-      startDate: startDateObj,
-      endDate: endDateObj,
-      status: sanitizeString(status),
-      notes: sanitizeString(notes),
-      source: sanitizeString(source),
+      ...sanitizedData,
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: user ? user.uid : 'system',
@@ -445,8 +459,8 @@ const createOrder = async (req, res, requesterRole) => {
 
     // --- NEW: attach cityId for easier filtering ---
     try {
-      if (spaceId) {
-        const spaceDoc = await db.collection('spaces').doc(spaceId).get();
+      if (sanitizedData.spaceId) {
+        const spaceDoc = await db.collection('spaces').doc(sanitizedData.spaceId).get();
         if (spaceDoc.exists) {
           const spaceData = spaceDoc.data();
           // Store service/layanan name for reporting (use space category when available)
@@ -519,18 +533,24 @@ const updateOrder = async (orderId, req, res) => {
 
     const prevData = orderDoc.data();
 
-    const updateData = {...req.body};
-    delete updateData.id;
+    // Sanitize update data
+    const sanitizedData = sanitizeOrderData(req.body);
+    
+    // Remove undefined fields to avoid overwriting with undefined
+    const updateData = {};
+    Object.keys(sanitizedData).forEach(key => {
+      if (sanitizedData[key] !== undefined) {
+        updateData[key] = sanitizedData[key];
+      }
+    });
 
-    // Handle datetime fields properly
-    if (updateData.startDate) {
-      console.log('📅 Original startDate:', updateData.startDate);
-      updateData.startDate = new Date(updateData.startDate);
+    // Handle datetime fields properly (already handled in sanitizeOrderData)
+    if (req.body.startDate) {
+      console.log('📅 Original startDate:', req.body.startDate);
       console.log('📅 Converted startDate:', updateData.startDate);
     }
-    if (updateData.endDate) {
-      console.log('📅 Original endDate:', updateData.endDate);
-      updateData.endDate = new Date(updateData.endDate);
+    if (req.body.endDate) {
+      console.log('📅 Original endDate:', req.body.endDate);
       console.log('📅 Converted endDate:', updateData.endDate);
     }
 

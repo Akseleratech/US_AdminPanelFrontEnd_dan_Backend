@@ -3,12 +3,29 @@
 const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('cors')({origin: true});
 const admin = require('firebase-admin');
-const {getDb, generateSequentialId} = require('./utils/helpers');
+const {getDb, generateSequentialId, sanitizeString} = require('./utils/helpers');
 const {
   handleResponse,
   handleError,
   handleValidationError: _handleValidationError,
 } = require('./utils/errorHandler');
+
+// Sanitize and format auth data
+function sanitizeAuthData(authData) {
+  const sanitized = {};
+
+  if (authData.uid) sanitized.uid = sanitizeString(authData.uid);
+  if (authData.email) sanitized.email = sanitizeString(authData.email)?.toLowerCase();
+  if (authData.name) sanitized.displayName = sanitizeString(authData.name);
+  if (authData.displayName) sanitized.displayName = sanitizeString(authData.displayName);
+
+  // Use email as fallback for displayName if not provided
+  if (!sanitized.displayName && sanitized.email) {
+    sanitized.displayName = sanitized.email;
+  }
+
+  return sanitized;
+}
 
 // HTTP function to create customer document when user signs up
 // Called from frontend after successful Firebase Auth signup
@@ -33,20 +50,22 @@ exports.createCustomerOnSignup = onRequest(async (req, res) => {
         return handleError(res, 'Invalid authorization token', 401);
       }
 
-      const user = {
+      // Sanitize auth data
+      const sanitizedUser = sanitizeAuthData({
         uid: decodedToken.uid,
         email: decodedToken.email,
-        displayName: decodedToken.name || decodedToken.email
-      };
+        name: decodedToken.name,
+        displayName: decodedToken.displayName
+      });
 
       const db = getDb();
 
       // Skip if user has no email (anonymous, phone-only, etc.)
-      if (!user.email) {
+      if (!sanitizedUser.email) {
         return handleError(res, 'User has no email address', 400);
       }
 
-      const email = user.email.toLowerCase();
+      const email = sanitizedUser.email;
 
       // Check if a customer doc with this email already exists
       const existingSnap = await db.collection('customers').where('email', '==', email).limit(1).get();
@@ -57,7 +76,7 @@ exports.createCustomerOnSignup = onRequest(async (req, res) => {
       // Generate sequential customerId (e.g., CUS240001)
       const customerId = await generateSequentialId('customers', 'CUS', 4);
 
-      const customerDisplayName = user.displayName || email;
+      const customerDisplayName = sanitizedUser.displayName;
       const now = new Date();
 
       // Build searchable keywords
@@ -75,12 +94,12 @@ exports.createCustomerOnSignup = onRequest(async (req, res) => {
         createdAt: now,
         updatedAt: now,
         createdBy: {
-          uid: user.uid,
+          uid: sanitizedUser.uid,
           email: email,
           displayName: customerDisplayName,
         },
         updatedBy: {
-          uid: user.uid,
+          uid: sanitizedUser.uid,
           email: email,
           displayName: customerDisplayName,
         },
@@ -94,7 +113,7 @@ exports.createCustomerOnSignup = onRequest(async (req, res) => {
 
       await db.collection('customers').doc(customerId).set(customerData);
 
-      console.log(`✅ Customer document ${customerId} created for new user ${user.uid} (${email})`);
+      console.log(`✅ Customer document ${customerId} created for new user ${sanitizedUser.uid} (${email})`);
       
       return handleResponse(res, {
         message: 'Customer document created successfully',

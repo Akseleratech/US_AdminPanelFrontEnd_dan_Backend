@@ -1,10 +1,33 @@
 const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('./utils/corsConfig');
-const {getDb} = require('./utils/helpers');
+const {getDb, sanitizeString} = require('./utils/helpers');
 const {
   handleResponse,
   handleError,
 } = require('./utils/errorHandler');
+
+// Sanitize and format dashboard query parameters
+function sanitizeDashboardQuery(query) {
+  const sanitized = {};
+
+  // Numeric parameters
+  if (query.limit !== undefined) {
+    const limit = parseInt(query.limit);
+    sanitized.limit = isNaN(limit) ? 5 : Math.min(Math.max(limit, 1), 100); // Between 1-100
+  }
+  
+  if (query.offset !== undefined) {
+    const offset = parseInt(query.offset);
+    sanitized.offset = isNaN(offset) ? 0 : Math.max(offset, 0); // Non-negative
+  }
+
+  // String parameters
+  if (query.status) sanitized.status = sanitizeString(query.status);
+  if (query.period) sanitized.period = sanitizeString(query.period);
+  if (query.cityId) sanitized.cityId = sanitizeString(query.cityId);
+
+  return sanitized;
+}
 
 // Main dashboard function that handles all dashboard routes
 const dashboard = onRequest(async (req, res) => {
@@ -111,7 +134,8 @@ const getDashboardStats = async (req, res) => {
 const getRecentOrders = async (req, res) => {
   try {
     const db = getDb();
-    const limit = parseInt(req.query.limit) || 5;
+    const sanitizedQuery = sanitizeDashboardQuery(req.query);
+    const limit = sanitizedQuery.limit || 5;
 
     // Get recent orders from Firebase
     const ordersSnapshot = await db.collection('orders')

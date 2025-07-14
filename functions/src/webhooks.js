@@ -1,9 +1,34 @@
 const {onRequest} = require('firebase-functions/v2/https');
-const {getDb} = require('./utils/helpers');
+const {getDb, sanitizeString} = require('./utils/helpers');
 const crypto = require('crypto');
 
 // Midtrans configuration
 const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY || 'your-midtrans-server-key';
+
+// Sanitize and format webhook data
+function sanitizeWebhookData(data) {
+  const sanitized = {};
+
+  // Required fields for payment notifications
+  if (data.orderId) sanitized.orderId = sanitizeString(data.orderId);
+  if (data.transactionStatus) sanitized.transactionStatus = sanitizeString(data.transactionStatus);
+  if (data.paymentType) sanitized.paymentType = sanitizeString(data.paymentType);
+  if (data.transactionTime) sanitized.transactionTime = sanitizeString(data.transactionTime);
+  if (data.fraudStatus) sanitized.fraudStatus = sanitizeString(data.fraudStatus);
+  
+  // Numeric fields
+  if (data.grossAmount !== undefined) sanitized.grossAmount = parseFloat(data.grossAmount);
+  if (data.statusCode !== undefined) sanitized.statusCode = sanitizeString(data.statusCode);
+  
+  // Optional fields that might be present in different payment methods
+  if (data.bankCode) sanitized.bankCode = sanitizeString(data.bankCode);
+  if (data.vaNumber) sanitized.vaNumber = sanitizeString(data.vaNumber);
+  if (data.acquirer) sanitized.acquirer = sanitizeString(data.acquirer);
+  if (data.currency) sanitized.currency = sanitizeString(data.currency);
+  if (data.settlementTime) sanitized.settlementTime = sanitizeString(data.settlementTime);
+
+  return sanitized;
+}
 
 /**
  * Verify Midtrans signature for webhook security
@@ -267,7 +292,10 @@ const paymentWebhook = onRequest(async (req, res) => {
     const notificationBody = req.body;
     const signature = req.headers['x-callback-token'] || req.headers['signature'];
 
-    // Verify signature for production
+    // Sanitize webhook data
+    const sanitizedData = sanitizeWebhookData(notificationBody);
+
+    // Verify signature for production (using original body for signature verification)
     if (process.env.NODE_ENV === 'production' && !verifyMidtransSignature(notificationBody, signature)) {
       console.warn('Invalid signature received');
       return res.status(401).json({
@@ -276,34 +304,18 @@ const paymentWebhook = onRequest(async (req, res) => {
       });
     }
 
-    const {
-      orderId,
-      transactionStatus,
-      paymentType,
-      grossAmount,
-      transactionTime,
-      fraudStatus,
-    } = notificationBody;
-
-    console.log(`Received payment webhook for order ${orderId}: ${transactionStatus}`);
+    console.log(`Received payment webhook for order ${sanitizedData.orderId}: ${sanitizedData.transactionStatus}`);
 
     // Process order update
-    const orderResult = await updateOrderStatus(orderId, {
-      orderId,
-      transactionStatus,
-      paymentType,
-      grossAmount,
-      transactionTime,
-      fraudStatus,
-    });
+    const orderResult = await updateOrderStatus(sanitizedData.orderId, sanitizedData);
 
     console.log('Order update result:', orderResult);
 
     return res.status(200).json({
       success: true,
       message: 'Webhook processed successfully',
-      orderId: orderId,
-      transactionStatus: transactionStatus,
+      orderId: sanitizedData.orderId,
+      transactionStatus: sanitizedData.transactionStatus,
     });
   } catch (error) {
     console.error('Webhook processing error:', error);

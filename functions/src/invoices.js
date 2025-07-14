@@ -17,6 +17,36 @@ const {
 } = require('./utils/errorHandler');
 const admin = require('firebase-admin');
 
+// Sanitize and format invoice data
+function sanitizeInvoiceData(data) {
+  const sanitized = {
+    customerName: sanitizeString(data.customerName),
+    customerEmail: sanitizeString(data.customerEmail)?.toLowerCase(),
+    status: sanitizeString(data.status) || 'draft',
+  };
+
+  // Optional fields
+  if (data.customerPhone) sanitized.customerPhone = sanitizeString(data.customerPhone);
+  if (data.customerAddress) sanitized.customerAddress = sanitizeString(data.customerAddress);
+  if (data.serviceName) sanitized.serviceName = sanitizeString(data.serviceName);
+  if (data.cityName) sanitized.cityName = sanitizeString(data.cityName);
+  if (data.notes) sanitized.notes = sanitizeString(data.notes);
+  if (data.orderId) sanitized.orderId = sanitizeString(data.orderId);
+  
+  // Numeric fields
+  if (data.amountBase !== undefined) sanitized.amountBase = parseFloat(data.amountBase);
+  if (data.taxRate !== undefined) sanitized.taxRate = parseFloat(data.taxRate);
+  if (data.discountRate !== undefined) sanitized.discountRate = parseFloat(data.discountRate);
+  if (data.paymentTerms !== undefined) sanitized.paymentTerms = parseInt(data.paymentTerms);
+  
+  // Array fields
+  if (data.orderIds && Array.isArray(data.orderIds)) {
+    sanitized.orderIds = data.orderIds.map(id => sanitizeString(id));
+  }
+
+  return sanitized;
+}
+
 // Main invoices function
 const invoices = onRequest(async (req, res) => {
   return cors(req, res, async () => {
@@ -213,13 +243,16 @@ const createInvoice = async (req, res) => {
     // Validate required fields
     validateRequired(req.body, ['customerName', 'customerEmail', 'amountBase']);
 
+    // Sanitize input data
+    const sanitizedData = sanitizeInvoiceData(req.body);
+
     // Get current tax rate if not provided
-    const finalTaxRate = taxRate !== undefined ? taxRate : await getCurrentTaxRate();
+    const finalTaxRate = sanitizedData.taxRate !== undefined ? sanitizedData.taxRate : await getCurrentTaxRate();
 
     // Calculate amounts
-    const taxAmount = amountBase * finalTaxRate;
-    const discountAmount = amountBase * discountRate;
-    const total = amountBase + taxAmount - discountAmount;
+    const taxAmount = sanitizedData.amountBase * finalTaxRate;
+    const discountAmount = sanitizedData.amountBase * (sanitizedData.discountRate || 0);
+    const total = sanitizedData.amountBase + taxAmount - discountAmount;
 
     // Generate invoice ID
     const invoiceId = await generateInvoiceId();
@@ -230,21 +263,15 @@ const createInvoice = async (req, res) => {
 
     // Calculate due date
     const issuedDate = new Date();
-    const dueDate = new Date(issuedDate.getTime() + (paymentTerms * 24 * 60 * 60 * 1000));
+    const paymentTermsValue = sanitizedData.paymentTerms || 30;
+    const dueDate = new Date(issuedDate.getTime() + (paymentTermsValue * 24 * 60 * 60 * 1000));
 
     const invoiceData = {
-      orderId: orderId || null,
-      orderIds: orderIds.length > 0 ? orderIds : (orderId ? [orderId] : []),
-      customerName: sanitizeString(customerName),
-      customerEmail: sanitizeString(customerEmail),
-      customerPhone: customerPhone ? sanitizeString(customerPhone) : null,
-      customerAddress: customerAddress ? sanitizeString(customerAddress) : null,
-      serviceName: serviceName ? sanitizeString(serviceName) : null,
-      cityName: cityName ? sanitizeString(cityName) : null,
-      amountBase: parseFloat(amountBase),
+      ...sanitizedData,
+      orderId: sanitizedData.orderId || null,
+      orderIds: sanitizedData.orderIds && sanitizedData.orderIds.length > 0 ? sanitizedData.orderIds : (sanitizedData.orderId ? [sanitizedData.orderId] : []),
       taxRate: parseFloat(finalTaxRate),
       taxAmount: parseFloat(taxAmount),
-      discountRate: parseFloat(discountRate),
       discountAmount: parseFloat(discountAmount),
       total: parseFloat(total),
       status: 'draft',
@@ -252,9 +279,8 @@ const createInvoice = async (req, res) => {
       dueDate: dueDate,
       paidDate: null,
       paidAmount: 0,
-      paymentTerms: parseInt(paymentTerms),
+      paymentTerms: paymentTermsValue,
       paymentMethod: null,
-      notes: sanitizeString(notes),
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: user ? user.uid : 'system',
