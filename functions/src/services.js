@@ -80,6 +80,11 @@ const services = onRequest(async (req, res) => {
 // GET /services
 const getAllServices = async (req, res) => {
   try {
+    // Log public endpoint access for monitoring
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const clientIP = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
+    console.log(`📱 Public endpoint access: GET /services from ${clientIP} - ${userAgent}`);
+
     const db = getDb();
     const {search, status, limit, category, type, skipStats} = req.query;
     let servicesRef = db.collection('layanan');

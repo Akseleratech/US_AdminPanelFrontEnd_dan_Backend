@@ -121,7 +121,7 @@ function sanitizeOrderData(data) {
       throw new Error('Invalid invoiceId format. Must be INV followed by numbers.');
     }
   }
-  
+
   // Numeric fields with range validation
   if (data.amountBase !== undefined) {
     const amount = parseFloat(data.amountBase);
@@ -137,7 +137,7 @@ function sanitizeOrderData(data) {
     // Round to 2 decimal places for currency
     sanitized.amountBase = Math.round(amount * 100) / 100;
   }
-  
+
   // Date fields with validation
   if (data.startDate) {
     const startDate = new Date(data.startDate);
@@ -193,16 +193,16 @@ function sanitizeOrderData(data) {
         throw new Error('endDate must be after startDate');
       }
     }
-    
+
     // Validate booking duration based on pricing type
     const durationMs = sanitized.endDate - sanitized.startDate;
     const durationHours = durationMs / (1000 * 60 * 60);
-    
+
     // For daily bookings, calculate inclusive days (same day = 1 day)
-    const durationDays = sanitized.pricingType === 'daily' ? 
+    const durationDays = sanitized.pricingType === 'daily' ?
       Math.floor(durationMs / (1000 * 60 * 60 * 24)) + 1 : // +1 for inclusive calculation
       durationMs / (1000 * 60 * 60 * 24);
-    
+
     switch (sanitized.pricingType) {
       case 'hourly':
         if (durationHours > 24) {
@@ -486,7 +486,7 @@ const getAllOrders = async (req, res) => {
     const db = getDb();
     const {status, limit, offset = 0, search, customerEmail, customerId, spaceId, sortBy = 'createdAt', sortOrder = 'desc'} = req.query;
     console.log('🔍 getAllOrders called with query params:', {
-      status, limit, offset, search, customerEmail, customerId, spaceId, sortBy, sortOrder
+      status, limit, offset, search, customerEmail, customerId, spaceId, sortBy, sortOrder,
     });
     let ordersRef = db.collection('orders');
 
@@ -562,7 +562,7 @@ const getAllOrders = async (req, res) => {
     orders = orders.slice(offsetNum, offsetNum + limitNum);
 
     console.log(`✅ Retrieved ${orders.length} orders (${offsetNum + 1}-${offsetNum + orders.length} of ${totalOrders})${customerEmail ? ` for customer ${customerEmail}` : ''}${customerId ? ` for customer ID ${customerId}` : ''}${spaceId ? ` for space ID ${spaceId}` : ''}`);
-    console.log('📊 Orders summary:', orders.map(o => ({ id: o.id, customerId: o.customerId, customerEmail: o.customerEmail })));
+    console.log('📊 Orders summary:', orders.map((o) => ({id: o.id, customerId: o.customerId, customerEmail: o.customerEmail})));
     return handleResponse(res, {
       orders,
       total: totalOrders,
@@ -741,10 +741,10 @@ const updateOrder = async (orderId, req, res) => {
 
     // Sanitize update data
     const sanitizedData = sanitizeOrderData(req.body);
-    
+
     // Remove undefined fields to avoid overwriting with undefined
     const updateData = {};
-    Object.keys(sanitizedData).forEach(key => {
+    Object.keys(sanitizedData).forEach((key) => {
       if (sanitizedData[key] !== undefined) {
         updateData[key] = sanitizedData[key];
       }

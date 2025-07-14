@@ -15,11 +15,11 @@ function sanitizeWebhookData(data) {
   if (data.paymentType) sanitized.paymentType = sanitizeString(data.paymentType);
   if (data.transactionTime) sanitized.transactionTime = sanitizeString(data.transactionTime);
   if (data.fraudStatus) sanitized.fraudStatus = sanitizeString(data.fraudStatus);
-  
+
   // Numeric fields
   if (data.grossAmount !== undefined) sanitized.grossAmount = parseFloat(data.grossAmount);
   if (data.statusCode !== undefined) sanitized.statusCode = sanitizeString(data.statusCode);
-  
+
   // Optional fields that might be present in different payment methods
   if (data.bankCode) sanitized.bankCode = sanitizeString(data.bankCode);
   if (data.vaNumber) sanitized.vaNumber = sanitizeString(data.vaNumber);

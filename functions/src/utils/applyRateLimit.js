@@ -1,4 +1,4 @@
-const { applyRateLimit } = require('./firestoreRateLimiter');
+const {applyRateLimit} = require('./firestoreRateLimiter');
 
 /**
  * Apply rate limiting to write operations (POST, PUT, DELETE, PATCH)
@@ -6,13 +6,13 @@ const { applyRateLimit } = require('./firestoreRateLimiter');
  */
 async function applyWriteOperationRateLimit(req, res) {
   const method = req.method.toUpperCase();
-  
+
   // Only apply rate limiting to write operations
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
     const allowed = await applyRateLimit(req, res, 'WRITE_OPERATIONS');
     return allowed;
   }
-  
+
   return true; // Non-write operations are allowed
 }
 
@@ -62,5 +62,5 @@ module.exports = {
   applyReadOperationRateLimit,
   applyAccountCreationRateLimit,
   applyAdminOperationRateLimit,
-  applyGeocodeRateLimit
+  applyGeocodeRateLimit,
 };

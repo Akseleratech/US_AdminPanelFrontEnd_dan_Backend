@@ -33,16 +33,16 @@ function sanitizeInvoiceData(data) {
   if (data.cityName) sanitized.cityName = sanitizeString(data.cityName);
   if (data.notes) sanitized.notes = sanitizeString(data.notes);
   if (data.orderId) sanitized.orderId = sanitizeString(data.orderId);
-  
+
   // Numeric fields
   if (data.amountBase !== undefined) sanitized.amountBase = parseFloat(data.amountBase);
   if (data.taxRate !== undefined) sanitized.taxRate = parseFloat(data.taxRate);
   if (data.discountRate !== undefined) sanitized.discountRate = parseFloat(data.discountRate);
   if (data.paymentTerms !== undefined) sanitized.paymentTerms = parseInt(data.paymentTerms);
-  
+
   // Array fields
   if (data.orderIds && Array.isArray(data.orderIds)) {
-    sanitized.orderIds = data.orderIds.map(id => sanitizeString(id));
+    sanitized.orderIds = data.orderIds.map((id) => sanitizeString(id));
   }
 
   return sanitized;

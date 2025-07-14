@@ -1,9 +1,10 @@
 const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('./utils/corsConfig');
-const {getDb, sanitizeString} = require('./utils/helpers');
+const {getDb, sanitizeString, verifyAdminAuth, getUserRoleAndCity} = require('./utils/helpers');
 const {
   handleResponse,
   handleError,
+  handleAuthError,
 } = require('./utils/errorHandler');
 
 // Sanitize and format dashboard query parameters
@@ -15,7 +16,7 @@ function sanitizeDashboardQuery(query) {
     const limit = parseInt(query.limit);
     sanitized.limit = isNaN(limit) ? 5 : Math.min(Math.max(limit, 1), 100); // Between 1-100
   }
-  
+
   if (query.offset !== undefined) {
     const offset = parseInt(query.offset);
     sanitized.offset = isNaN(offset) ? 0 : Math.max(offset, 0); // Non-negative
@@ -38,6 +39,12 @@ const dashboard = onRequest(async (req, res) => {
 
       // Route handling
       if (method === 'GET') {
+        // Require authentication for all dashboard endpoints
+        const {role: requesterRole} = await getUserRoleAndCity(req);
+        if (!requesterRole || !['admin', 'staff'].includes(requesterRole)) {
+          return handleAuthError(res, 'Admin or Staff access required for dashboard', req);
+        }
+
         if (path.endsWith('/stats')) {
           return await getDashboardStats(req, res);
         } else if (path.endsWith('/recent-orders')) {

@@ -32,6 +32,12 @@ const database = onRequest(async (req, res) => {
       if (pathParts[0] === 'database') pathParts.shift();
 
       if (method === 'GET') {
+        // Require ADMIN authentication for all database GET operations
+        const isAdmin = await verifyAdminAuth(req);
+        if (!isAdmin) {
+          return handleAuthError(res, 'Admin access required for database operations', req);
+        }
+
         if (pathParts.length === 1 && pathParts[0] === 'collections') {
           return await getCollections(req, res);
         } else if (pathParts.length === 1 && pathParts[0] === 'stats') {

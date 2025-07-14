@@ -219,7 +219,7 @@ const customers = onRequest(async (req, res) => {
       } else {
         rateLimitAllowed = await applyWriteOperationRateLimit(req, res);
       }
-      
+
       if (!rateLimitAllowed) {
         return; // Rate limit exceeded, response already sent
       }
