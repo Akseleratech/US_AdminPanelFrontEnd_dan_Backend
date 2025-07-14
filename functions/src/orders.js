@@ -181,14 +181,27 @@ function sanitizeOrderData(data) {
 
   // Cross-field validation
   if (sanitized.startDate && sanitized.endDate) {
-    if (sanitized.startDate >= sanitized.endDate) {
-      throw new Error('startDate must be before endDate');
+    // For daily, monthly, and yearly pricing, allow same date (inclusive booking)
+    // For hourly and halfday, end must be after start
+    if (sanitized.pricingType === 'daily' || sanitized.pricingType === 'monthly' || sanitized.pricingType === 'yearly') {
+      if (sanitized.startDate > sanitized.endDate) {
+        throw new Error('startDate cannot be after endDate');
+      }
+    } else {
+      // hourly, halfday - end must be after start
+      if (sanitized.startDate >= sanitized.endDate) {
+        throw new Error('endDate must be after startDate');
+      }
     }
     
     // Validate booking duration based on pricing type
     const durationMs = sanitized.endDate - sanitized.startDate;
     const durationHours = durationMs / (1000 * 60 * 60);
-    const durationDays = durationMs / (1000 * 60 * 60 * 24);
+    
+    // For daily bookings, calculate inclusive days (same day = 1 day)
+    const durationDays = sanitized.pricingType === 'daily' ? 
+      Math.floor(durationMs / (1000 * 60 * 60 * 24)) + 1 : // +1 for inclusive calculation
+      durationMs / (1000 * 60 * 60 * 24);
     
     switch (sanitized.pricingType) {
       case 'hourly':
@@ -216,10 +229,12 @@ function sanitizeOrderData(data) {
         }
         break;
       case 'monthly':
-        if (durationDays > 365) {
-          throw new Error('Monthly bookings cannot exceed 365 days');
+        // For monthly, be more flexible with duration validation
+        const monthlyDurationDays = Math.floor(durationMs / (1000 * 60 * 60 * 24)) + 1;
+        if (monthlyDurationDays > 400) { // ~13 months
+          throw new Error('Monthly bookings cannot exceed 400 days');
         }
-        if (durationDays < 28) {
+        if (monthlyDurationDays < 28) {
           throw new Error('Monthly bookings must be at least 28 days');
         }
         break;
