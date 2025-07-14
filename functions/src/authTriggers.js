@@ -9,7 +9,7 @@ const {
   handleError,
   handleValidationError: _handleValidationError,
 } = require('./utils/errorHandler');
-const {checkRateLimitSync, createRateLimitResponse} = require('./utils/rateLimiter');
+const {applyAccountCreationRateLimit} = require('./utils/applyRateLimit');
 
 // Sanitize and format auth data
 function sanitizeAuthData(authData) {
@@ -38,9 +38,9 @@ exports.createCustomerOnSignup = onRequest(async (req, res) => {
       }
 
       // Apply rate limiting for account creation
-      const rateLimitResult = checkRateLimitSync(req, 'ACCOUNT_CREATION');
-      if (!rateLimitResult.allowed) {
-        return res.status(429).json(createRateLimitResponse(rateLimitResult, 'ACCOUNT_CREATION'));
+      const rateLimitAllowed = await applyAccountCreationRateLimit(req, res);
+      if (!rateLimitAllowed) {
+        return; // Rate limit exceeded, response already sent
       }
 
       // Verify Firebase Auth token
@@ -150,9 +150,9 @@ exports.getOrCreateCustomer = onRequest(async (req, res) => {
       }
 
       // Apply rate limiting for account creation/login attempts
-      const rateLimitResult = checkRateLimitSync(req, 'ACCOUNT_CREATION');
-      if (!rateLimitResult.allowed) {
-        return res.status(429).json(createRateLimitResponse(rateLimitResult, 'ACCOUNT_CREATION'));
+      const rateLimitAllowed = await applyAccountCreationRateLimit(req, res);
+      if (!rateLimitAllowed) {
+        return; // Rate limit exceeded, response already sent
       }
 
       // Verify Firebase Auth token

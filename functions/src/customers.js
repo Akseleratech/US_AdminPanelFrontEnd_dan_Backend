@@ -213,12 +213,15 @@ const customers = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
       // Apply rate limiting - different limits for different operations
+      let rateLimitAllowed;
       if (req.url.includes('/search')) {
-        if (!applySearchOperationRateLimit(req, res)) {
-          return; // Rate limit exceeded, response already sent
-        }
-      } else if (!applyWriteOperationRateLimit(req, res)) {
-        return; // Rate limit exceeded for write operations
+        rateLimitAllowed = await applySearchOperationRateLimit(req, res);
+      } else {
+        rateLimitAllowed = await applyWriteOperationRateLimit(req, res);
+      }
+      
+      if (!rateLimitAllowed) {
+        return; // Rate limit exceeded, response already sent
       }
 
       const {method, url} = req;

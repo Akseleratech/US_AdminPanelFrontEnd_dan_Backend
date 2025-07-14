@@ -424,7 +424,8 @@ const orders = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
       // Apply rate limiting for write operations
-      if (!applyWriteOperationRateLimit(req, res)) {
+      const rateLimitAllowed = await applyWriteOperationRateLimit(req, res);
+      if (!rateLimitAllowed) {
         return; // Rate limit exceeded, response already sent
       }
 

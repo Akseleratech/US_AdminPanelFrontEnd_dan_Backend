@@ -13,8 +13,7 @@ const {
   handleAuthError,
 } = require('./utils/errorHandler');
 const {uploadImageFromBase64, deleteImage} = require('./services/imageService');
-const {checkRateLimitSync, createRateLimitResponse} = require('./utils/rateLimiter');
-const {applyWriteOperationRateLimit} = require('./utils/applyRateLimit');
+const {applyWriteOperationRateLimit, applyGeocodeRateLimit} = require('./utils/applyRateLimit');
 const admin = require('firebase-admin');
 
 // Enhanced validation function for cities
@@ -292,7 +291,8 @@ const cities = onRequest(async (req, res) => {
     try {
       // Apply rate limiting for write operations (except geocode which has its own limiting)
       if (req.method !== 'GET' && !req.url.includes('/geocode')) {
-        if (!applyWriteOperationRateLimit(req, res)) {
+        const rateLimitAllowed = await applyWriteOperationRateLimit(req, res);
+        if (!rateLimitAllowed) {
           return; // Rate limit exceeded, response already sent
         }
       }
@@ -824,9 +824,9 @@ const uploadCityImage = async (cityId, req, res) => {
 const geocodeCity = async (req, res) => {
   try {
     // Apply rate limiting for geocode operations
-    const rateLimitResult = checkRateLimitSync(req, 'GEOCODE');
-    if (!rateLimitResult.allowed) {
-      return res.status(429).json(createRateLimitResponse(rateLimitResult, 'GEOCODE'));
+    const rateLimitAllowed = await applyGeocodeRateLimit(req, res);
+    if (!rateLimitAllowed) {
+      return; // Rate limit exceeded, response already sent
     }
 
     const db = getDb();

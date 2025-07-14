@@ -6,7 +6,7 @@ const {
   handleError,
   handleAuthError,
 } = require('./utils/errorHandler');
-const {checkRateLimitSync, createRateLimitResponse} = require('./utils/rateLimiter');
+const {applyAdminOperationRateLimit} = require('./utils/applyRateLimit');
 
 // Sanitize and format database query parameters
 function sanitizeDatabaseQuery(query) {
@@ -41,9 +41,9 @@ const database = onRequest(async (req, res) => {
         }
       } else if (method === 'POST') {
         // Apply very strict rate limiting for admin operations
-        const rateLimitResult = checkRateLimitSync(req, 'ADMIN_OPERATIONS');
-        if (!rateLimitResult.allowed) {
-          return res.status(429).json(createRateLimitResponse(rateLimitResult, 'ADMIN_OPERATIONS'));
+        const rateLimitAllowed = await applyAdminOperationRateLimit(req, res);
+        if (!rateLimitAllowed) {
+          return; // Rate limit exceeded, response already sent
         }
 
         // Require admin auth for all POST operations (dangerous operations)
