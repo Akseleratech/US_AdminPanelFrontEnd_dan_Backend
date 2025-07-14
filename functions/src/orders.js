@@ -23,28 +23,208 @@ const admin = require('firebase-admin');
 
 // Sanitize and format order data
 function sanitizeOrderData(data) {
-  const sanitized = {
-    customerId: sanitizeString(data.customerId),
-    customerName: sanitizeString(data.customerName),
-    customerEmail: sanitizeString(data.customerEmail)?.toLowerCase(),
-    spaceId: sanitizeString(data.spaceId),
-    pricingType: sanitizeString(data.pricingType) || 'daily',
-    status: sanitizeString(data.status) || 'pending',
-    source: sanitizeString(data.source) || 'manual',
-  };
+  const sanitized = {};
 
-  // Optional fields
-  if (data.customerPhone) sanitized.customerPhone = sanitizeString(data.customerPhone);
-  if (data.spaceName) sanitized.spaceName = sanitizeString(data.spaceName);
-  if (data.notes) sanitized.notes = sanitizeString(data.notes);
-  if (data.invoiceId) sanitized.invoiceId = sanitizeString(data.invoiceId);
+  // Required string fields with validation
+  if (data.customerId) {
+    sanitized.customerId = sanitizeString(data.customerId);
+    // Validate customerId format (should match CUS[0-9]+ pattern)
+    if (!/^CUS\d+$/.test(sanitized.customerId)) {
+      throw new Error('Invalid customerId format. Must be CUS followed by numbers.');
+    }
+  }
+
+  if (data.customerName) {
+    sanitized.customerName = sanitizeString(data.customerName);
+    if (sanitized.customerName.length < 2 || sanitized.customerName.length > 100) {
+      throw new Error('Customer name must be between 2 and 100 characters');
+    }
+  }
+
+  if (data.customerEmail) {
+    sanitized.customerEmail = sanitizeString(data.customerEmail)?.toLowerCase();
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(sanitized.customerEmail)) {
+      throw new Error('Invalid email format');
+    }
+  }
+
+  if (data.spaceId) {
+    sanitized.spaceId = sanitizeString(data.spaceId);
+    // Validate spaceId is not empty after sanitization
+    if (!sanitized.spaceId) {
+      throw new Error('Invalid spaceId');
+    }
+  }
+
+  // Validated enum fields
+  if (data.pricingType) {
+    const validPricingTypes = ['hourly', 'halfday', 'daily', 'monthly'];
+    sanitized.pricingType = sanitizeString(data.pricingType).toLowerCase();
+    if (!validPricingTypes.includes(sanitized.pricingType)) {
+      throw new Error(`Invalid pricingType. Must be one of: ${validPricingTypes.join(', ')}`);
+    }
+  } else {
+    sanitized.pricingType = 'daily'; // Default
+  }
+
+  if (data.status) {
+    const validStatuses = ['pending', 'confirmed', 'active', 'completed', 'cancelled'];
+    sanitized.status = sanitizeString(data.status).toLowerCase();
+    if (!validStatuses.includes(sanitized.status)) {
+      throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+    }
+  } else {
+    sanitized.status = 'pending'; // Default
+  }
+
+  if (data.source) {
+    const validSources = ['manual', 'api', 'mobile', 'web', 'admin'];
+    sanitized.source = sanitizeString(data.source).toLowerCase();
+    if (!validSources.includes(sanitized.source)) {
+      throw new Error(`Invalid source. Must be one of: ${validSources.join(', ')}`);
+    }
+  } else {
+    sanitized.source = 'manual'; // Default
+  }
+
+  // Optional string fields with validation
+  if (data.customerPhone) {
+    sanitized.customerPhone = sanitizeString(data.customerPhone);
+    // Phone validation (remove non-digits and validate length)
+    const phoneDigits = sanitized.customerPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 8 || phoneDigits.length > 15) {
+      throw new Error('Phone number must be between 8 and 15 digits');
+    }
+    sanitized.customerPhone = phoneDigits; // Store only digits
+  }
+
+  if (data.spaceName) {
+    sanitized.spaceName = sanitizeString(data.spaceName);
+    if (sanitized.spaceName.length > 200) {
+      throw new Error('Space name cannot exceed 200 characters');
+    }
+  }
+
+  if (data.notes) {
+    sanitized.notes = sanitizeString(data.notes);
+    if (sanitized.notes.length > 1000) {
+      throw new Error('Notes cannot exceed 1000 characters');
+    }
+  }
+
+  if (data.invoiceId) {
+    sanitized.invoiceId = sanitizeString(data.invoiceId);
+    // Validate invoiceId format (should match INV[0-9]+ pattern)
+    if (!/^INV\d+$/.test(sanitized.invoiceId)) {
+      throw new Error('Invalid invoiceId format. Must be INV followed by numbers.');
+    }
+  }
   
-  // Numeric fields
-  if (data.amountBase !== undefined) sanitized.amountBase = parseFloat(data.amountBase);
+  // Numeric fields with range validation
+  if (data.amountBase !== undefined) {
+    const amount = parseFloat(data.amountBase);
+    if (isNaN(amount)) {
+      throw new Error('amountBase must be a valid number');
+    }
+    if (amount < 0) {
+      throw new Error('amountBase cannot be negative');
+    }
+    if (amount > 100000000) { // 100 million limit
+      throw new Error('amountBase cannot exceed 100,000,000');
+    }
+    // Round to 2 decimal places for currency
+    sanitized.amountBase = Math.round(amount * 100) / 100;
+  }
   
-  // Date fields
-  if (data.startDate) sanitized.startDate = new Date(data.startDate);
-  if (data.endDate) sanitized.endDate = new Date(data.endDate);
+  // Date fields with validation
+  if (data.startDate) {
+    const startDate = new Date(data.startDate);
+    if (isNaN(startDate.getTime())) {
+      throw new Error('Invalid startDate format');
+    }
+    // Validate date is not too far in the past (more than 1 year ago)
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    if (startDate < oneYearAgo) {
+      throw new Error('startDate cannot be more than 1 year in the past');
+    }
+    // Validate date is not too far in the future (more than 5 years)
+    const fiveYearsFromNow = new Date();
+    fiveYearsFromNow.setFullYear(fiveYearsFromNow.getFullYear() + 5);
+    if (startDate > fiveYearsFromNow) {
+      throw new Error('startDate cannot be more than 5 years in the future');
+    }
+    sanitized.startDate = startDate;
+  }
+
+  if (data.endDate) {
+    const endDate = new Date(data.endDate);
+    if (isNaN(endDate.getTime())) {
+      throw new Error('Invalid endDate format');
+    }
+    // Validate date is not too far in the past (more than 1 year ago)
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    if (endDate < oneYearAgo) {
+      throw new Error('endDate cannot be more than 1 year in the past');
+    }
+    // Validate date is not too far in the future (more than 5 years)
+    const fiveYearsFromNow = new Date();
+    fiveYearsFromNow.setFullYear(fiveYearsFromNow.getFullYear() + 5);
+    if (endDate > fiveYearsFromNow) {
+      throw new Error('endDate cannot be more than 5 years in the future');
+    }
+    sanitized.endDate = endDate;
+  }
+
+  // Cross-field validation
+  if (sanitized.startDate && sanitized.endDate) {
+    if (sanitized.startDate >= sanitized.endDate) {
+      throw new Error('startDate must be before endDate');
+    }
+    
+    // Validate booking duration based on pricing type
+    const durationMs = sanitized.endDate - sanitized.startDate;
+    const durationHours = durationMs / (1000 * 60 * 60);
+    const durationDays = durationMs / (1000 * 60 * 60 * 24);
+    
+    switch (sanitized.pricingType) {
+      case 'hourly':
+        if (durationHours > 24) {
+          throw new Error('Hourly bookings cannot exceed 24 hours');
+        }
+        if (durationHours < 1) {
+          throw new Error('Hourly bookings must be at least 1 hour');
+        }
+        break;
+      case 'halfday':
+        if (durationHours > 12) {
+          throw new Error('Half-day bookings cannot exceed 12 hours');
+        }
+        if (durationHours < 3) {
+          throw new Error('Half-day bookings must be at least 3 hours');
+        }
+        break;
+      case 'daily':
+        if (durationDays > 31) {
+          throw new Error('Daily bookings cannot exceed 31 days');
+        }
+        if (durationDays < 1) {
+          throw new Error('Daily bookings must be at least 1 day');
+        }
+        break;
+      case 'monthly':
+        if (durationDays > 365) {
+          throw new Error('Monthly bookings cannot exceed 365 days');
+        }
+        if (durationDays < 28) {
+          throw new Error('Monthly bookings must be at least 28 days');
+        }
+        break;
+    }
+  }
 
   return sanitized;
 }
