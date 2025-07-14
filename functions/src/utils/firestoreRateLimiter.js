@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+const _admin = require('firebase-admin');
 const {getDb} = require('./helpers');
 
 // Rate limit configurations
@@ -19,6 +19,8 @@ const RATE_LIMITS = {
 /**
  * Get client identifier from request
  * Uses IP address, user ID (if authenticated), or combination
+ * @param {object} req - The request object
+ * @return {string} Client identifier
  */
 function getClientId(req) {
   // Try to get user ID from auth token first
@@ -50,6 +52,9 @@ function getClientId(req) {
 /**
  * Firestore-based sliding window rate limiter
  * Uses Firestore transactions for atomic operations
+ * @param {string} clientId - The client identifier
+ * @param {object} limit - Rate limit configuration
+ * @return {Promise<object>} Rate limit result
  */
 async function checkRateLimit(clientId, limit) {
   const db = getDb();
@@ -135,6 +140,7 @@ async function checkRateLimit(clientId, limit) {
 /**
  * Cleanup old rate limit entries
  * Should be called periodically (e.g., via scheduled function)
+ * @return {Promise<number>} Number of entries cleaned up
  */
 async function cleanupRateLimits() {
   const db = getDb();
@@ -171,6 +177,9 @@ async function cleanupRateLimits() {
 
 /**
  * Check rate limit for a specific operation type
+ * @param {object} req - The request object
+ * @param {string} limitType - The type of rate limit to check
+ * @return {Promise<object>} Rate limit result
  */
 async function checkRateLimitForOperation(req, limitType) {
   const limit = RATE_LIMITS[limitType];
@@ -189,6 +198,10 @@ async function checkRateLimitForOperation(req, limitType) {
 
 /**
  * Rate limit response helper
+ * @param {object} result - The rate limit result
+ * @param {string} limitType - The type of rate limit
+ * @param {object} req - The request object
+ * @return {object} Rate limit response
  */
 function createRateLimitResponse(result, limitType, req) {
   const limit = RATE_LIMITS[limitType];
@@ -220,6 +233,10 @@ function createRateLimitResponse(result, limitType, req) {
 
 /**
  * Apply rate limiting with automatic response handling
+ * @param {object} req - The request object
+ * @param {object} res - The response object
+ * @param {string} limitType - The type of rate limit to apply
+ * @return {Promise<boolean>} True if request is allowed
  */
 async function applyRateLimit(req, res, limitType) {
   try {
@@ -251,6 +268,9 @@ async function applyRateLimit(req, res, limitType) {
 
 /**
  * Get rate limit statistics for monitoring
+ * @param {string} clientId - The client identifier
+ * @param {string} limitType - The type of rate limit (optional)
+ * @return {Promise<object>} Rate limit statistics
  */
 async function getRateLimitStats(clientId, limitType = null) {
   const db = getDb();

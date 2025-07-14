@@ -5,7 +5,7 @@ const {cleanupRateLimits} = require('./utils/firestoreRateLimiter');
  * Scheduled function to clean up old rate limit entries
  * Runs every 6 hours to keep Firestore collection size manageable
  */
-const rateLimitCleanup = onSchedule('0 */6 * * *', async (event) => {
+const rateLimitCleanup = onSchedule('0 */6 * * *', async (_event) => {
   console.log('🧹 Starting rate limit cleanup job...');
 
   try {

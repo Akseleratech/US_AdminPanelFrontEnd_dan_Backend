@@ -21,7 +21,11 @@ const {
 const {applyWriteOperationRateLimit} = require('./utils/applyRateLimit');
 const admin = require('firebase-admin');
 
-// Sanitize and format order data
+/**
+ * Sanitize and format order data
+ * @param {object} data - The order data to sanitize
+ * @return {object} Sanitized order data
+ */
 function sanitizeOrderData(data) {
   const sanitized = {};
 
@@ -228,7 +232,7 @@ function sanitizeOrderData(data) {
           throw new Error('Daily bookings must be at least 1 day');
         }
         break;
-      case 'monthly':
+      case 'monthly': {
         // For monthly, be more flexible with duration validation
         const monthlyDurationDays = Math.floor(durationMs / (1000 * 60 * 60 * 24)) + 1;
         if (monthlyDurationDays > 400) { // ~13 months
@@ -238,6 +242,7 @@ function sanitizeOrderData(data) {
           throw new Error('Monthly bookings must be at least 28 days');
         }
         break;
+      }
     }
   }
 
@@ -619,20 +624,20 @@ const createOrder = async (req, res, requesterRole) => {
   try {
     const db = getDb();
     const {
-      customerId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      spaceId,
-      spaceName,
-      amountBase, // Changed from amount to amountBase
-      invoiceId = null, // New field for invoice reference
-      pricingType = 'daily',
-      startDate,
-      endDate,
-      status = 'pending',
-      notes = '',
-      source = 'manual',
+      customerId: _customerId,
+      customerName: _customerName,
+      customerEmail: _customerEmail,
+      customerPhone: _customerPhone,
+      spaceId: _spaceId,
+      spaceName: _spaceName,
+      amountBase: _amountBase, // Changed from amount to amountBase
+      invoiceId: _invoiceId = null, // New field for invoice reference
+      pricingType: _pricingType = 'daily',
+      startDate: _startDate,
+      endDate: _endDate,
+      status: _status = 'pending',
+      notes: _notes = '',
+      source: _source = 'manual',
     } = req.body;
 
     // Validate required fields (service fields are now optional)
@@ -705,7 +710,7 @@ const createOrder = async (req, res, requesterRole) => {
 
     // Update space booking status based on order status and pricing type
     try {
-      await updateSpaceBookingStatus(db, spaceId, orderId, status, pricingType, 'create');
+      await updateSpaceBookingStatus(db, sanitizedData.spaceId, orderId, sanitizedData.status, sanitizedData.pricingType, 'create');
     } catch (err) {
       console.warn('⚠️ Unable to update space booking status:', err.message);
     }

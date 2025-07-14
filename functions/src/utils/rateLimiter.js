@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+const _admin = require('firebase-admin');
 
 // In-memory store for rate limiting (for simple implementation)
 // In production, consider using Redis or Firestore for distributed rate limiting
@@ -22,6 +22,8 @@ const RATE_LIMITS = {
 /**
  * Get client identifier from request
  * Uses IP address, user ID (if authenticated), or combination
+ * @param {object} req - The request object
+ * @return {string} Client identifier
  */
 function getClientId(req) {
   // Try to get user ID from auth token first
@@ -53,6 +55,9 @@ function getClientId(req) {
 
 /**
  * Sliding window rate limiter implementation
+ * @param {string} clientId - The client identifier
+ * @param {object} limit - Rate limit configuration
+ * @return {object} Rate limit result
  */
 function checkRateLimit(clientId, limit) {
   const now = Date.now();
@@ -92,6 +97,7 @@ function checkRateLimit(clientId, limit) {
 
 /**
  * Clean up old entries periodically to prevent memory leaks
+ * @return {void}
  */
 function cleanupStore() {
   const now = Date.now();
@@ -112,6 +118,8 @@ setInterval(cleanupStore, 60 * 60 * 1000);
 
 /**
  * Rate limiting middleware
+ * @param {string} limitType - The type of rate limit
+ * @return {function} Express middleware function
  */
 function createRateLimiter(limitType) {
   return (req, res, next) => {
@@ -149,6 +157,9 @@ function createRateLimiter(limitType) {
 
 /**
  * Check rate limit without middleware (for use in Firebase functions)
+ * @param {object} req - The request object
+ * @param {string} limitType - The type of rate limit
+ * @return {object} Rate limit result
  */
 function checkRateLimitSync(req, limitType) {
   const limit = RATE_LIMITS[limitType];
@@ -163,6 +174,9 @@ function checkRateLimitSync(req, limitType) {
 
 /**
  * Rate limit response helper
+ * @param {object} result - The rate limit result
+ * @param {string} limitType - The type of rate limit
+ * @return {object} Error response object
  */
 function createRateLimitResponse(result, limitType) {
   const limit = RATE_LIMITS[limitType];

@@ -1,13 +1,17 @@
 const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('./utils/corsConfig');
-const {getDb, sanitizeString, verifyAdminAuth, getUserRoleAndCity} = require('./utils/helpers');
+const {getDb, sanitizeString, getUserRoleAndCity} = require('./utils/helpers');
 const {
   handleResponse,
   handleError,
   handleAuthError,
 } = require('./utils/errorHandler');
 
-// Sanitize and format dashboard query parameters
+/**
+ * Sanitize and format dashboard query parameters
+ * @param {object} query - The query parameters object
+ * @return {object} Sanitized query parameters
+ */
 function sanitizeDashboardQuery(query) {
   const sanitized = {};
 
@@ -118,7 +122,8 @@ const getDashboardStats = async (req, res) => {
         totalRevenue,
       },
       performance: {
-        occupancyRate: activeSpaces > 0 ? Math.round(((activeOrders + completedOrders) / totalSpaces) * 100) : 0,
+        occupancyRate: activeSpaces > 0 ?
+          Math.round(((activeOrders + completedOrders) / totalSpaces) * 100) : 0,
         completionRate: _totalOrders > 0 ? Math.round((completedOrders / _totalOrders) * 100) : 0,
         averageOrderValue: completedOrders > 0 ? Math.round(totalRevenue / completedOrders) : 0,
       },
@@ -204,8 +209,10 @@ const getQuickStats = async (req, res) => {
       }
     });
 
-    const occupancyRate = activeSpaces > 0 ? Math.round((completedOrders / totalSpaces) * 100) : 0;
-    const averageBookingValue = completedOrders > 0 ? Math.round(totalRevenue / completedOrders) : 0;
+    const occupancyRate = activeSpaces > 0 ?
+      Math.round((completedOrders / totalSpaces) * 100) : 0;
+    const averageBookingValue = completedOrders > 0 ?
+      Math.round(totalRevenue / completedOrders) : 0;
 
     const quickStats = {
       occupancyRate: `${occupancyRate}%`,

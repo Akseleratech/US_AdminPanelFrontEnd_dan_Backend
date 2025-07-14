@@ -1,6 +1,6 @@
 const {onRequest} = require('firebase-functions/v2/https');
 const cors = require('cors')({origin: true});
-const {getDb, verifyAdminAuth, sanitizeString} = require('./utils/helpers');
+const {getDb, verifyAdminAuth} = require('./utils/helpers');
 const {
   handleResponse,
   handleError,
@@ -8,13 +8,17 @@ const {
 } = require('./utils/errorHandler');
 const {applyAdminOperationRateLimit} = require('./utils/applyRateLimit');
 
-// Sanitize and format database query parameters
-function sanitizeDatabaseQuery(query) {
+/**
+ * Sanitize and format database query parameters
+ * @param {object} query - The query parameters object
+ * @return {object} Sanitized query parameters
+ */
+function _sanitizeDatabaseQuery(query) {
   const sanitized = {};
 
   // Database operations may have these query parameters
-  if (query.collection) sanitized.collection = sanitizeString(query.collection);
-  if (query.action) sanitized.action = sanitizeString(query.action);
+  if (query.collection) sanitized.collection = query.collection;
+  if (query.action) sanitized.action = query.action;
   if (query.force) sanitized.force = query.force === 'true';
 
   return sanitized;

@@ -18,7 +18,11 @@ const {
 const {applyWriteOperationRateLimit} = require('./utils/applyRateLimit');
 const admin = require('firebase-admin');
 
-// Sanitize and format invoice data
+/**
+ * Sanitize and format invoice data
+ * @param {object} data - The invoice data to sanitize
+ * @return {object} Sanitized invoice data
+ */
 function sanitizeInvoiceData(data) {
   const sanitized = {
     customerName: sanitizeString(data.customerName),
@@ -53,8 +57,11 @@ const invoices = onRequest(async (req, res) => {
   return cors(req, res, async () => {
     try {
       // Apply rate limiting for write operations
-      if (!applyWriteOperationRateLimit(req, res)) {
-        return; // Rate limit exceeded, response already sent
+      if (req.method !== 'GET') {
+        const rateLimitAllowed = await applyWriteOperationRateLimit(req, res);
+        if (!rateLimitAllowed) {
+          return; // Rate limit exceeded, response already sent
+        }
       }
 
       const {method, url} = req;
@@ -231,19 +238,19 @@ const createInvoice = async (req, res) => {
   try {
     const db = getDb();
     const {
-      orderId,
-      orderIds = [],
-      customerName,
-      customerEmail,
-      customerPhone,
-      customerAddress,
-      amountBase,
-      taxRate,
-      discountRate = 0,
-      paymentTerms = 30,
-      notes = '',
-      serviceName = null,
-      cityName = null,
+      orderId: _orderId,
+      orderIds: _orderIds = [],
+      customerName: _customerName,
+      customerEmail: _customerEmail,
+      customerPhone: _customerPhone,
+      customerAddress: _customerAddress,
+      amountBase: _amountBase,
+      taxRate: _taxRate,
+      discountRate: _discountRate = 0,
+      paymentTerms: _paymentTerms = 30,
+      notes: _notes = '',
+      serviceName: _serviceName = null,
+      cityName: _cityName = null,
     } = req.body;
 
     // Validate required fields
@@ -275,7 +282,8 @@ const createInvoice = async (req, res) => {
     const invoiceData = {
       ...sanitizedData,
       orderId: sanitizedData.orderId || null,
-      orderIds: sanitizedData.orderIds && sanitizedData.orderIds.length > 0 ? sanitizedData.orderIds : (sanitizedData.orderId ? [sanitizedData.orderId] : []),
+      orderIds: sanitizedData.orderIds && sanitizedData.orderIds.length > 0 ?
+        sanitizedData.orderIds : (sanitizedData.orderId ? [sanitizedData.orderId] : []),
       taxRate: parseFloat(finalTaxRate),
       taxAmount: parseFloat(taxAmount),
       discountAmount: parseFloat(discountAmount),

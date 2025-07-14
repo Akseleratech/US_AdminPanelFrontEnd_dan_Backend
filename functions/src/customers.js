@@ -37,7 +37,12 @@ const getUserFromToken = async (req) => {
   }
 };
 
-// Enhanced validation function for customers
+/**
+ * Enhanced validation function for customers
+ * @param {object} data - The customer data to validate
+ * @param {boolean} isUpdate - Whether this is an update operation
+ * @return {string[]} Array of validation errors
+ */
 function validateCustomerData(data, isUpdate = false) {
   const errors = [];
 
@@ -89,7 +94,11 @@ function validateCustomerData(data, isUpdate = false) {
   return errors;
 }
 
-// Sanitize and format customer data
+/**
+ * Sanitize and format customer data
+ * @param {object} data - The customer data to sanitize
+ * @return {object} Sanitized customer data
+ */
 function sanitizeCustomerData(data) {
   const sanitized = {
     name: sanitizeString(data.name),
@@ -107,7 +116,12 @@ function sanitizeCustomerData(data) {
   return sanitized;
 }
 
-// Check for duplicate customer email
+/**
+ * Check for duplicate customer email
+ * @param {string} email - The email to check
+ * @param {string} excludeId - ID to exclude from check (for updates)
+ * @return {Promise<boolean>} True if duplicate exists
+ */
 async function checkDuplicateEmail(email, excludeId = null) {
   try {
     const db = getDb();
@@ -127,7 +141,10 @@ async function checkDuplicateEmail(email, excludeId = null) {
   }
 }
 
-// Generate sequential customer ID
+/**
+ * Generate sequential customer ID
+ * @return {Promise<string>} Generated customer ID
+ */
 async function generateSequentialCustomerId() {
   try {
     const db = getDb();
@@ -176,7 +193,11 @@ async function generateSequentialCustomerId() {
   }
 }
 
-// Generate search keywords for customers
+/**
+ * Generate search keywords for customers
+ * @param {object} customerData - The customer data to generate keywords for
+ * @return {string[]} Array of search keywords
+ */
 function generateCustomerSearchKeywords(customerData) {
   const keywords = [];
 
