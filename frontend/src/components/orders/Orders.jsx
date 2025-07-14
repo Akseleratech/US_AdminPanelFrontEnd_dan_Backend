@@ -198,6 +198,7 @@ const Orders = () => {
         onDelete={handleDeleteOrder}
         onViewInvoice={handleViewInvoice}
         onOrdersRefresh={fetchOrders}
+        loading={loading}
       />
 
       {/* Modal */}

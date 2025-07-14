@@ -567,9 +567,10 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
             {loading ? (
               <tr>
                 <td colSpan="9" className="px-6 py-8 text-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
                     <p className="text-gray-500 font-medium">Memuat order...</p>
+                    <p className="text-gray-400 text-sm mt-1">Mohon tunggu sebentar...</p>
                   </div>
                 </td>
               </tr>

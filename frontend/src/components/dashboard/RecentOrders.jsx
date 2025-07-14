@@ -1,8 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getStatusColor, getStatusIcon } from '../../utils/helpers.jsx';
 import { Calendar, MapPin, User, Eye } from 'lucide-react';
 
 const RecentOrders = ({ recentOrders }) => {
+  const navigate = useNavigate();
+
+  const handleViewAllOrders = () => {
+    navigate('/orders');
+  };
+
   const formatCurrency = (amount) => {
     if (!amount) return 'Rp 0';
     return `Rp ${Number(amount).toLocaleString('id-ID')}`;
@@ -154,7 +161,10 @@ const RecentOrders = ({ recentOrders }) => {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Recent Bookings</h3>
-        <button className="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+        <button 
+          onClick={handleViewAllOrders}
+          className="text-sm text-blue-600 hover:text-blue-800 flex items-center transition-colors duration-150"
+        >
           <Eye className="w-4 h-4 mr-1" />
           View All
         </button>
