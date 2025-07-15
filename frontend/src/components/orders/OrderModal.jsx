@@ -783,6 +783,11 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
           endDate: endDateToSend,
           source: 'manual' // Menandakan bahwa order ini dibuat manual
         };
+        
+        // Remove empty/null invoiceId to avoid validation errors
+        if (!orderData.invoiceId || orderData.invoiceId === '') {
+          delete orderData.invoiceId;
+        }
       }
 
       console.log('🔍 Sending order data:', orderData);

@@ -120,9 +120,9 @@ function sanitizeOrderData(data) {
 
   if (data.invoiceId) {
     sanitized.invoiceId = sanitizeString(data.invoiceId);
-    // Validate invoiceId format (should match INV[0-9]+ pattern)
-    if (!/^INV\d+$/.test(sanitized.invoiceId)) {
-      throw new Error('Invalid invoiceId format. Must be INV followed by numbers.');
+    // Validate invoiceId format (should match INV[0-9]+ or INV-YYYY-MM-XXX pattern)
+    if (!/^INV(?:\d+|-\d{4}-\d{2}-\d{3})$/.test(sanitized.invoiceId)) {
+      throw new Error('Invalid invoiceId format. Must be INV followed by numbers (INV123) or INV-YYYY-MM-XXX format (INV-2025-07-001).');
     }
   }
 
