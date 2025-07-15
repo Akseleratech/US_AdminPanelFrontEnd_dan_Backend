@@ -737,9 +737,34 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
 
     setIsSubmitting(true);
     try {
-      // Temporary: use simple ISO string conversion for testing
-      const startDateToSend = formData.startDate ? new Date(formData.startDate).toISOString() : null;
-      const endDateToSend = formData.endDate ? new Date(formData.endDate).toISOString() : null;
+      // Convert dates to ISO strings with proper validation
+      let startDateToSend = null;
+      let endDateToSend = null;
+      
+      if (formData.startDate) {
+        const startDate = new Date(formData.startDate);
+        if (!isNaN(startDate.getTime())) {
+          startDateToSend = startDate.toISOString();
+        } else {
+          console.error('Invalid start date:', formData.startDate);
+        }
+      }
+      
+      if (formData.endDate) {
+        const endDate = new Date(formData.endDate);
+        if (!isNaN(endDate.getTime())) {
+          endDateToSend = endDate.toISOString();
+        } else {
+          console.error('Invalid end date:', formData.endDate);
+        }
+      }
+      
+      console.log('🔍 Date conversion:', {
+        originalStart: formData.startDate,
+        originalEnd: formData.endDate,
+        convertedStart: startDateToSend,
+        convertedEnd: endDateToSend
+      });
       
       let orderData;
 
@@ -761,11 +786,14 @@ const OrderModal = ({ isOpen, onClose, onSave, editingOrder = null }) => {
       }
 
       console.log('🔍 Sending order data:', orderData);
+      console.log('🔍 Original editing order:', editingOrder);
+      console.log('🔍 Form data:', formData);
       await onSave(orderData);
       onClose();
     } catch (error) {
       console.error('Error saving order:', error);
-      setErrors({ submit: 'Failed to save order. Please try again.' });
+      console.error('Error details:', error.message);
+      setErrors({ submit: `Failed to save order: ${error.message}` });
     } finally {
       setIsSubmitting(false);
     }
