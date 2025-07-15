@@ -29,7 +29,38 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
   // Current time state for dynamic status updates
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Function to determine dynamic status based on current time
+  // Track orders that have been updated to prevent duplicate updates
+  const [updatedOrders, setUpdatedOrders] = useState(new Set());
+  const [updatingOrders, setUpdatingOrders] = useState(new Set());
+
+  // Function to update order status in database
+  const updateOrderStatusInDatabase = async (orderId, newStatus) => {
+    try {
+      setUpdatingOrders(prev => new Set(prev).add(orderId));
+      
+      await ordersAPI.update(orderId, { status: newStatus });
+      
+      // Mark as updated to prevent duplicate updates
+      setUpdatedOrders(prev => new Set(prev).add(orderId));
+      
+      // Refresh orders list to get updated data
+      if (typeof onOrdersRefresh === 'function') {
+        onOrdersRefresh();
+      }
+      
+      console.log(`✅ Order ${orderId} status updated to ${newStatus}`);
+    } catch (error) {
+      console.error(`❌ Failed to update order ${orderId} status:`, error);
+    } finally {
+      setUpdatingOrders(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
+      });
+    }
+  };
+
+  // Function to determine dynamic status and trigger database updates
   const getDynamicStatus = (order) => {
     const now = currentTime;
     const startDate = new Date(order.startDate);
@@ -37,11 +68,19 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
     
     // If order.status is 'confirmed' AND current time >= startDate, return 'active'
     if (order.status === 'confirmed' && now >= startDate) {
+      // Update database if not already updated
+      if (!updatedOrders.has(order.id) && !updatingOrders.has(order.id)) {
+        updateOrderStatusInDatabase(order.id, 'active');
+      }
       return 'active';
     }
     
     // If order.status is 'active' AND current time > endDate, return 'completed'
     if (order.status === 'active' && now > endDate) {
+      // Update database if not already updated
+      if (!updatedOrders.has(order.id) && !updatingOrders.has(order.id)) {
+        updateOrderStatusInDatabase(order.id, 'completed');
+      }
       return 'completed';
     }
     
@@ -110,6 +149,13 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
     // Cleanup interval on unmount
     return () => clearInterval(interval);
   }, []);
+
+  // Reset updated orders tracking when orders list changes
+  useEffect(() => {
+    // Clear the updated orders tracking when orders list is refreshed
+    // This allows the system to detect new status changes
+    setUpdatedOrders(new Set());
+  }, [orders]);
 
   // Sort function
   const handleSort = (key) => {
@@ -701,10 +747,17 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
                   <td className="px-6 py-4 whitespace-nowrap">
                     {(() => {
                       const dynamicStatus = getDynamicStatus(order);
+                      const isUpdating = updatingOrders.has(order.id);
+                      
                       return (
                         <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(dynamicStatus)}`}>
-                          {getStatusIcon(dynamicStatus)}
+                          {isUpdating ? (
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></div>
+                          ) : (
+                            getStatusIcon(dynamicStatus)
+                          )}
                           <span className="ml-1 capitalize">{dynamicStatus}</span>
+                          {isUpdating && <span className="ml-1 text-xs opacity-75">(updating...)</span>}
                         </div>
                       );
                     })()}
