@@ -70,7 +70,63 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
 
       console.log('📤 Sending request with params:', filterParams);
       console.log('📤 URL will be:', `/orders?${new URLSearchParams(filterParams).toString()}`);
-      const response = await ordersAPI.getAll(filterParams);
+      
+      let response;
+      try {
+        response = await ordersAPI.getAll(filterParams);
+      } catch (primaryError) {
+        console.warn('⚠️ Primary request failed, trying fallback without sorting:', primaryError);
+        
+        // Fallback: Try without sorting (might be index issue)
+        const fallbackParams = { ...filterParams };
+        delete fallbackParams.sortBy;
+        delete fallbackParams.sortOrder;
+        
+        try {
+          response = await ordersAPI.getAll(fallbackParams);
+          console.log('✅ Fallback request succeeded');
+        } catch (fallbackError) {
+          console.warn('⚠️ Fallback request also failed, trying minimal query:', fallbackError);
+          
+          // Final fallback: Get all orders and filter client-side
+          const minimalParams = { limit: 100 }; // Increase limit for client-side filtering
+          const allOrdersResponse = await ordersAPI.getAll(minimalParams);
+          
+          // Filter client-side
+          const allOrders = allOrdersResponse.data?.orders || allOrdersResponse.orders || [];
+          const expectedCustomerId = customerData.customerId || customerData.id;
+          const expectedEmail = customerData.email;
+          
+          const filteredOrders = allOrders.filter(order => {
+            if (expectedCustomerId && order.customerId === expectedCustomerId) {
+              return true;
+            }
+            if (expectedEmail && order.customerEmail?.toLowerCase() === expectedEmail.toLowerCase()) {
+              return true;
+            }
+            return false;
+          });
+          
+          // Sort client-side
+          filteredOrders.sort((a, b) => {
+            const aDate = new Date(a.createdAt || a.startDate);
+            const bDate = new Date(b.createdAt || b.startDate);
+            return bDate - aDate; // Descending order
+          });
+          
+          // Apply pagination client-side
+          const paginatedOrders = filteredOrders.slice(offset, offset + ordersPerPage);
+          
+          response = {
+            data: {
+              orders: paginatedOrders,
+              total: filteredOrders.length
+            }
+          };
+          
+          console.log('✅ Client-side filtering succeeded:', paginatedOrders.length, 'orders');
+        }
+      }
       
       // Extract orders from response
       const ordersData = response.data?.orders || response.orders || [];
@@ -150,7 +206,20 @@ const CustomerDetailModal = ({ isOpen, onClose, customer }) => {
       setTotalOrders(filteredOrders.length); // Use filtered count
     } catch (error) {
       console.error('❌ Error fetching recent orders:', error);
-      setOrdersError(error.message || 'Failed to fetch customer orders');
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to fetch customer orders';
+      if (error.message?.includes('500')) {
+        errorMessage = 'Server error. This might be due to missing database indexes. Please contact support.';
+      } else if (error.message?.includes('403')) {
+        errorMessage = 'Access denied. You may not have permission to view this customer\'s orders.';
+      } else if (error.message?.includes('404')) {
+        errorMessage = 'Orders service not found. Please try again later.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setOrdersError(errorMessage);
       setRecentOrders([]); // Set empty array on error
       setTotalOrders(0);
     } finally {
