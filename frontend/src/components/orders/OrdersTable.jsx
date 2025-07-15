@@ -25,6 +25,29 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
 
   // Sorting state
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  
+  // Current time state for dynamic status updates
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Function to determine dynamic status based on current time
+  const getDynamicStatus = (order) => {
+    const now = currentTime;
+    const startDate = new Date(order.startDate);
+    const endDate = new Date(order.endDate);
+    
+    // If order.status is 'confirmed' AND current time >= startDate, return 'active'
+    if (order.status === 'confirmed' && now >= startDate) {
+      return 'active';
+    }
+    
+    // If order.status is 'active' AND current time > endDate, return 'completed'
+    if (order.status === 'active' && now > endDate) {
+      return 'completed';
+    }
+    
+    // Otherwise, return original status
+    return order.status;
+  };
 
   // Sort orders
   const sortedOrders = useMemo(() => {
@@ -77,6 +100,16 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
   React.useEffect(() => {
     setCurrentPage(1);
   }, [orders.length]);
+
+  // Auto-update current time every 30 seconds for dynamic status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 30000); // 30 seconds
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, []);
 
   // Sort function
   const handleSort = (key) => {
@@ -666,10 +699,15 @@ const OrdersTable = ({ orders = [], onEdit, onDelete, onViewInvoice, onOrdersRef
 
                   {/* Status */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                      {getStatusIcon(order.status)}
-                      <span className="ml-1 capitalize">{order.status}</span>
-                    </div>
+                    {(() => {
+                      const dynamicStatus = getDynamicStatus(order);
+                      return (
+                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(dynamicStatus)}`}>
+                          {getStatusIcon(dynamicStatus)}
+                          <span className="ml-1 capitalize">{dynamicStatus}</span>
+                        </div>
+                      );
+                    })()}
                   </td>
 
                   {/* Actions */}

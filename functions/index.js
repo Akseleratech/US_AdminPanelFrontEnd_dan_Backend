@@ -114,9 +114,9 @@ exports.updateSpacesOperationalStatus = onSchedule({
   }
 });
 
-// Scheduled function to update order statuses based on dates every 15 minutes
+// Scheduled function to update order statuses based on dates every 5 minutes
 exports.updateOrderStatuses = onSchedule({
-  schedule: '*/15 * * * *', // Every 15 minutes
+  schedule: '*/5 * * * *', // Every 5 minutes
   timeZone: 'Asia/Jakarta',
   memory: '256MiB',
   timeoutSeconds: 300,
